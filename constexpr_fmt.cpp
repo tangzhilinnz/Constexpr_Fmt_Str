@@ -9,12 +9,17 @@
 #include <stdarg.h>
 #include <charconv>
 #include <math.h>
-//#include <tuple>
 #include <system_error>
 #include <utility>
 #include <array>
+#include <cassert>
 
 #include "Portability.h"
+
+#if defined(_MSC_VER)
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#endif
 
 
 /*
@@ -193,7 +198,7 @@ using terminal_t = char;
 using begin_t = unsigned;
 using end_t = unsigned;
 using width_first_t = bool; // indicate which one was extracted first in the 
-						    // argument list when width and precision are both
+							// argument list when width and precision are both
 							// dynamically resolved
 
 //using fmt_info_t = std::tuple<begin_t, end_t, flags_t, width_t, precision_t,
@@ -215,9 +220,13 @@ struct FmtInfos {
 								  // argument list when width and precision are both
 								  // dynamically resolved
 };
-
-
 constexpr int i = sizeof(FmtInfos);
+
+/** used by CFMT_STR */
+struct OutbufArg {
+	char* pBuf_;            // running pointer to the next char
+	char* pBufEnd_;         // pointer to buffer end 
+};
 
 /**
  * Stores the static format information associated with a CFMT_STR invocation site.
@@ -246,13 +255,13 @@ struct StaticFmtInfo {
 	//   involved in the following context must be valid in a constant expression:
 	//   Calling any constructors, Converting any expressions to data member types
 	constexpr StaticFmtInfo(const char* fmtString, const int numSpecs,
-		const int numParams, const FmtInfos* fmtInfos)
+		const int numVarArgs, const FmtInfos* fmtInfos)
 		: /*filename_(filename)
 		, lineNum_(lineNum)
 		, severity_(severity)
 		,*/ formatString_(fmtString)
 		, numSpecs_(numSpecs)
-		, numParams_(numParams)
+		, numVarArgs_(numVarArgs)
 		, fmtInfos_(fmtInfos)
 	{ }
 
@@ -273,7 +282,7 @@ struct StaticFmtInfo {
 	const int numSpecs_;
 
 	// Number of variadic arguments required for CFMT_STR invocation
-	const int numParams_;
+	const int numVarArgs_;
 
 	// Mapping of detailed infos of fmt specifiers as inferred from CFMT_STR invocation.
 	const FmtInfos* fmtInfos_;
@@ -444,14 +453,10 @@ getOneFmtInfo(const char(&fmt)[N], int num = 0) {
 		case 'h':
 			pos++;
 			if (fmt[pos] == 'h') {
-				//flags &= ~__FLAG_INTEGER_SIZE;
-				//flags |= __FLAG_CHARINT;
 				intLen = __FLAG_CHARINT;
 				break;
 			}
 			else {
-				//flags &= ~__FLAG_INTEGER_SIZE;
-				//flags |= __FLAG_SHORTINT;
 				intLen = __FLAG_SHORTINT;
 				pos--;
 				break;
@@ -459,31 +464,21 @@ getOneFmtInfo(const char(&fmt)[N], int num = 0) {
 		case 'l':
 			pos++;
 			if (fmt[pos] == 'l') {
-				//flags &= ~__FLAG_INTEGER_SIZE;
-				//flags |= __FLAG_LLONGINT;
 				intLen = __FLAG_LLONGINT;
 				break;
 			}
 			else {
-				//flags &= ~__FLAG_INTEGER_SIZE;
-				//flags |= __FLAG_LONGINT;
 				intLen = __FLAG_LONGINT;
 				pos--;
 				break;
 			}
 		case 'j':
-			//flags &= ~__FLAG_INTEGER_SIZE;
-			//flags |= __FLAG_INTMAXT;
 			intLen = __FLAG_INTMAXT;
 			break;
 		case 't':
-			//flags &= ~__FLAG_INTEGER_SIZE;
-			//flags |= __FLAG_PTRDIFFT;
 			intLen = __FLAG_PTRDIFFT;
 			break;
 		case 'z':
-			//flags &= ~__FLAG_INTEGER_SIZE;
-			//flags |= __FLAG_SIZET;
 			intLen = __FLAG_SIZET;
 			break;
 
@@ -492,16 +487,12 @@ getOneFmtInfo(const char(&fmt)[N], int num = 0) {
 		case 's': case 'u': case 'X': case 'x':
 			terminal = fmt[pos];
 			end = pos + 1;
-			//return std::make_tuple(begin, end, flags, width, prec, sign,
-			//	                   terminal, widthFirst);
 			exit = true;
 			break;
 
 		default: // '\0', '%', !isTerminal, !isFlag, !isLength, or !isDigit
 			terminal = '?';
 			end = pos;
-			/*return std::make_tuple(begin, end, flags, width, prec, sign,
-								   terminal, widthFirst);*/
 			exit = true;
 			break;
 		}
@@ -511,7 +502,6 @@ getOneFmtInfo(const char(&fmt)[N], int num = 0) {
 
 	flags |= intLen;
 
-	//return fmt_info_t ( begin, end, flags, width, prec, sign, terminal, widthFirst );
 	//return std::make_tuple(begin, end, flags, width, prec, sign,
 	//	terminal, widthFirst);
 	return { begin, end, flags, width, prec, sign, terminal, widthFirst };
@@ -613,12 +603,57 @@ checkFormat(CFMT_PRINTF_FORMAT const char*, ...) {}
 
 
 /**
+ * This is a support routine for fioFormat(). This routine copies [length]
+ * bytes from source to destination, leaving the destination buffer pointer
+ * (pArg->pBuf) pointing at byte following block copied.
+ *
+ * If [length] exceeds the number of bytes available in the buffer, only the
+ * number of bytes that fit within the buffer are copied. In this case
+ * OK is still returned (although no further copying will be performed) so
+ * that fioFormat() can return the number of characters that would have been
+ * copied if the supplied buffer was of sufficient size.
+ *
+ * \param pInBuf
+ *      pointer to input buffer
+ * \param length
+ *      length of input buffer
+ * \param pArg
+ *      fioBufPut argument structure
+ *
+ * RETURNS: OK always
+ */
+inline void
+fioBufPut(const char* pInBuf, size_t length, OutbufArg* pArg) {
+	size_t remaining;
+
+	// check if sufficient free space remains in the buffer
+	remaining = (size_t)(pArg->pBufEnd_ - pArg->pBuf_ - 1);
+	// the last byte position is reserved for the terminating '\0' 
+
+	// fail if at the end of buffer, recall need a single byte for null
+	if ((ssize_t)remaining <= 0)
+		return;
+
+	else if (length > remaining)
+		length = remaining;
+
+	memcpy(pArg->pBuf_, pInBuf, length);
+
+	pArg->pBuf_ += length;
+
+	return;
+}
+
+
+/**
  * Logs a log message in the NanoLog system given all the static and dynamic
  * information associated with the log message. This function is meant to work
  * in conjunction with the #define-d NANO_LOG() and expects the caller to
  * maintain a permanent mapping of logId to static information once it's
  * assigned by this function.
  *
+ * \tparam NumVarArgs
+ *      number of additional arguments(...) in CFMT_STR arguments list
  * \tparam N
  *      length of the format string (automatically deduced)
  * \tparam M
@@ -648,10 +683,13 @@ checkFormat(CFMT_PRINTF_FORMAT const char*, ...) {}
  * \param args
  *      Argument pack for all the arguments for the log invocation
  */
-template<int N, size_t M, typename... Ts>
+template<int NumVarArgs, int N, size_t M, typename... Ts>
 inline int
-fioBufPut(int& logId, char* buffer, size_t count, const char(&format)[N],
+fioFormat(int& logId, OutbufArg& outbuf, const char(&format)[N],
 	const std::array<FmtInfos, M>& fmtInfos, Ts &&... args) {
+
+	assert(NumVarArgs == static_cast<uint32_t>(sizeof...(Ts)));
+
 	for (int i = 0; i < M; i++) {
 		std::cout << "fmtInfos_" << i << " flags_: " << fmtInfos[i].flags_ << std::endl;
 	}
@@ -678,16 +716,44 @@ fioBufPut(int& logId, char* buffer, size_t count, const char(&format)[N],
 	return 10;
 }
 
+/*
+ * Get the number of variadic arguments in CFMT_STR invocation
+ * (... -> additional arguments)
+ */
+template<size_t M>
+constexpr inline int
+countVarArgs(const std::array<FmtInfos, M>& fmtInfos) {
+	int count = 0;
+	for (int i = 0; i < M; i++) {
+		if (fmtInfos[i].terminal_ != '?') count++;
+		if (fmtInfos[i].prec_ == DYNAMIC_PRECISION) count++;
+		if (fmtInfos[i].width_ == DYNAMIC_WIDTH) count++;
+	}
+	return count;
+}
+
 
 /**
  * Snprintf macro used for caching format specifier infos at compile time.
  *
+ * \param result
+ *      The variable to store the number of characters that would have been
+ *      written to buffer if count had been sufficiently large, not counting
+ *      the terminating null character.
+ *      Notice that only when this returned value is non-negative and less
+ *      than count, the string has been completely written.
  * \param buffer
  *      buffer to write to formatted string
  * \param count
  *      max number of characters to store in buffer
  * \param format
  *      printf-like format string (must be literal)
+ * \param ... (additional arguments)
+ *      Depending on the format string, the function may expect a sequence of
+ *      additional arguments, each containing a value to be used to replace a
+ *      format specifier in the format string (or a pointer to a storage
+ *      location, for n). There should be at least as many of these arguments
+ *      as the number of values specified in the valid format specifiers.
  */
 
 #define CFMT_STR(result, buffer, count, format, ...)  do { \
@@ -710,17 +776,26 @@ fioBufPut(int& logId, char* buffer, size_t count, const char(&format)[N],
 	 * change their extent, but it does change its visibility with respect to
 	 * other translation units; the name is not exported to the linker, so it
 	 * cannot be accessed by name from another translation unit.
-	 */ \
-		 static constexpr std::array<FmtInfos, nParams> fmtInfos = \
-		 analyzeFormatString<nParams>(format); \
-		 static int logId = UNASSIGNED_CFMT_ID; \
-		 \
-		 /* Triggers the printf checker by passing it into a no-op function.
-		  * Trick: This call is surrounded by an if false so that the VA_ARGS don't
-		  * evaluate for cases like '++i'.*/ \
-		 if (false) { checkFormat(format, ##__VA_ARGS__); } /*NOLINT(cppcoreguidelines-pro-type-vararg, hicpp-vararg)*/\
+	 */\
+	static constexpr std::array<FmtInfos, nParams> fmtInfos = \
+	analyzeFormatString<nParams>(format); \
+	constexpr int NumVarArgs = countVarArgs(fmtInfos); \
 	\
-	result = fioBufPut(logId, buffer, count, format, fmtInfos, ##__VA_ARGS__); \
+	static int logId = UNASSIGNED_CFMT_ID; \
+	\
+	/* Triggers the printf checker by passing it into a no-op function.
+	* Trick: This call is surrounded by an if false so that the VA_ARGS don't
+	* evaluate for cases like '++i'.*/ \
+	if (false) { checkFormat(format, ##__VA_ARGS__); } /*NOLINT(cppcoreguidelines-pro-type-vararg, hicpp-vararg)*/\
+	\
+	OutbufArg  outbuf; \
+	outbuf.pBuf_ = buffer; \
+	outbuf.pBufEnd_ = (char*)(buffer + count); \
+	result = fioFormat<NumVarArgs>(logId, outbuf, format, fmtInfos, ##__VA_ARGS__); \
+	\
+	/* null - terminate the string */ \
+	if (count != 0) \
+	    *outbuf.pBuf_ = '\0'; \
 } while (0)
 
 
@@ -739,7 +814,7 @@ fioBufPut(int& logId, char* buffer, size_t count, const char(&format)[N],
 //}
 int main() {
 	constexpr int numFmtInfos =
-			countFmtInfos("sdsffe%12.dsd%s%%%f23.lhkz+- #&%%%34.hjzll.*.8.8*#+- .**00");
+		countFmtInfos("sdsffe%12.dsd%s%%%f23.lhkz+- #&%%%34.hjzll.*.8.8*#+- .**00");
 	constexpr size_t num = sizeof("adadad");
 	std::cout << numFmtInfos << std::endl;
 
@@ -747,12 +822,13 @@ int main() {
 	//constexpr bool isEmpty = array.empty();
 
 	constexpr /*fmt_info_t*/FmtInfos fmtInfo =
-			getOneFmtInfo("3434%2323hlk-+ 0#...llks%12.0#**.***+-.**llG", 0);
+		getOneFmtInfo("3434%2323hlk-+ 0#...llks%12.0#**.***+-.**llG", 0);
 
 	constexpr size_t nParams =
 		countFmtInfos("3434%2323hlk-+ 0#...llks%12.0#**.***+-.**llG%%%*.*20ahjhj");
 	constexpr std::array<FmtInfos, nParams> fmtInfos =
 		analyzeFormatString<nParams>("3434%2323hlk-+ 0#...llks%12.0#**.***+-.**llG%%%*.*20ahjhj");
+	constexpr int nVarArgs = countVarArgs(fmtInfos);
 
 	std::cout << "Hello World!\n";
 
@@ -760,8 +836,8 @@ int main() {
 
 	int result;
 
-	CFMT_STR(result, buf, 100, "3434%2323hlk-+ 0#...llks%12.0#**.***+-.**llG%%%*.*20ahjhj");
-	CFMT_STR(result, buf, 100, "34342323hlk-+ 0#...llks12.0#**.***+-.**llG*.*20ahjhj", "sdsd", 'c', 12, 12.55, 1e+1);
+	CFMT_STR(result, buf, 100, "3434%2323hlk-+ 0#...llks%12.0#**.***+-.**llG%%%*.*20ahjhj", 12, 12, 12, 12.4, 0);
+	CFMT_STR(result, buf, 100, "3434%2323hlk-+ 0#...llks%12.0#**.***+-.**llG%%%*.*20ahjhj", "sdsd", 'c', 12, 12.55, 1e+1);
 	CFMT_STR(result, buf, 100, "34342323hlk-+ 0#...llks12.0#**.***+-.**llG*.*20ahjhj");
 
 	std::cout << "result: " << result << std::endl;
