@@ -1,4 +1,6 @@
-﻿#include <stdio.h>
+﻿#pragma warning (disable: 4996)
+
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h> // va_list and its operations
 #include <stdint.h> // various type definitions

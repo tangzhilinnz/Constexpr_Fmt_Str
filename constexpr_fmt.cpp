@@ -3,9 +3,9 @@
 #include <chrono>
 #include <memory>
 #include <iomanip>
-#include <mutex>
 #include <functional>
 #include <string>
+#include <vector>
 #include <stdarg.h>
 #include <charconv>
 #include <math.h>
@@ -13,6 +13,7 @@
 #include <utility>
 #include <array>
 #include <cassert>
+#include <chrono>
 
 #include "Portability.h"
 
@@ -21,6 +22,8 @@
 typedef SSIZE_T ssize_t;
 #endif
 
+using namespace std;
+using namespace chrono;
 
 /*
  * Flags used during conversion.
@@ -231,62 +234,62 @@ struct OutbufArg {
 /**
  * Stores the static format information associated with a CFMT_STR invocation site.
  */
-struct StaticFmtInfo {
-	// With constexpr constructors, objects of user-defined types can be
-	// included in valid constant expressions.
-	// Definitions of constexpr constructors must satisfy the following 
-	// requirements:
-	// - The containing class must not have any virtual base classes.
-	// - Each of the parameter types is a literal type. 
-	//   (all reference types are literal types)
-	// - Its function body is = delete or = default; otherwise, it must satisfy
-	//   the following constraints:
-	//   1) It is not a function try block.
-	//   2) The compound statement in it must contain only the following statements:
-	//      null statements, static_assert declarations,
-	//      typedef declarations that do not define classes or enumerations,
-	//      using directives, using declarations
-	// - Each nonstatic data member and base class subobject is initialized.
-	// - Each constructor that is used for initializing nonstatic data members
-	//   and base class subobjects is a constexpr constructor.
-	// - Initializers for all nonstatic data members that are not named by a 
-	//   member initializer identifier are constant expressions.
-	// - When initializing data members, all implicit conversions that are 
-	//   involved in the following context must be valid in a constant expression:
-	//   Calling any constructors, Converting any expressions to data member types
-	constexpr StaticFmtInfo(const char* fmtString, const int numSpecs,
-		const int numVarArgs, const FmtInfos* fmtInfos)
-		: /*filename_(filename)
-		, lineNum_(lineNum)
-		, severity_(severity)
-		,*/ formatString_(fmtString)
-		, numSpecs_(numSpecs)
-		, numVarArgs_(numVarArgs)
-		, fmtInfos_(fmtInfos)
-	{ }
-
-
-	//// File where the log invocation is invoked
-	//const char* filename_;
-
-	//// Line number in the file for the invocation
-	//const uint32_t lineNum_;
-
-	//// LogLevel severity associated with the log invocation
-	//const uint8_t severity_;
-
-	// printf format string associated with the log invocation
-	const char* formatString_;
-
-	// Number of fmt specifiers fetched from format string
-	const int numSpecs_;
-
-	// Number of variadic arguments required for CFMT_STR invocation
-	const int numVarArgs_;
-
-	// Mapping of detailed infos of fmt specifiers as inferred from CFMT_STR invocation.
-	const FmtInfos* fmtInfos_;
-};
+ //struct StaticFmtInfo {
+ //	// With constexpr constructors, objects of user-defined types can be
+ //	// included in valid constant expressions.
+ //	// Definitions of constexpr constructors must satisfy the following 
+ //	// requirements:
+ //	// - The containing class must not have any virtual base classes.
+ //	// - Each of the parameter types is a literal type. 
+ //	//   (all reference types are literal types)
+ //	// - Its function body is = delete or = default; otherwise, it must satisfy
+ //	//   the following constraints:
+ //	//   1) It is not a function try block.
+ //	//   2) The compound statement in it must contain only the following statements:
+ //	//      null statements, static_assert declarations,
+ //	//      typedef declarations that do not define classes or enumerations,
+ //	//      using directives, using declarations
+ //	// - Each nonstatic data member and base class subobject is initialized.
+ //	// - Each constructor that is used for initializing nonstatic data members
+ //	//   and base class subobjects is a constexpr constructor.
+ //	// - Initializers for all nonstatic data members that are not named by a 
+ //	//   member initializer identifier are constant expressions.
+ //	// - When initializing data members, all implicit conversions that are 
+ //	//   involved in the following context must be valid in a constant expression:
+ //	//   Calling any constructors, Converting any expressions to data member types
+ //	constexpr StaticFmtInfo(const char* fmtString, const int numSpecs,
+ //		const int numVarArgs, const FmtInfos* fmtInfos)
+ //		: /*filename_(filename)
+ //		, lineNum_(lineNum)
+ //		, severity_(severity)
+ //		,*/ formatString_(fmtString)
+ //		, numSpecs_(numSpecs)
+ //		, numVarArgs_(numVarArgs)
+ //		, fmtInfos_(fmtInfos)
+ //	{ }
+ //
+ //
+ //	//// File where the log invocation is invoked
+ //	//const char* filename_;
+ //
+ //	//// Line number in the file for the invocation
+ //	//const uint32_t lineNum_;
+ //
+ //	//// LogLevel severity associated with the log invocation
+ //	//const uint8_t severity_;
+ //
+ //	// printf format string associated with the log invocation
+ //	const char* formatString_;
+ //
+ //	// Number of fmt specifiers fetched from format string
+ //	const int numSpecs_;
+ //
+ //	// Number of variadic arguments required for CFMT_STR invocation
+ //	const int numVarArgs_;
+ //
+ //	// Mapping of detailed infos of fmt specifiers as inferred from CFMT_STR invocation.
+ //	const FmtInfos* fmtInfos_;
+ //};
 
 
 template<int N>
@@ -623,11 +626,13 @@ checkFormat(CFMT_PRINTF_FORMAT const char*, ...) {}
  * RETURNS: OK always
  */
 inline void
-fioBufPut(const char* pInBuf, size_t length, OutbufArg* pArg) {
+fioBufPut(const char* pInBuf, size_t length, OutbufArg& outbuf) {
 	size_t remaining;
 
+	if (length == 0) return;
+
 	// check if sufficient free space remains in the buffer
-	remaining = (size_t)(pArg->pBufEnd_ - pArg->pBuf_ - 1);
+	remaining = (size_t)(outbuf.pBufEnd_ - outbuf.pBuf_ - 1);
 	// the last byte position is reserved for the terminating '\0' 
 
 	// fail if at the end of buffer, recall need a single byte for null
@@ -637,9 +642,9 @@ fioBufPut(const char* pInBuf, size_t length, OutbufArg* pArg) {
 	else if (length > remaining)
 		length = remaining;
 
-	memcpy(pArg->pBuf_, pInBuf, length);
+	memcpy(outbuf.pBuf_, pInBuf, length);
 
-	pArg->pBuf_ += length;
+	outbuf.pBuf_ += length;
 
 	return;
 }
@@ -652,8 +657,8 @@ fioBufPut(const char* pInBuf, size_t length, OutbufArg* pArg) {
  * maintain a permanent mapping of logId to static information once it's
  * assigned by this function.
  *
- * \tparam NumVarArgs
- *      number of additional arguments(...) in CFMT_STR arguments list
+ * \tparam N_VAR_ARGS
+ *      number of additional arguments(...) extracted from format string at conpile time
  * \tparam N
  *      length of the format string (automatically deduced)
  * \tparam M
@@ -661,59 +666,92 @@ fioBufPut(const char* pInBuf, size_t length, OutbufArg* pArg) {
  * \tparam Ts
  *      Types of the arguments passed in for the log (automatically deduced)
  *
- * \param logId[in/out]
- *      LogId that should be permanently associated with the static information.
- *      An input value of -1 indicates that NanoLog should persist the static
- *      log information and assign a new, globally unique identifier.
- * \param filename
- *      Name of the file containing the log invocation
- * \param linenum
- *      Line number within filename of the log invocation.
- * \param severity
- *      LogLevel severity of the log invocation
+ * \param outbuf
+ *      OUTBUF_ARG object used to store the formatted string to user-specified buffer
  * \param format
- *      Static printf format string associated with the log invocation
- * \param numNibbles
- *      Number of nibbles needed to store all the arguments (derived from
- *      the format string).
- * \param paramTypes
- *      An array indicating the type of the n-th format parameter associated
- *      with the format string to be processed.
+ *      Static printf format string associated with the CFMT_STR invocation
+ * \param fmtInfos
+ *      An array storing static format information associated with a specifier
+ *      in the format string to be processed.
  *      *** THIS VARIABLE MUST HAVE A STATIC LIFETIME AS PTRS WILL BE SAVED ***
  * \param args
  *      Argument pack for all the arguments for the log invocation
  */
-template<int NumVarArgs, int N, size_t M, typename... Ts>
+template<int N_VAR_ARGS, int N, size_t M, typename... Ts>
 inline int
-fioFormat(int& logId, OutbufArg& outbuf, const char(&format)[N],
+fioFormat(/*int& fmtId, */OutbufArg& outbuf, const char(&format)[N],
 	const std::array<FmtInfos, M>& fmtInfos, Ts &&... args) {
 
-	assert(NumVarArgs == static_cast<uint32_t>(sizeof...(Ts)));
+	assert(N_VAR_ARGS == static_cast<uint32_t>(sizeof...(Ts)));
 
-	for (int i = 0; i < M; i++) {
-		std::cout << "fmtInfos_" << i << " flags_: " << fmtInfos[i].flags_ << std::endl;
+	//if (fmtId == UNASSIGNED_CFMT_ID) {
+	//	const FmtInfos* array;
+	//	if (fmtInfos.empty())  array = nullptr;
+	//	else  array = fmtInfos.data();
+
+	//	StaticFmtInfo info(format, static_cast<int>(M), N_VAR_ARGS, array);
+	//	registerCFmtInvocationSite(fmtId, info);
+	//}
+	const char* fmt = &format[0];
+	int ret = 0;
+	size_t idx = 0;
+	bool returning = false;
+
+	if (fmtInfos.empty()) {
+		fioBufPut(fmt, N - 1, outbuf);
+		return N - 1;
 	}
 
-	int i = 0;
 
 	auto processSingle = [&](auto&& input) {
-		// Do things in your "loop" lambda
-		++i;
-		std::cout << "input " << i << " = " << input << std::endl;
+		if (returning) return;
+
+		while (fmtInfos[idx].terminal_ == '?') {
+			if (idx + 1 < M) {
+				size_t len = static_cast<size_t>(fmtInfos[idx + 1].begin_ - fmtInfos[idx].end_);
+				fioBufPut(fmt + fmtInfos[idx].end_, len, outbuf);
+				ret += len;
+			}
+			else {
+				returning = true;
+				break;
+			}
+
+			idx++;
+		}
+
 	};
+
+
+	fioBufPut(fmt, (size_t)fmtInfos[0].begin_, outbuf);
+	ret += fmtInfos[0].begin_;
 
 	(processSingle(std::forward<Ts>(args)), ...);
 
-	const FmtInfos* array = fmtInfos.data();
-	if (fmtInfos.empty()) {
-		array = nullptr;
-		std::cout << "fmtInfos is an empty std::array" << std::endl;
-	}
-	else {
-		std::cout << "fmtInfos size:" << fmtInfos.size() << std::endl;
-	}
+	fioBufPut(fmt + fmtInfos[M - 1].end_, (size_t)(N - fmtInfos[M - 1].end_ - 1), outbuf);
+	ret += N - fmtInfos[M - 1].end_ - 1;
 
-	return 10;
+
+	//for (int i = 0; i < M; i++) {
+	//	std::cout << "fmtInfos_" << i << " flags_: " << fmtInfos[i].flags_ << std::endl;
+	//}
+
+	//int i = 0;
+
+	//(processSingle(std::forward<Ts>(args)), ...);
+
+	//const FmtInfos* array = fmtInfos.data();
+	//if (fmtInfos.empty()) {
+	//	array = nullptr;
+	//	std::cout << "fmtInfos is an empty std::array" << std::endl;
+	//}
+	//else {
+	//	std::cout << "fmtInfos size:" << fmtInfos.size() << std::endl;
+	//}
+
+	//std::cout << std::endl;
+
+	return ret;
 }
 
 /*
@@ -758,7 +796,7 @@ countVarArgs(const std::array<FmtInfos, M>& fmtInfos) {
 
 #define CFMT_STR(result, buffer, count, format, ...)  do { \
     \
-    constexpr int nParams = countFmtInfos(format); \
+    constexpr int kNFS = countFmtInfos(format); \
     \
     /*** Very Important*** These must be 'static' so that we can save pointers
 	 * to these variables and have them persist beyond the invocation.
@@ -777,11 +815,10 @@ countVarArgs(const std::array<FmtInfos, M>& fmtInfos) {
 	 * other translation units; the name is not exported to the linker, so it
 	 * cannot be accessed by name from another translation unit.
 	 */\
-	static constexpr std::array<FmtInfos, nParams> fmtInfos = \
-	analyzeFormatString<nParams>(format); \
-	constexpr int NumVarArgs = countVarArgs(fmtInfos); \
+	static constexpr std::array<FmtInfos, kNFS> kFmtInfos = analyzeFormatString<kNFS>(format); \
+	constexpr int kNumVarArgs = countVarArgs(kFmtInfos); \
 	\
-	static int logId = UNASSIGNED_CFMT_ID; \
+	/*static int fmtId = UNASSIGNED_CFMT_ID; */ \
 	\
 	/* Triggers the printf checker by passing it into a no-op function.
 	* Trick: This call is surrounded by an if false so that the VA_ARGS don't
@@ -791,7 +828,7 @@ countVarArgs(const std::array<FmtInfos, M>& fmtInfos) {
 	OutbufArg  outbuf; \
 	outbuf.pBuf_ = buffer; \
 	outbuf.pBufEnd_ = (char*)(buffer + count); \
-	result = fioFormat<NumVarArgs>(logId, outbuf, format, fmtInfos, ##__VA_ARGS__); \
+	result = fioFormat<kNumVarArgs>(outbuf, format, kFmtInfos, ##__VA_ARGS__); \
 	\
 	/* null - terminate the string */ \
 	if (count != 0) \
@@ -812,6 +849,9 @@ countVarArgs(const std::array<FmtInfos, M>& fmtInfos) {
 //constexpr static auto const_nums(size_t index) {
 //    return square_nums(index, std::make_index_sequence<N>{});
 //}
+
+int tz_snprintf(char* buffer, size_t  count, const char* fmt, ...);
+
 int main() {
 	constexpr int numFmtInfos =
 		countFmtInfos("sdsffe%12.dsd%s%%%f23.lhkz+- #&%%%34.hjzll.*.8.8*#+- .**00");
@@ -836,10 +876,37 @@ int main() {
 
 	int result;
 
-	CFMT_STR(result, buf, 100, "3434%2323hlk-+ 0#...llks%12.0#**.***+-.**llG%%%*.*20ahjhj", 12, 12, 12, 12.4, 0);
+	CFMT_STR(result, buf, 100, "3434%2323hlk-+ 0#...llks%12.0#**.***+-.**llG%%%*.*20ahjhj", 12, 12, 12, 12.4, 'c');
 	CFMT_STR(result, buf, 100, "3434%2323hlk-+ 0#...llks%12.0#**.***+-.**llG%%%*.*20ahjhj", "sdsd", 'c', 12, 12.55, 1e+1);
 	CFMT_STR(result, buf, 100, "34342323hlk-+ 0#...llks12.0#**.***+-.**llG*.*20ahjhj");
 
 	std::cout << "result: " << result << std::endl;
+
+	int e = _set_printf_count_output(1);
+	int n;
+	int res = snprintf(buf, 3, "asdfg: %10.2f%n", 12.3, &n);
+	std::cout << "res: " << res << " buf: " << buf << std::endl;
+
+	auto start = system_clock::now();
+
+	for (int i = 0; i < 10000000; i++) {
+		//CFMT_STR(result, buf, 100, "34342323hlk-+ 0#...llks12.0#**.***+-.**llG*.*20ahjhj");
+		//CFMT_STR(result, buf, 100, "34342323%hlk-+ 0#%...llks12.0#%**.***+-.**llk*.*20%%ahjhj", 10, 2);
+		CFMT_STR(result, buf, 100, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", 10, 2);
+		//result = snprintf(buf, 100, "34342323hlk-+ 0#...llks12.0#**.***+-.**llG*.*20ahjhj");
+		//result = snprintf(buf, 100, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+		//result = tz_snprintf(buf, 100, "34342323hlk-+ 0#...llks12.0#**.***+-.**llG*.*20ahjhj");
+		//result = tz_snprintf(buf, 10, "34342323%hlk-+ 0#%...llks12.0#%**.***+-.**llk*.*20%%ahjhj");
+		//result = tz_snprintf(buf, 100, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+	}
+
+	std::cout << buf << std::endl;
+	std::cout << "result: " << result << std::endl;
+
+	auto end = system_clock::now();
+	auto duration = duration_cast<microseconds>(end - start);
+
+	std::cout << "cost: "
+		<< double(duration.count()) * microseconds::period::num / microseconds::period::den << "seconds" << std::endl;
 
 }
