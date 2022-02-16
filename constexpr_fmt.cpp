@@ -882,17 +882,17 @@ int main() {
 
 	std::cout << "result: " << result << std::endl;
 
-	int e = _set_printf_count_output(1);
-	int n;
-	int res = snprintf(buf, 3, "asdfg: %10.2f%n", 12.3, &n);
-	std::cout << "res: " << res << " buf: " << buf << std::endl;
+	/*int e = _set_printf_count_output(1);
+      int n;
+      int res = snprintf(buf, 3, "asdfg: %10.2f%n", 12.3, &n);
+      std::cout << "res: " << res << " buf: " << buf << std::endl;*/
 
 	auto start = system_clock::now();
 
 	for (int i = 0; i < 10000000; i++) {
-		//CFMT_STR(result, buf, 100, "34342323hlk-+ 0#...llks12.0#**.***+-.**llG*.*20ahjhj");
+		CFMT_STR(result, buf, 100, "34342323hlk-+ 0#...llks12.0#**.***+-.**llG*.*20ahjhj");
 		//CFMT_STR(result, buf, 100, "34342323%hlk-+ 0#%...llks12.0#%**.***+-.**llk*.*20%%ahjhj", 10, 2);
-		CFMT_STR(result, buf, 100, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", 10, 2);
+		//CFMT_STR(result, buf, 100, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", 10, 2);
 		//result = snprintf(buf, 100, "34342323hlk-+ 0#...llks12.0#**.***+-.**llG*.*20ahjhj");
 		//result = snprintf(buf, 100, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
 		//result = tz_snprintf(buf, 100, "34342323hlk-+ 0#...llks12.0#**.***+-.**llG*.*20ahjhj");
@@ -908,5 +908,55 @@ int main() {
 
 	std::cout << "cost: "
 		<< double(duration.count()) * microseconds::period::num / microseconds::period::den << "seconds" << std::endl;
+
+
+	std::cout << "<<?>>" << std::endl;
+
+	wint_t c = L'd';
+	Foo(2, 3, 4u, (int64_t)9, 'a', "s", 2.3, L'A', L"tangzhilin", c);
+	constexpr int i = sizeof(wchar_t);
+	constexpr int j = sizeof(wint_t);
+
+	std::cout << "long to int: " << boolalpha << std::is_convertible_v<long, int> << std::endl;
+	std::cout << "int to long: " << boolalpha << std::is_convertible_v<int, long> << std::endl;
+
+	std::cout << "long to char: " << boolalpha << std::is_convertible_v<long, char> << std::endl;
+	std::cout << "char to long: " << boolalpha << std::is_convertible_v<char, long> << std::endl;
+
+	std::cout << "long to void*: " << boolalpha << std::is_convertible_v<long, void*> << std::endl;
+	std::cout << "void* to long: " << boolalpha << std::is_convertible_v<void*, long> << std::endl;
+
+	std::cout << "wint_t integer? " << is_integral_v<wint_t> << std::endl;
+	std::cout << "char* integer? " << is_integral_v<char*> << std::endl;
+
+	std::cout << "char* pointer? " << is_pointer_v<char*> << std::endl;
+
+	char str[5] = { 0 };
+	wchar_t wc = L'c';
+	wint_t wc1 = L'c';
+
+	const wchar_t* wstr = L"sdsdasdasd";
+
+	struct A { int i = 0; };
+	A a;
+	A* pa = &a;
+	A& ra = a;
+
+	string s = "aa";
+
+	void* v = nullptr;
+
+	int in = 100;
+
+	const int& rin = in;
+
+	double d = 10.2;
+
+	std::to_chars_result re = to_chars(buf, buf + 100, static_cast<short>(rin), 10);
+	re = to_chars(buf, buf + 100, rin, 10);
+	re = to_chars(buf, buf + 100, reinterpret_cast<uintptr_t>(pa), 10);
+	*re.ptr = '\0';
+
+	std::cout << buf << std::endl;
 
 }
