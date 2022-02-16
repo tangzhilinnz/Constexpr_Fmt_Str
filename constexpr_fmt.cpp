@@ -931,6 +931,10 @@ int main() {
 
 	std::cout << "char* pointer? " << is_pointer_v<char*> << std::endl;
 
+	constexpr bool compare2 = std::is_integral_v<const char&>;
+	constexpr bool compare = std::is_integral_v<std::remove_reference_t<const char&&>>;
+	constexpr bool compare1 = std::is_convertible_v<void(*)(int, int), const char*>;
+
 	char str[5] = { 0 };
 	wchar_t wc = L'c';
 	wint_t wc1 = L'c';
@@ -958,5 +962,17 @@ int main() {
 	*re.ptr = '\0';
 
 	std::cout << buf << std::endl;
+
+	float f = 2.32343f;
+	double df = 2.32343;
+	long double ldf = 2.32343;
+
+	std::cout << static_cast<long double>(f) << std::endl;
+	std::cout << static_cast<float>(df) << std::endl;
+	std::cout << static_cast<float>(ldf) << std::endl;
+
+	int b = 23;
+	int& rb = b;
+	std::cout << static_cast<long>(rb) << std::endl;
 
 }
