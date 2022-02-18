@@ -650,6 +650,36 @@ fioBufPut(const char* pInBuf, size_t length, OutbufArg& outbuf) {
 }
 
 
+//template<typename T, int N, size_t M>
+//inline void 
+//processSingle(OutbufArg& outbuf, bool& returning, size_t& nex, int& ret,
+//	          const char(&fmt)[N], const std::array<FmtInfos, M>& FIS, T&& input) {
+//	if (returning) return;
+//
+//	bool toNextArg = false;
+//
+//	while (!toNextArg) {
+//		switch (FIS[nex].terminal_) {
+//		case 'c': case 'd': case 'i': case 'a': case 'A': case 'e': case 'E':
+//		case 'f': case 'F': case 'g': case 'G': case 'n': case 'o': case 'p':
+//		case 's': case 'u': case 'X': case 'x':
+//			toNextArg = true;
+//			break;
+//		}
+//
+//		if (nex < M - 1) {
+//			size_t len = static_cast<size_t>(FIS[nex + 1].begin_ - FIS[nex].end_);
+//			fioBufPut(fmt + FIS[nex].end_, len, outbuf);
+//			ret += len;
+//			nex++;
+//		}
+//		else { // nex == M - 1
+//			toNextArg = true;
+//			returning = true;
+//		}
+//	}
+//}
+
 /**
  * Logs a log message in the NanoLog system given all the static and dynamic
  * information associated with the log message. This function is meant to work
@@ -657,8 +687,9 @@ fioBufPut(const char* pInBuf, size_t length, OutbufArg& outbuf) {
  * maintain a permanent mapping of logId to static information once it's
  * assigned by this function.
  *
- * \tparam N_VAR_ARGS
- *      number of additional arguments(...) extracted from format string at conpile time
+ * \tparam NS
+ *      number of valid specifiers used to format args and worked out
+ *      at compile time
  * \tparam N
  *      length of the format string (automatically deduced)
  * \tparam M
@@ -677,95 +708,114 @@ fioBufPut(const char* pInBuf, size_t length, OutbufArg& outbuf) {
  * \param args
  *      Argument pack for all the arguments for the log invocation
  */
-template<int N_VAR_ARGS, int N, size_t M, typename... Ts>
+template<int NVS, int N, size_t M, typename... Ts>
 inline int
 fioFormat(/*int& fmtId, */OutbufArg& outbuf, const char(&format)[N],
-	const std::array<FmtInfos, M>& fmtInfos, Ts &&... args) {
+	const std::array<FmtInfos, M>& FIS, Ts &&... args) {
 
-	assert(N_VAR_ARGS == static_cast<uint32_t>(sizeof...(Ts)));
+	if (NVS > static_cast<uint32_t>(sizeof...(Ts))) {
+		std::cerr << "CFMT: forced abort due to illegal number of variadic "
+			"arguments passed to CFMT_STR for converting!!!";
+		abort();
+	}
 
 	//if (fmtId == UNASSIGNED_CFMT_ID) {
 	//	const FmtInfos* array;
-	//	if (fmtInfos.empty())  array = nullptr;
-	//	else  array = fmtInfos.data();
+	//	if (FIS.empty())  array = nullptr;
+	//	else  array = FIS.data();
 
 	//	StaticFmtInfo info(format, static_cast<int>(M), N_VAR_ARGS, array);
 	//	registerCFmtInvocationSite(fmtId, info);
 	//}
 	const char* fmt = &format[0];
 	int ret = 0;
-	size_t idx = 0;
+	size_t nex = 0;
+	char ch = '?';
 	bool returning = false;
 
-	if (fmtInfos.empty()) {
+	if (0 == M) {
 		fioBufPut(fmt, N - 1, outbuf);
 		return N - 1;
 	}
 
+	if (0 == NVS) {
+		fioBufPut(fmt, (size_t)FIS[0].begin_, outbuf);
+		ret += FIS[0].begin_;
+
+		for (nex = 0; nex < M - 1; nex++) {
+			size_t len = static_cast<size_t>(FIS[nex + 1].begin_ - FIS[nex].end_);
+			fioBufPut(fmt + FIS[nex].end_, len, outbuf);
+			ret += len;
+		}
+
+		fioBufPut(fmt + FIS[M - 1].end_, (size_t)(N - FIS[M - 1].end_ - 1), outbuf);
+		ret += N - FIS[M - 1].end_ - 1;
+
+		return ret;
+	}
 
 	auto processSingle = [&](auto&& input) {
 		if (returning) return;
 
-		while (fmtInfos[idx].terminal_ == '?') {
-			if (idx + 1 < M) {
-				size_t len = static_cast<size_t>(fmtInfos[idx + 1].begin_ - fmtInfos[idx].end_);
-				fioBufPut(fmt + fmtInfos[idx].end_, len, outbuf);
+		bool toNextArg = false;
+
+		while (!toNextArg) {
+			ch = FIS[nex].terminal_;
+			//switch (FIS[nex].terminal_) {
+			//case 'c': case 'd': case 'i': case 'a': case 'A': case 'e': case 'E':
+			//case 'f': case 'F': case 'g': case 'G': case 'n': case 'o': case 'p':
+			//case 's': case 'u': case 'X': case 'x':
+			//	toNextArg = true;
+			//	break;
+			//}
+
+			if (ch == 'd' || ch == 'u' || ch == 'x' || ch == 'X' || ch == 'o'
+				|| ch == 'i') {
+				toNextArg = true;
+			}
+
+			if (ch != '?') {
+				toNextArg = true;
+			}
+
+			if (nex < M - 1) {
+				size_t len = static_cast<size_t>(FIS[nex + 1].begin_ - FIS[nex].end_);
+				fioBufPut(fmt + FIS[nex].end_, len, outbuf);
 				ret += len;
+				nex++;
 			}
-			else {
+			else { // nex == M - 1
+				toNextArg = true;
 				returning = true;
-				break;
 			}
-
-			idx++;
 		}
-
 	};
 
 
-	fioBufPut(fmt, (size_t)fmtInfos[0].begin_, outbuf);
-	ret += fmtInfos[0].begin_;
+	fioBufPut(fmt, (size_t)FIS[0].begin_, outbuf);
+	ret += FIS[0].begin_;
 
-	(processSingle(std::forward<Ts>(args)), ...);
+	(processSingle(/*outbuf, returning, nex, ret, format, FIS, */std::forward<Ts>(args)), ...);
 
-	fioBufPut(fmt + fmtInfos[M - 1].end_, (size_t)(N - fmtInfos[M - 1].end_ - 1), outbuf);
-	ret += N - fmtInfos[M - 1].end_ - 1;
-
-
-	//for (int i = 0; i < M; i++) {
-	//	std::cout << "fmtInfos_" << i << " flags_: " << fmtInfos[i].flags_ << std::endl;
-	//}
-
-	//int i = 0;
-
-	//(processSingle(std::forward<Ts>(args)), ...);
-
-	//const FmtInfos* array = fmtInfos.data();
-	//if (fmtInfos.empty()) {
-	//	array = nullptr;
-	//	std::cout << "fmtInfos is an empty std::array" << std::endl;
-	//}
-	//else {
-	//	std::cout << "fmtInfos size:" << fmtInfos.size() << std::endl;
-	//}
-
-	//std::cout << std::endl;
+	fioBufPut(fmt + FIS[M - 1].end_, (size_t)(N - FIS[M - 1].end_ - 1), outbuf);
+	ret += N - FIS[M - 1].end_ - 1;
 
 	return ret;
 }
 
 /*
- * Get the number of variadic arguments in CFMT_STR invocation
- * (... -> additional arguments)
+ * Count the number of valid specifiers in the format string at compile time
  */
 template<size_t M>
 constexpr inline int
-countVarArgs(const std::array<FmtInfos, M>& fmtInfos) {
+countValidSpecifiers(const std::array<FmtInfos, M>& fmtInfos) {
 	int count = 0;
 	for (int i = 0; i < M; i++) {
-		if (fmtInfos[i].terminal_ != '?') count++;
-		if (fmtInfos[i].prec_ == DYNAMIC_PRECISION) count++;
-		if (fmtInfos[i].width_ == DYNAMIC_WIDTH) count++;
+		if (fmtInfos[i].terminal_ != '?') {
+			count++;
+			if (fmtInfos[i].prec_ == DYNAMIC_PRECISION) count++;
+			if (fmtInfos[i].width_ == DYNAMIC_WIDTH) count++;
+		}
 	}
 	return count;
 }
@@ -816,14 +866,14 @@ countVarArgs(const std::array<FmtInfos, M>& fmtInfos) {
 	 * cannot be accessed by name from another translation unit.
 	 */\
 	static constexpr std::array<FmtInfos, kNFS> kFmtInfos = analyzeFormatString<kNFS>(format); \
-	constexpr int kNumVarArgs = countVarArgs(kFmtInfos); \
+	constexpr int kNumVarArgs = countValidSpecifiers(kFmtInfos); \
 	\
 	/*static int fmtId = UNASSIGNED_CFMT_ID; */ \
 	\
 	/* Triggers the printf checker by passing it into a no-op function.
 	* Trick: This call is surrounded by an if false so that the VA_ARGS don't
 	* evaluate for cases like '++i'.*/ \
-	if (false) { checkFormat(format, ##__VA_ARGS__); } /*NOLINT(cppcoreguidelines-pro-type-vararg, hicpp-vararg)*/\
+	if (false) { checkFormat(format, ##__VA_ARGS__); } \
 	\
 	OutbufArg  outbuf; \
 	outbuf.pBuf_ = buffer; \
@@ -868,7 +918,7 @@ int main() {
 		countFmtInfos("3434%2323hlk-+ 0#...llks%12.0#**.***+-.**llG%%%*.*20ahjhj");
 	constexpr std::array<FmtInfos, nParams> fmtInfos =
 		analyzeFormatString<nParams>("3434%2323hlk-+ 0#...llks%12.0#**.***+-.**llG%%%*.*20ahjhj");
-	constexpr int nVarArgs = countVarArgs(fmtInfos);
+	constexpr int nVarArgs = countValidSpecifiers(fmtInfos);
 
 	std::cout << "Hello World!\n";
 
@@ -876,26 +926,27 @@ int main() {
 
 	int result;
 
-	CFMT_STR(result, buf, 100, "3434%2323hlk-+ 0#...llks%12.0#**.***+-.**llG%%%*.*20ahjhj", 12, 12, 12, 12.4, 'c');
-	CFMT_STR(result, buf, 100, "3434%2323hlk-+ 0#...llks%12.0#**.***+-.**llG%%%*.*20ahjhj", "sdsd", 'c', 12, 12.55, 1e+1);
+	CFMT_STR(result, buf, 100, "3434%2323hlk-+ 0#...llks%12.0#**.***+-.**llG%%%*.*20hjhj", 12, 12, "sdsd", 45.5);
+	CFMT_STR(result, buf, 100, "3434%2323hlk-+ 0#...llks%12.0#**.***+-.**llG%%%*.*20ahjhj", "sdsd", 'c', 12, 12.55, 1e+1, L"dsdsd", L'a');
 	CFMT_STR(result, buf, 100, "34342323hlk-+ 0#...llks12.0#**.***+-.**llG*.*20ahjhj");
 
 	std::cout << "result: " << result << std::endl;
 
 	/*int e = _set_printf_count_output(1);
-      int n;
-      int res = snprintf(buf, 3, "asdfg: %10.2f%n", 12.3, &n);
-      std::cout << "res: " << res << " buf: " << buf << std::endl;*/
+	int n;
+	int res = snprintf(buf, 3, "asdfg: %10.2f%n", 12.3, &n);
+	std::cout << "res: " << res << " buf: " << buf << std::endl;*/
 
 	auto start = system_clock::now();
 
 	for (int i = 0; i < 10000000; i++) {
-		CFMT_STR(result, buf, 100, "34342323hlk-+ 0#...llks12.0#**.***+-.**llG*.*20ahjhj");
-		//CFMT_STR(result, buf, 100, "34342323%hlk-+ 0#%...llks12.0#%**.***+-.**llk*.*20%%ahjhj", 10, 2);
-		//CFMT_STR(result, buf, 100, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", 10, 2);
-		//result = snprintf(buf, 100, "34342323hlk-+ 0#...llks12.0#**.***+-.**llG*.*20ahjhj");
+		CFMT_STR(result, buf, 100, "342324233hlk-+ 0#...saerere%hkkG%hjz..-+%f,dsdsff%+- #..*hsgfgf", 8.6, 45, 's', L"adsds");
+		//CFMT_STR(result, buf, 100, "34342323%hlk-+ 0#%...llks12.0#%**.***+-.**llk*.*20%%ahjhj",2);
+		//CFMT_STR(result, buf, 100, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+		//result = snprintf(buf, 100, "342324233hlk-+ 0#...saerereshdkGshjz..-+sf,dsdsffs+- #..*hdgfgf");
+		//result = snprintf(buf, 100, "34342323%h0#%.llks12.0#%*.*llk*.*20%%ahjhj");
 		//result = snprintf(buf, 100, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
-		//result = tz_snprintf(buf, 100, "34342323hlk-+ 0#...llks12.0#**.***+-.**llG*.*20ahjhj");
+		//result = tz_snprintf(buf, 100, "342324233hlk-+ 0#...%fkerere%hkG%hjz..-+%f,dsdsff%+- #..*hdgfgf", 8.6, 4, 2);
 		//result = tz_snprintf(buf, 10, "34342323%hlk-+ 0#%...llks12.0#%**.***+-.**llk*.*20%%ahjhj");
 		//result = tz_snprintf(buf, 100, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
 	}
@@ -910,10 +961,8 @@ int main() {
 		<< double(duration.count()) * microseconds::period::num / microseconds::period::den << "seconds" << std::endl;
 
 
-	std::cout << "<<?>>" << std::endl;
-
 	wint_t c = L'd';
-	Foo(2, 3, 4u, (int64_t)9, 'a', "s", 2.3, L'A', L"tangzhilin", c);
+	//Foo(2, 3, 4u, (int64_t)9, 'a', "s", 2.3, L'A', L"tangzhilin", c);
 	constexpr int i = sizeof(wchar_t);
 	constexpr int j = sizeof(wint_t);
 
