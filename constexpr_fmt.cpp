@@ -1,29 +1,22 @@
-﻿#include <iostream>
-#include <thread>
-#include <chrono>
-#include <memory>
-#include <iomanip>
-#include <functional>
-#include <string>
-#include <vector>
-#include <stdarg.h>
-#include <charconv>
-#include <math.h>
-#include <system_error>
-#include <utility>
+﻿#include <string>
+#include <iostream>
 #include <array>
-#include <cassert>
 #include <chrono>
+#include <cstring>
+#include <cassert>
+#include <charconv>
 
 #include "Portability.h"
 
-#if defined(_MSC_VER)
-#include <BaseTsd.h>
-typedef SSIZE_T ssize_t;
-#endif
-
 using namespace std;
 using namespace chrono;
+
+// A non-type template - parameter shall have one of the following(optionally cv-qualified) types:
+// integral or enumeration type,
+// pointer to object or pointer to function,
+// lvalue reference to object or lvalue reference to function,
+// pointer to member,
+// std::nullptr_t
 
 /*
  * Flags used during conversion.
@@ -52,74 +45,99 @@ using namespace chrono;
 #define DYNAMIC_PRECISION  0x80000000
 
 
-// Default, uninitialized value for log identifiers associated with log
-// invocation sites.
-static constexpr int UNASSIGNED_CFMT_ID = -1;
+/** used by CFMT_STR */
+struct OutbufArg {
+	char* pBuf_;            // running pointer to the next char
+	char* pBufEnd_;         // pointer to buffer end 
+};
 
 
-template <typename ... Ts>
-void Foo(Ts && ... multi_inputs) {
-	int i = 0;
+using flags_t = int;
+using width_t = int;
+using precision_t = int;
+using sign_t = char;
+using terminal_t = char;
+using begin_t = unsigned;
+using end_t = unsigned;
+using width_first_t = bool;
+/**
+ * Stores the static format information associated with a specifier in a format
+ * string (i.e. %<flags><width>.<precision><length><terminal>).
+ */
+struct FmtInfos {
+	begin_t begin_ = 0;
+	end_t end_ = 0;
+	flags_t flags_ = 0;
+	width_t width_ = 0;
+	precision_t prec_ = -1;
+	sign_t sign_ = '\0';
+	terminal_t terminal_ = '?';
+	width_first_t wFirst_ = true; // indicate which one was extracted first in the 
+								  // argument list when width and precision are both
+								  // dynamically resolved
+};
+constexpr int LEN = sizeof(FmtInfos);
 
-	auto processSingle = [&](auto&& input) {
-		// Do things in your "loop" lambda
-		++i;
-		std::cout << "input " << i << " = " << input << std::endl;
-	};
+/**
+ * Stores the static format information associated with a CFMT_STR invocation site.
+ */
+ //struct StaticFmtInfo {
+ //	// With constexpr constructors, objects of user-defined types can be
+ //	// included in valid constant expressions.
+ //	// Definitions of constexpr constructors must satisfy the following 
+ //	// requirements:
+ //	// - The containing class must not have any virtual base classes.
+ //	// - Each of the parameter types is a literal type. 
+ //	//   (all reference types are literal types)
+ //	// - Its function body is = delete or = default; otherwise, it must satisfy
+ //	//   the following constraints:
+ //	//   1) It is not a function try block.
+ //	//   2) The compound statement in it must contain only the following statements:
+ //	//      null statements, static_assert declarations,
+ //	//      typedef declarations that do not define classes or enumerations,
+ //	//      using directives, using declarations
+ //	// - Each nonstatic data member and base class subobject is initialized.
+ //	// - Each constructor that is used for initializing nonstatic data members
+ //	//   and base class subobjects is a constexpr constructor.
+ //	// - Initializers for all nonstatic data members that are not named by a 
+ //	//   member initializer identifier are constant expressions.
+ //	// - When initializing data members, all implicit conversions that are 
+ //	//   involved in the following context must be valid in a constant expression:
+ //	//   Calling any constructors, Converting any expressions to data member types
+ //	constexpr StaticFmtInfo(const char* fmtString, const int numSpecs,
+ //		const int numVarArgs, const FmtInfos* fmtInfos)
+ //		: /*filename_(filename)
+ //		, lineNum_(lineNum)
+ //		, severity_(severity)
+ //		,*/ formatString_(fmtString)
+ //		, numSpecs_(numSpecs)
+ //		, numVarArgs_(numVarArgs)
+ //		, fmtInfos_(fmtInfos)
+ //	{ }
+ //
+ //
+ //	//// File where the log invocation is invoked
+ //	//const char* filename_;
+ //
+ //	//// Line number in the file for the invocation
+ //	//const uint32_t lineNum_;
+ //
+ //	//// LogLevel severity associated with the log invocation
+ //	//const uint8_t severity_;
+ //
+ //	// printf format string associated with the log invocation
+ //	const char* formatString_;
+ //
+ //	// Number of fmt specifiers fetched from format string
+ //	const int numSpecs_;
+ //
+ //	// Number of variadic arguments required for CFMT_STR invocation
+ //	const int numVarArgs_;
+ //
+ //	// Mapping of detailed infos of fmt specifiers as inferred from CFMT_STR invocation.
+ //	const FmtInfos* fmtInfos_;
+ //};
 
-	(processSingle(std::forward<Ts>(multi_inputs)), ...);
-
-	//([&](auto&& input) {
-	//    // Do things in your "loop" lambda
-	//    ++i;
-	//    std::cout << "input " << i << " = " << input << std::endl;
-
-	//    } (std::forward<Ts>(multi_inputs)), ...);
-}
-
-template <typename ... Ts>
-int FooInt(Ts && ... multi_inputs) {
-	int i = 0;
-
-	int result;
-	bool returning, breaking;
-	returning = breaking = false;
-
-	auto processSingle = [&](auto&& input) {
-		if (returning || breaking) {
-			returning = false;
-			breaking = false;
-			return;
-		}
-
-		// Do things in your "loop"
-		++i;
-		std::cout << "input " << i << " = " << input << std::endl;
-
-		// some conditional breaks / returns:
-
-		if (input == 9) {
-			breaking = true;
-		}
-		else if (input < 0) {
-			result = 13;
-			returning = true;
-		}
-		else if (input == 'a') {
-			result = 42;
-			returning = true;
-		}
-	};
-
-	(processSingle(std::forward<Ts>(multi_inputs)), ...);
-
-	if (returning)
-		return result;
-
-	// more post-loop code
-
-	return 17;
-}
 
 /**
  * Checks whether a character is with the terminal set of format specifier
@@ -193,168 +211,36 @@ toDigit(char c) {
 	return static_cast<int>(c - '0');
 }
 
-using flags_t = int;
-using width_t = int;
-using precision_t = int;
-using sign_t = char;
-using terminal_t = char;
-using begin_t = unsigned;
-using end_t = unsigned;
-using width_first_t = bool; // indicate which one was extracted first in the 
-							// argument list when width and precision are both
-							// dynamically resolved
-
-//using fmt_info_t = std::tuple<begin_t, end_t, flags_t, width_t, precision_t,
-//	                          sign_t, terminal_t, width_first_t>;
 
 /**
- * Stores the static format information associated with a specifier in a format
- * string (i.e. %<flags><width>.<precision><length><terminal>).
- */
-struct FmtInfos {
-	begin_t begin_ = 0;
-	end_t end_ = 0;
-	flags_t flags_ = 0;
-	width_t width_ = 0;
-	precision_t prec_ = -1;
-	sign_t sign_ = '\0';
-	terminal_t terminal_ = '?';
-	width_first_t wFirst_ = true; // indicate which one was extracted first in the 
-								  // argument list when width and precision are both
-								  // dynamically resolved
-};
-constexpr int i = sizeof(FmtInfos);
-
-/** used by CFMT_STR */
-struct OutbufArg {
-	char* pBuf_;            // running pointer to the next char
-	char* pBufEnd_;         // pointer to buffer end 
-};
-
-/**
- * Stores the static format information associated with a CFMT_STR invocation site.
- */
- //struct StaticFmtInfo {
- //	// With constexpr constructors, objects of user-defined types can be
- //	// included in valid constant expressions.
- //	// Definitions of constexpr constructors must satisfy the following 
- //	// requirements:
- //	// - The containing class must not have any virtual base classes.
- //	// - Each of the parameter types is a literal type. 
- //	//   (all reference types are literal types)
- //	// - Its function body is = delete or = default; otherwise, it must satisfy
- //	//   the following constraints:
- //	//   1) It is not a function try block.
- //	//   2) The compound statement in it must contain only the following statements:
- //	//      null statements, static_assert declarations,
- //	//      typedef declarations that do not define classes or enumerations,
- //	//      using directives, using declarations
- //	// - Each nonstatic data member and base class subobject is initialized.
- //	// - Each constructor that is used for initializing nonstatic data members
- //	//   and base class subobjects is a constexpr constructor.
- //	// - Initializers for all nonstatic data members that are not named by a 
- //	//   member initializer identifier are constant expressions.
- //	// - When initializing data members, all implicit conversions that are 
- //	//   involved in the following context must be valid in a constant expression:
- //	//   Calling any constructors, Converting any expressions to data member types
- //	constexpr StaticFmtInfo(const char* fmtString, const int numSpecs,
- //		const int numVarArgs, const FmtInfos* fmtInfos)
- //		: /*filename_(filename)
- //		, lineNum_(lineNum)
- //		, severity_(severity)
- //		,*/ formatString_(fmtString)
- //		, numSpecs_(numSpecs)
- //		, numVarArgs_(numVarArgs)
- //		, fmtInfos_(fmtInfos)
- //	{ }
- //
- //
- //	//// File where the log invocation is invoked
- //	//const char* filename_;
- //
- //	//// Line number in the file for the invocation
- //	//const uint32_t lineNum_;
- //
- //	//// LogLevel severity associated with the log invocation
- //	//const uint8_t severity_;
- //
- //	// printf format string associated with the log invocation
- //	const char* formatString_;
- //
- //	// Number of fmt specifiers fetched from format string
- //	const int numSpecs_;
- //
- //	// Number of variadic arguments required for CFMT_STR invocation
- //	const int numVarArgs_;
- //
- //	// Mapping of detailed infos of fmt specifiers as inferred from CFMT_STR invocation.
- //	const FmtInfos* fmtInfos_;
- //};
-
-
-template<int N>
-constexpr inline int
-countFmtInfos(const char(&fmt)[N]) {
-	int pos = 0;
-	int count = 0;
-	// A C string is usually declared as an array of char. However, an array 
-	// of char is NOT by itself a C string. A valid C string requires the 
-	// presence of a terminating "null character" (a character with ASCII
-	// value 0, usually represented by the character literal '\0').
-	// space in fmt[N-1] is reserved for '\0'.
-	for (;;) {
-		// consume the current non-format string until reaching the next '%' 
-		for (; (fmt[pos] != '\0') && (fmt[pos] != '%'); pos++);
-
-		if (fmt[pos] == '\0')
-			return count;	// return total number of FmtInfo needed
-
-		pos++;   // fmt[pos] == '%', so pos++ skips over '%'
-
-		while (isFlag(fmt[pos]) || isDigit(fmt[pos]) || isLength(fmt[pos])
-			|| fmt[pos] == '.') {
-			pos++;
-		}
-
-		count++;
-
-		if (fmt[pos] == '\0')
-			return count;
-
-		pos++;   // skips over '%', isTerminal, or !isTerminal
-	}
-}
-
-
-/**
- * Analyzes a static printf style format string and extracts type information
- * about the p-th specifier that would be used in a corresponding NANO_LOG()
- * invocation.
+ * Analyzes a static printf style format string and extracts info of the num-th format specifier
+ * would be used in a corresponding CFMT_STR() invocation.
  *
  * \tparam N
  *      Length of the static format string (automatically deduced)
  * \param fmt
  *      Format c style string to parse
  * \param num
- *      select the p-th fmt_info_t to return (starts from zero)
+ *      select the num-th format specifier to analyze (starts from zero)
  * \return
- *      Returns an fmt_info_t describing the detailed information of one printf-like specifier
+ *      Returns an FmtInfos object describing the detailed information of num-th format specifier
  */
 template<int N>
-constexpr inline FmtInfos /*fmt_info_t*/
-getOneFmtInfo(const char(&fmt)[N], int num = 0) {
+constexpr inline FmtInfos
+getOneSepc(const char(&fmt)[N], int num = 0) {
 	begin_t begin = 0;
 	end_t end = 0;
 	flags_t flags = 0;
 	width_t width = 0;
 	precision_t prec = -1;
 	sign_t sign = '\0';
-	terminal_t terminal = '?';
+	terminal_t terminal = '\0';
 	width_first_t widthFirst = true;
 
 	int intLen = 0;
 	int pos = 0;
-	int n = 0;		/* handy integer (short term usage) */
+	int specStar = 0;
+	int sizeOfInvalidSpecs = 0;
 	bool exit = false;
 
 	while (num > 0) {
@@ -362,25 +248,50 @@ getOneFmtInfo(const char(&fmt)[N], int num = 0) {
 		// if num is greater than 0, fmt[pos] can never be '\0'
 		for (; /*(fmt[pos] != '\0') && */(fmt[pos] != '%'); pos++);
 
+		specStar = pos; // record the position of '%' as it appears
 		pos++;   // fmt[pos] == '%', so pos++ skips over '%'
 
 		while (isFlag(fmt[pos]) || isDigit(fmt[pos]) || isLength(fmt[pos])
-			|| fmt[pos] == '.') {
+			|| fmt[pos] == '.' || fmt[pos] == '*') {
 			pos++;
 		}
 
-		num--;
+		if (isTerminal(fmt[pos])) {
+			num--;
+		}
+		else { // isTerminal(fmt[pos]) == false
+			// pos - specStar is the size of this invlaid specifier
+			sizeOfInvalidSpecs += pos - specStar;
+		}
 
-		pos++;   // skips over '%', isTerminal, or !isTerminal
+		pos++;   // skips over '%', terminal, or non-terminal
 	}
 
-	// consume the current non-format string until reaching the next '%'
-	for (; /*(fmt[pos] != '\0') && */(fmt[pos] != '%'); pos++);
+	while (!exit) {
+		// consume the current non-format string until reaching the next '%'
+		for (; (fmt[pos] != '%'); pos++);
 
-	begin = pos;
+		specStar = pos; // record the position of '%' as it appears
+		pos++;   // fmt[pos] == '%', so pos++ skips over '%'
 
-	pos++;   // fmt[pos] == '%', so pos++ skips over '%'
+		while (isFlag(fmt[pos]) || isDigit(fmt[pos]) || isLength(fmt[pos])
+			|| fmt[pos] == '.' || fmt[pos] == '*') {
+			pos++;
+		}
 
+		if (isTerminal(fmt[pos])) {
+			break;
+		}
+		else { // isTerminal(fmt[pos]) == false
+			// pos - specStar is the size of this invlaid specifier
+			sizeOfInvalidSpecs += pos - specStar;
+		}
+
+		pos++;   // skips over '%' or non-terminal
+	}
+
+	begin = specStar;
+	pos = specStar + 1;  // fmt[specStar] == '%', so specStar + 1 over '%'
 
 	while (!exit) {
 
@@ -439,13 +350,12 @@ getOneFmtInfo(const char(&fmt)[N], int num = 0) {
 			break;
 		case '1': case '2': case '3': case '4':
 		case '5': case '6': case '7': case '8': case '9':
-			n = 0;
+			width = 0;
 			do {
-				n = 10 * n + toDigit(fmt[pos]);
+				width = 10 * width + toDigit(fmt[pos]);
 				pos++;
 			} while (isDigit(fmt[pos]));
 
-			width = n;
 			pos--;
 			break;
 
@@ -493,10 +403,8 @@ getOneFmtInfo(const char(&fmt)[N], int num = 0) {
 			exit = true;
 			break;
 
-		default: // '\0', '%', !isTerminal, !isFlag, !isLength, or !isDigit
-			terminal = '?';
-			end = pos;
-			exit = true;
+		default: /* should never happen */
+			abort();
 			break;
 		}
 
@@ -504,9 +412,9 @@ getOneFmtInfo(const char(&fmt)[N], int num = 0) {
 	}
 
 	flags |= intLen;
+	begin -= sizeOfInvalidSpecs;
+	end -= sizeOfInvalidSpecs;
 
-	//return std::make_tuple(begin, end, flags, width, prec, sign,
-	//	terminal, widthFirst);
 	return { begin, end, flags, width, prec, sign, terminal, widthFirst };
 }
 
@@ -556,9 +464,9 @@ getOneFmtInfo(const char(&fmt)[N], int num = 0) {
  // using make_index_sequence = std::make_integer_sequence<std::size_t, N>;
  // The program is ill-formed if N is negative. If N is zero, the indicated type is integer_sequence<T>.
 template<int N, std::size_t... Indices>
-constexpr std::array</*fmt_info_t*/FmtInfos, sizeof...(Indices)> // Returns the number of elements in pack Indices
+constexpr std::array<FmtInfos, sizeof...(Indices)> // Returns the number of elements in pack Indices
 analyzeFormatStringHelper(const char(&fmt)[N], std::index_sequence<Indices...>) {
-	return { { getOneFmtInfo(fmt, Indices)... } };
+	return { { getOneSepc(fmt, Indices)... } };
 }
 
 
@@ -585,9 +493,137 @@ analyzeFormatStringHelper(const char(&fmt)[N], std::index_sequence<Indices...>) 
  *      width, precision, sign and terminal) of each specifier.
  */
 template<int NParams, size_t N>
-constexpr std::array</*fmt_info_t*/FmtInfos, NParams>
+constexpr std::array<FmtInfos, NParams>
 analyzeFormatString(const char(&fmt)[N]) {
 	return analyzeFormatStringHelper(fmt, std::make_index_sequence<NParams>{});
+}
+
+
+template<int N>
+constexpr inline char
+storeOneChar(const char(&fmt)[N], int& offset, int num = 0) {
+	int saveOffset = offset;
+
+	// "sd%%sf%%%fes%h-+ 01233lzhhjt *.***k12.dsdsss%h-+ 01233lzhhjt *.***k23.\n"
+	//  num    0 1 2 3 4 5 6 7 8  9  10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25  26 ...                
+	//  offset 0 0 1 1 1 2 2 2 2  2  24 24 24 24 24 24 24 24 24 24 46 46 46 46 46 46  46 ...        
+	//  index  0 1 3 4 5 7 8 9 10 11 34 35 36 37 38 39 40 41 42 43 66 67 68 69 70 71  72 ...
+	//  char   s d % s f % % f e  s  k  1  2  .  d  s  d  s  s  s  k  2  3  .  \n \0  \0 ...            
+	if (num + offset < N) {
+		if (fmt[num + offset] == '%') {
+			offset++;   // fmt[num + offset] == '%', so offset++ skips over '%'
+
+			while (isFlag(fmt[num + offset]) || isDigit(fmt[num + offset])
+				|| isLength(fmt[num + offset]) || fmt[num + offset] == '.'
+				|| fmt[num + offset] == '*') {
+				offset++;
+			}
+		}
+
+		if (isTerminal(fmt[num + offset])) {
+			offset = saveOffset;
+		}
+
+		return fmt[num + offset];
+
+	}
+	else
+		return '\0';
+}
+
+template<int N, std::size_t... Indices>
+constexpr std::array<char, sizeof...(Indices)> // Returns the number of elements in pack Indices
+preprocessInvalidSpecsHelper(const char(&fmt)[N], std::index_sequence<Indices...>) {
+	int offset = 0;
+	return { { storeOneChar(fmt, offset, Indices)... } };
+}
+
+template<int Len, size_t N>
+constexpr std::enable_if_t < Len < N, std::array<char, Len>>
+	preprocessInvalidSpecs(const char(&fmt)[N]) {
+	return preprocessInvalidSpecsHelper(fmt, std::make_index_sequence<Len>{});
+}
+
+template<int Len, size_t N>
+constexpr std::enable_if_t< Len == N, std::array<char, 0>>
+preprocessInvalidSpecs(const char(&fmt)[N]) {
+	return std::array<char, 0>();
+}
+
+/*
+ * Count the number of valid specifiers in the format string at compile time
+ */
+template<int N>
+constexpr inline int
+countValidSpecs(const char(&fmt)[N]) {
+	int pos = 0;
+	int count = 0;
+	// A C string is usually declared as an array of char. However, an array 
+	// of char is NOT by itself a C string. A valid C string requires the 
+	// presence of a terminating "null character" (a character with ASCII
+	// value 0, usually represented by the character literal '\0').
+	for (;;) {
+		// consume the current non-format string until reaching the next '%' 
+		for (; (fmt[pos] != '\0') && (fmt[pos] != '%'); pos++);
+
+		if (fmt[pos] == '\0')
+			return count;
+
+		pos++;   // fmt[pos] == '%', so pos++ skips over '%'
+
+		while (isFlag(fmt[pos]) || isDigit(fmt[pos]) || isLength(fmt[pos])
+			|| fmt[pos] == '.' || fmt[pos] == '*') {
+			pos++;
+		}
+
+		if (isTerminal(fmt[pos])) {
+			count++;
+		}
+
+		if (fmt[pos] == '\0')
+			return count;
+
+		pos++;   // skips over '%', terminal, or non-terminal
+	}
+}
+
+
+/*
+ * return the size of the format string without invalid specififers
+ * (e.g., "%-+ #0ltz%", "%%", "%-+ K")
+ */
+template<int N>
+constexpr inline int
+sizeWithoutInvalidSpecs(const char(&fmt)[N]) {
+	int pos = 0;
+	int specStar = 0;
+	int size = N;
+
+	for (;;) {
+		// consume the current non-format string until reaching the next '%' 
+		for (; (fmt[pos] != '\0') && (fmt[pos] != '%'); pos++);
+
+		if (fmt[pos] == '\0')
+			return size;
+
+		specStar = pos; // record the position of '%' as it appears
+		pos++;   // fmt[pos] == '%', so pos++ skips over '%'
+
+		while (isFlag(fmt[pos]) || isDigit(fmt[pos]) || isLength(fmt[pos])
+			|| fmt[pos] == '.' || fmt[pos] == '*') {
+			pos++;
+		}
+
+		if (!isTerminal(fmt[pos])) {
+			// pos - specStar is the size of this invlaid specifier
+			size -= pos - specStar;
+		}
+
+		if (fmt[pos] == '\0')
+			return size;
+
+		pos++;   // skips over '%', terminal, or non-terminal
+	}
 }
 
 
@@ -636,7 +672,7 @@ fioBufPut(const char* pInBuf, size_t length, OutbufArg& outbuf) {
 	// the last byte position is reserved for the terminating '\0' 
 
 	// fail if at the end of buffer, recall need a single byte for null
-	if ((ssize_t)remaining <= 0)
+	if (std::make_signed<size_t>::type(remaining) <= 0)
 		return;
 
 	else if (length > remaining)
@@ -650,35 +686,39 @@ fioBufPut(const char* pInBuf, size_t length, OutbufArg& outbuf) {
 }
 
 
-//template<typename T, int N, size_t M>
-//inline void 
-//processSingle(OutbufArg& outbuf, bool& returning, size_t& nex, int& ret,
-//	          const char(&fmt)[N], const std::array<FmtInfos, M>& FIS, T&& input) {
-//	if (returning) return;
-//
-//	bool toNextArg = false;
-//
-//	while (!toNextArg) {
-//		switch (FIS[nex].terminal_) {
-//		case 'c': case 'd': case 'i': case 'a': case 'A': case 'e': case 'E':
-//		case 'f': case 'F': case 'g': case 'G': case 'n': case 'o': case 'p':
-//		case 's': case 'u': case 'X': case 'x':
-//			toNextArg = true;
-//			break;
-//		}
-//
-//		if (nex < M - 1) {
-//			size_t len = static_cast<size_t>(FIS[nex + 1].begin_ - FIS[nex].end_);
-//			fioBufPut(fmt + FIS[nex].end_, len, outbuf);
-//			ret += len;
-//			nex++;
-//		}
-//		else { // nex == M - 1
-//			toNextArg = true;
-//			returning = true;
-//		}
-//	}
-//}
+template<int nex, size_t M, typename T>
+inline void
+processSingle(OutbufArg& outbuf, int& ret, const char* fmt,
+	const std::array<FmtInfos, M>& FIS, T&& arg) {
+	if (nex >= M) return;
+
+	if (nex < M - 1) {
+		size_t length = static_cast<size_t>(FIS[nex + 1].begin_ - FIS[nex].end_);
+		fioBufPut(fmt + FIS[nex].end_, length, outbuf);
+		ret += length;
+	}
+}
+
+
+template<int nex = 0, size_t M, typename T, typename... Ts>
+inline void
+processArgs(OutbufArg& outbuf, int& ret, const char* fmt,
+	const std::array<FmtInfos, M>& FIS, T&& head, Ts&&... rest) {
+	// Peel off one argument to convert, and then recursively process rest
+	processSingle<nex>(outbuf, ret, fmt, FIS, std::forward<T>(head));
+	processArgs<nex + 1>(outbuf, ret, fmt, FIS, std::forward<Ts>(rest)...);
+}
+
+/**
+ * Specialization of processArgts that processes no arguments, i.e. this
+ * is the end of the head/rest recursion. See above for full documentation.
+ */
+template<int nex = 0, size_t M>
+inline void
+processArgs(OutbufArg& outbuf, int& ret, const char* fmt,
+	const std::array<FmtInfos, M>& FIS) {
+	// No arguments, do nothing.
+}
 
 /**
  * Logs a log message in the NanoLog system given all the static and dynamic
@@ -708,86 +748,41 @@ fioBufPut(const char* pInBuf, size_t length, OutbufArg& outbuf) {
  * \param args
  *      Argument pack for all the arguments for the log invocation
  */
-template<int NVS, int N, size_t M, typename... Ts>
+template<size_t L, int N, size_t M, typename... Ts>
 inline int
-fioFormat(/*int& fmtId, */OutbufArg& outbuf, const char(&format)[N],
-	const std::array<FmtInfos, M>& FIS, Ts &&... args) {
+fioFormat(OutbufArg& outbuf, const std::array<char, L>& fmtStr,
+	const char(&format)[N], const std::array<FmtInfos, M>& FIS, Ts&&... args) {
 
-	if (NVS > static_cast<uint32_t>(sizeof...(Ts))) {
+	if (M > static_cast<uint32_t>(sizeof...(Ts))) {
 		std::cerr << "CFMT: forced abort due to illegal number of variadic "
 			"arguments passed to CFMT_STR for converting!!!";
 		abort();
 	}
 
-	//if (fmtId == UNASSIGNED_CFMT_ID) {
-	//	const FmtInfos* array;
-	//	if (FIS.empty())  array = nullptr;
-	//	else  array = FIS.data();
+	const char* fmt = (L == 0) ? &format[0] : fmtStr.data();
+	const size_t len = (L == 0) ? N : L;
 
-	//	StaticFmtInfo info(format, static_cast<int>(M), N_VAR_ARGS, array);
-	//	registerCFmtInvocationSite(fmtId, info);
-	//}
-	const char* fmt = &format[0];
 	int ret = 0;
 	size_t nex = 0;
-	char ch = '?';
+	char ch = '\0';
 	bool returning = false;
 
 	if (0 == M) {
-		fioBufPut(fmt, N - 1, outbuf);
-		return N - 1;
-	}
-
-	if (0 == NVS) {
-		fioBufPut(fmt, (size_t)FIS[0].begin_, outbuf);
-		ret += FIS[0].begin_;
-
-		for (nex = 0; nex < M - 1; nex++) {
-			size_t len = static_cast<size_t>(FIS[nex + 1].begin_ - FIS[nex].end_);
-			fioBufPut(fmt + FIS[nex].end_, len, outbuf);
-			ret += len;
-		}
-
-		fioBufPut(fmt + FIS[M - 1].end_, (size_t)(N - FIS[M - 1].end_ - 1), outbuf);
-		ret += N - FIS[M - 1].end_ - 1;
-
-		return ret;
+		fioBufPut(fmt, len - 1, outbuf);
+		return len - 1;
 	}
 
 	auto processSingle = [&](auto&& input) {
 		if (returning) return;
 
-		bool toNextArg = false;
-
-		while (!toNextArg) {
-			ch = FIS[nex].terminal_;
-			//switch (FIS[nex].terminal_) {
-			//case 'c': case 'd': case 'i': case 'a': case 'A': case 'e': case 'E':
-			//case 'f': case 'F': case 'g': case 'G': case 'n': case 'o': case 'p':
-			//case 's': case 'u': case 'X': case 'x':
-			//	toNextArg = true;
-			//	break;
-			//}
-
-			if (ch == 'd' || ch == 'u' || ch == 'x' || ch == 'X' || ch == 'o'
-				|| ch == 'i') {
-				toNextArg = true;
-			}
-
-			if (ch != '?') {
-				toNextArg = true;
-			}
-
-			if (nex < M - 1) {
-				size_t len = static_cast<size_t>(FIS[nex + 1].begin_ - FIS[nex].end_);
-				fioBufPut(fmt + FIS[nex].end_, len, outbuf);
-				ret += len;
-				nex++;
-			}
-			else { // nex == M - 1
-				toNextArg = true;
-				returning = true;
-			}
+		if (nex < M - 1) {
+			size_t length = static_cast<size_t>(FIS[nex + 1].begin_ - FIS[nex].end_);
+			fioBufPut(fmt + FIS[nex].end_, length, outbuf);
+			ret += length;
+			nex++;
+		}
+		else { // nex == M - 1
+			returning = true;
 		}
 	};
 
@@ -796,33 +791,17 @@ fioFormat(/*int& fmtId, */OutbufArg& outbuf, const char(&format)[N],
 	ret += FIS[0].begin_;
 
 	(processSingle(/*outbuf, returning, nex, ret, format, FIS, */std::forward<Ts>(args)), ...);
+	//processArgs(outbuf, ret, fmt, FIS, std::forward<Ts>(args)...);
 
-	fioBufPut(fmt + FIS[M - 1].end_, (size_t)(N - FIS[M - 1].end_ - 1), outbuf);
-	ret += N - FIS[M - 1].end_ - 1;
+	fioBufPut(fmt + FIS[M - 1].end_, (size_t)(len - FIS[M - 1].end_ - 1), outbuf);
+	ret += len - FIS[M - 1].end_ - 1;
 
 	return ret;
 }
 
-/*
- * Count the number of valid specifiers in the format string at compile time
- */
-template<size_t M>
-constexpr inline int
-countValidSpecifiers(const std::array<FmtInfos, M>& fmtInfos) {
-	int count = 0;
-	for (int i = 0; i < M; i++) {
-		if (fmtInfos[i].terminal_ != '?') {
-			count++;
-			if (fmtInfos[i].prec_ == DYNAMIC_PRECISION) count++;
-			if (fmtInfos[i].width_ == DYNAMIC_WIDTH) count++;
-		}
-	}
-	return count;
-}
-
 
 /**
- * Snprintf macro used for caching format specifier infos at compile time.
+ * CFMT_STR macro used for caching format specifier infos at compile time.
  *
  * \param result
  *      The variable to store the number of characters that would have been
@@ -844,11 +823,12 @@ countValidSpecifiers(const std::array<FmtInfos, M>& fmtInfos) {
  *      as the number of values specified in the valid format specifiers.
  */
 
-#define CFMT_STR(result, buffer, count, format, ...)  do { \
-    \
-    constexpr int kNFS = countFmtInfos(format); \
-    \
-    /*** Very Important*** These must be 'static' so that we can save pointers
+#define CFMT_STR(result, buffer, count, format, ...) \ 
+do { \
+    constexpr int kNVS = countValidSpecs(format); \
+    constexpr int kLen = sizeWithoutInvalidSpecs(format); \
+    /**
+	 * Very Important*** These must be 'static' so that we can save pointers
 	 * to these variables and have them persist beyond the invocation.
 	 * The static logId is used to forever associate this local scope (tied
 	 * to an expansion of #NANO_LOG) with an id and the paramTypes array is
@@ -863,86 +843,50 @@ countValidSpecifiers(const std::array<FmtInfos, M>& fmtInfos) {
 	 * Adding the static keyword to the file scope version of variables doesn't
 	 * change their extent, but it does change its visibility with respect to
 	 * other translation units; the name is not exported to the linker, so it
-	 * cannot be accessed by name from another translation unit.
-	 */\
-	static constexpr std::array<FmtInfos, kNFS> kFmtInfos = analyzeFormatString<kNFS>(format); \
-	constexpr int kNumVarArgs = countValidSpecifiers(kFmtInfos); \
-	\
-	/*static int fmtId = UNASSIGNED_CFMT_ID; */ \
-	\
+	 * cannot be accessed by name from another translation unit. */ \
+	static constexpr std::array<FmtInfos, kNVS> kFmtInfos = analyzeFormatString<kNVS>(format); \
+	static constexpr auto kStr = preprocessInvalidSpecs<kLen>(format); \
+	OutbufArg outbuf; \
+	outbuf.pBuf_ = buffer; \
+	outbuf.pBufEnd_ = (char*)(buffer + count); \
 	/* Triggers the printf checker by passing it into a no-op function.
 	* Trick: This call is surrounded by an if false so that the VA_ARGS don't
 	* evaluate for cases like '++i'.*/ \
 	if (false) { checkFormat(format, ##__VA_ARGS__); } \
-	\
-	OutbufArg  outbuf; \
-	outbuf.pBuf_ = buffer; \
-	outbuf.pBufEnd_ = (char*)(buffer + count); \
-	result = fioFormat<kNumVarArgs>(outbuf, format, kFmtInfos, ##__VA_ARGS__); \
-	\
+	result = fioFormat(outbuf, kStr, format, kFmtInfos, ##__VA_ARGS__); \
 	/* null - terminate the string */ \
-	if (count != 0) \
-	    *outbuf.pBuf_ = '\0'; \
+	if (count != 0) { *outbuf.pBuf_ = '\0'; } \
 } while (0)
-
-
-//const int Num = 0;
-//
-//template <size_t ...N>
-//static constexpr std::array<int, Num> square_nums(size_t index, std::index_sequence<N...>) {
-//    //constexpr auto nums = std::array{ N * N ... };
-//    //return nums;
-//    return { { N * N... } };
-//}
-//
-//template <size_t N>
-//constexpr static auto const_nums(size_t index) {
-//    return square_nums(index, std::make_index_sequence<N>{});
-//}
 
 int tz_snprintf(char* buffer, size_t  count, const char* fmt, ...);
 
+// sd%%sf%%%fes%h-+ 01233lzhhjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n
+constexpr int kSize = sizeWithoutInvalidSpecs("sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n");
+constexpr int kNVS = countValidSpecs("sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n");
+//constexpr static std::array<char, SIZE> myStr = preprocessInvalidSpecs<SIZE>("sd%%sf%%%fes%h-+ 01233lzhhjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***f23.\n");
+constexpr static std::array<char, kSize> myStr = preprocessInvalidSpecs<kSize>("sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n");
+constexpr int kSize1 = sizeWithoutInvalidSpecs("sdsssssssss%-+ *.*... *llzthhlh#-054d=ssssssadfadfasfsasadasdasdsa.\n");
+constexpr static auto myStr1 = preprocessInvalidSpecs<kSize1>("sdsssssssss%-+ *.*... *llzthhlh#-054d=ssssssadfadfasfsasadasdasdsa.\n");
+// "sd%sf%%fes%sds%%%%gjt *.***k12.dsd%%s%%d%f%f%dsss%h-+ 01233lzhhjt *.***d23.\n"
+constexpr std::array<FmtInfos, kNVS> fmtInfos = analyzeFormatString<kNVS>("sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n");
+
 int main() {
-	constexpr int numFmtInfos =
-		countFmtInfos("sdsffe%12.dsd%s%%%f23.lhkz+- #&%%%34.hjzll.*.8.8*#+- .**00");
-	constexpr size_t num = sizeof("adadad");
-	std::cout << numFmtInfos << std::endl;
-
-	//constexpr auto array = const_nums<Num>(3);
-	//constexpr bool isEmpty = array.empty();
-
-	constexpr /*fmt_info_t*/FmtInfos fmtInfo =
-		getOneFmtInfo("3434%2323hlk-+ 0#...llks%12.0#**.***+-.**llG", 0);
-
-	constexpr size_t nParams =
-		countFmtInfos("3434%2323hlk-+ 0#...llks%12.0#**.***+-.**llG%%%*.*20ahjhj");
-	constexpr std::array<FmtInfos, nParams> fmtInfos =
-		analyzeFormatString<nParams>("3434%2323hlk-+ 0#...llks%12.0#**.***+-.**llG%%%*.*20ahjhj");
-	constexpr int nVarArgs = countValidSpecifiers(fmtInfos);
-
-	std::cout << "Hello World!\n";
+	auto start = system_clock::now();
 
 	char buf[100];
 
-	int result;
+	int result = 0;
 
-	CFMT_STR(result, buf, 100, "3434%2323hlk-+ 0#...llks%12.0#**.***+-.**llG%%%*.*20hjhj", 12, 12, "sdsd", 45.5);
-	CFMT_STR(result, buf, 100, "3434%2323hlk-+ 0#...llks%12.0#**.***+-.**llG%%%*.*20ahjhj", "sdsd", 'c', 12, 12.55, 1e+1, L"dsdsd", L'a');
-	CFMT_STR(result, buf, 100, "34342323hlk-+ 0#...llks12.0#**.***+-.**llG*.*20ahjhj");
-
-	std::cout << "result: " << result << std::endl;
-
-	/*int e = _set_printf_count_output(1);
-	int n;
-	int res = snprintf(buf, 3, "asdfg: %10.2f%n", 12.3, &n);
-	std::cout << "res: " << res << " buf: " << buf << std::endl;*/
-
-	auto start = system_clock::now();
+	std::cout << "11-ll-11-ll" << std::endl;
 
 	for (int i = 0; i < 10000000; i++) {
-		CFMT_STR(result, buf, 100, "342324233hlk-+ 0#...saerere%hkkG%hjz..-+%f,dsdsff%+- #..*hsgfgf", 8.6, 45, 's', L"adsds");
-		//CFMT_STR(result, buf, 100, "34342323%hlk-+ 0#%...llks12.0#%**.***+-.**llk*.*20%%ahjhj",2);
-		//CFMT_STR(result, buf, 100, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+		//CFMT_STR(result, buf, 100, "sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n", 45, 's', L"adsds", 1, 1);
+		CFMT_STR(result, buf, 100, "=%f=%f=%f=%f=%f=%f=%f=%f=%f=%f=%f=%f\n", 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1);
+		//CFMT_STR(result, buf, 100, "sd+ 01236%s66657==k31%s==lllllz%ahhjt *.***d23.\n", 45, 's', L"adsds",1,1);
+		//CFMT_STR(result, buf, 100, "sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n", 2, 45, 's', L"adsds");
+		//CFMT_STR(result, buf, 100, "34342323%hls-+ 0#s...llks12.0#%**.***+-.**lls*.*20%%ahjhj",2, L"aad");
+		//CFMT_STR(result, buf, 100, "%%s%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+		//CFMT_STR(result, buf, 100, "%h-+ 01233lzhhjt *.***hhhlll8.****");
 		//result = snprintf(buf, 100, "342324233hlk-+ 0#...saerereshdkGshjz..-+sf,dsdsffs+- #..*hdgfgf");
 		//result = snprintf(buf, 100, "34342323%h0#%.llks12.0#%*.*llk*.*20%%ahjhj");
 		//result = snprintf(buf, 100, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
@@ -959,6 +903,7 @@ int main() {
 
 	std::cout << "cost: "
 		<< double(duration.count()) * microseconds::period::num / microseconds::period::den << "seconds" << std::endl;
+
 
 
 	wint_t c = L'd';
@@ -1024,4 +969,5 @@ int main() {
 	int& rb = b;
 	std::cout << static_cast<long>(rb) << std::endl;
 
+	system("pause");
 }
