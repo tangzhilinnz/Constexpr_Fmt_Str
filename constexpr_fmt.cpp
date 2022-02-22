@@ -748,19 +748,19 @@ processArgs(OutbufArg& outbuf, int& ret, const char* fmt,
  * \param args
  *      Argument pack for all the arguments for the log invocation
  */
-template<size_t L, int N, size_t M, typename... Ts>
+template<size_t M, typename... Ts>
 inline int
-fioFormat(OutbufArg& outbuf, const std::array<char, L>& fmtStr,
-	const char(&format)[N], const std::array<FmtInfos, M>& FIS, Ts&&... args) {
+fioFormat(OutbufArg& outbuf, const char* fmt, const size_t len,
+	const std::array<FmtInfos, M>& FIS, Ts&&... args) {
 
-	if (M > static_cast<uint32_t>(sizeof...(Ts))) {
+	if constexpr (M > static_cast<uint32_t>(sizeof...(Ts))) {
 		std::cerr << "CFMT: forced abort due to illegal number of variadic "
 			"arguments passed to CFMT_STR for converting!!!";
 		abort();
 	}
 
-	const char* fmt = (L == 0) ? &format[0] : fmtStr.data();
-	const size_t len = (L == 0) ? N : L;
+	//const char* fmt = (L == 0) ? &format[0] : formatArr.data();
+	//const size_t len = (L == 0) ? N : L;
 
 	int ret = 0;
 	size_t nex = 0;
@@ -790,13 +790,26 @@ fioFormat(OutbufArg& outbuf, const std::array<char, L>& fmtStr,
 	fioBufPut(fmt, (size_t)FIS[0].begin_, outbuf);
 	ret += FIS[0].begin_;
 
-	(processSingle(/*outbuf, returning, nex, ret, format, FIS, */std::forward<Ts>(args)), ...);
+	// With MSVC, the performance of c++17 fold expressions on (variadic template) 
+	// pack expansion is considerably better than that of recursive template.
+	// It is also neat, compact, and understandable.
+	(processSingle(std::forward<Ts>(args)), ...);
+
+	// the method of recursive template
 	//processArgs(outbuf, ret, fmt, FIS, std::forward<Ts>(args)...);
 
 	fioBufPut(fmt + FIS[M - 1].end_, (size_t)(len - FIS[M - 1].end_ - 1), outbuf);
 	ret += len - FIS[M - 1].end_ - 1;
 
 	return ret;
+}
+
+
+template<int N, size_t L>
+constexpr inline std::tuple<const char*, int>
+getRTFmtStr(const char(&fmt)[N], const std::array<char, L>& fmtArr) {
+	if (0 == L) return { &fmt[0], N };
+	else return { fmtArr.data(), L };
 }
 
 
@@ -823,11 +836,10 @@ fioFormat(OutbufArg& outbuf, const std::array<char, L>& fmtStr,
  *      as the number of values specified in the valid format specifiers.
  */
 
-#define CFMT_STR(result, buffer, count, format, ...) \ 
-do { \
-    constexpr int kNVS = countValidSpecs(format); \
-    constexpr int kLen = sizeWithoutInvalidSpecs(format); \
-    /**
+#define CFMT_STR(result, buffer, count, format, ...) do { \
+	constexpr int kNVS = countValidSpecs(format); \
+	constexpr int kLen = sizeWithoutInvalidSpecs(format); \
+	/**
 	 * Very Important*** These must be 'static' so that we can save pointers
 	 * to these variables and have them persist beyond the invocation.
 	 * The static logId is used to forever associate this local scope (tied
@@ -845,7 +857,8 @@ do { \
 	 * other translation units; the name is not exported to the linker, so it
 	 * cannot be accessed by name from another translation unit. */ \
 	static constexpr std::array<FmtInfos, kNVS> kFmtInfos = analyzeFormatString<kNVS>(format); \
-	static constexpr auto kStr = preprocessInvalidSpecs<kLen>(format); \
+	static constexpr auto kformatArr = preprocessInvalidSpecs<kLen>(format); \
+	static constexpr auto kRTStr = getRTFmtStr(format, kformatArr); \
 	OutbufArg outbuf; \
 	outbuf.pBuf_ = buffer; \
 	outbuf.pBufEnd_ = (char*)(buffer + count); \
@@ -853,7 +866,7 @@ do { \
 	* Trick: This call is surrounded by an if false so that the VA_ARGS don't
 	* evaluate for cases like '++i'.*/ \
 	if (false) { checkFormat(format, ##__VA_ARGS__); } \
-	result = fioFormat(outbuf, kStr, format, kFmtInfos, ##__VA_ARGS__); \
+	result = fioFormat(outbuf, std::get<const char*>(kRTStr), std::get<int>(kRTStr), kFmtInfos, ##__VA_ARGS__); \
 	/* null - terminate the string */ \
 	if (count != 0) { *outbuf.pBuf_ = '\0'; } \
 } while (0)
@@ -867,6 +880,7 @@ constexpr int kNVS = countValidSpecs("sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt 
 constexpr static std::array<char, kSize> myStr = preprocessInvalidSpecs<kSize>("sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n");
 constexpr int kSize1 = sizeWithoutInvalidSpecs("sdsssssssss%-+ *.*... *llzthhlh#-054d=ssssssadfadfasfsasadasdasdsa.\n");
 constexpr static auto myStr1 = preprocessInvalidSpecs<kSize1>("sdsssssssss%-+ *.*... *llzthhlh#-054d=ssssssadfadfasfsasadasdasdsa.\n");
+constexpr static auto myStr2 = preprocessInvalidSpecs<2>("%ks");
 // "sd%sf%%fes%sds%%%%gjt *.***k12.dsd%%s%%d%f%f%dsss%h-+ 01233lzhhjt *.***d23.\n"
 constexpr std::array<FmtInfos, kNVS> fmtInfos = analyzeFormatString<kNVS>("sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n");
 
@@ -879,14 +893,15 @@ int main() {
 
 	std::cout << "11-ll-11-ll" << std::endl;
 
-	for (int i = 0; i < 10000000; i++) {
+	for (int i = 0; i < 100000000; i++) {
 		//CFMT_STR(result, buf, 100, "sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n", 45, 's', L"adsds", 1, 1);
 		CFMT_STR(result, buf, 100, "=%f=%f=%f=%f=%f=%f=%f=%f=%f=%f=%f=%f\n", 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1);
+		//CFMT_STR(result, buf, 100, "dadadsadadadadasssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssdad");
 		//CFMT_STR(result, buf, 100, "sd+ 01236%s66657==k31%s==lllllz%ahhjt *.***d23.\n", 45, 's', L"adsds",1,1);
 		//CFMT_STR(result, buf, 100, "sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n", 2, 45, 's', L"adsds");
 		//CFMT_STR(result, buf, 100, "34342323%hls-+ 0#s...llks12.0#%**.***+-.**lls*.*20%%ahjhj",2, L"aad");
-		//CFMT_STR(result, buf, 100, "%%s%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
-		//CFMT_STR(result, buf, 100, "%h-+ 01233lzhhjt *.***hhhlll8.****");
+		//CFMT_STR(result, buf, 100, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+		//CFMT_STR(result, buf, 100, "h-+ 01233lzhhjt *.***hhhlll8.****s");
 		//result = snprintf(buf, 100, "342324233hlk-+ 0#...saerereshdkGshjz..-+sf,dsdsffs+- #..*hdgfgf");
 		//result = snprintf(buf, 100, "34342323%h0#%.llks12.0#%*.*llk*.*20%%ahjhj");
 		//result = snprintf(buf, 100, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
@@ -953,6 +968,9 @@ int main() {
 	std::to_chars_result re = to_chars(buf, buf + 100, static_cast<short>(rin), 10);
 	re = to_chars(buf, buf + 100, rin, 10);
 	re = to_chars(buf, buf + 100, reinterpret_cast<uintptr_t>(pa), 10);
+
+	uintmax_t ux = (short)-100;
+	re = to_chars(buf, buf + 100, ux, 10);
 	*re.ptr = '\0';
 
 	std::cout << buf << std::endl;
