@@ -720,6 +720,42 @@ processArgs(OutbufArg& outbuf, int& ret, const char* fmt,
 	// No arguments, do nothing.
 }
 
+
+template <class R, class T>
+constexpr std::tuple<R, bool> formattedInteger([[maybe_unused]] T n) {
+	if constexpr (std::is_integral<T>::value)
+		return { static_cast<R>(n), true };
+	else
+		return { static_cast<R>(0), false };
+}
+
+
+/**
+ * To extend shorts properly, we need both signed and unsigned
+ * argument extraction methods.
+ */
+#define	SARG(flags, val) \
+	(flags&__FLAG_LONGINT ? formattedInteger<long>(val) : \
+	    flags&__FLAG_SHORTINT ? formattedInteger<short>(val): \
+	    flags&__FLAG_CHARINT ? formattedInteger<signed char>(val) : \
+	    formattedInteger<int>(val))
+#define	UARG(flags, val) \
+	(flags&__FLAG_LONGINT ? formattedInteger<unsigned long>(val) : \
+	    flags&__FLAG_SHORTINT ? formattedInteger<unsigned short>(val) : \
+	    flags&__FLAG_CHARINT ? formattedInteger<unsigned char>(val) : \
+	    formattedInteger<unsigned int>(val))
+#define	INTMAX_SIZE	(__FLAG_INTMAXT|__FLAG_SIZET|__FLAG_PTRDIFFT|__FLAG_LLONGINT)
+#define SJARG(flags, val) \
+	(flags&__FLAG_INTMAXT ? formattedInteger<intmax_t>(val): \
+	    flags&__FLAG_SIZET ? formattedInteger<std::make_signed<size_t>::type>(val) : \
+	    flags&__FLAG_PTRDIFFT ? formattedInteger<ptrdiff_t>(val) : \
+	    formattedInteger<long long>(val))
+#define	UJARG(flags, val) \
+	(flags&__FLAG_INTMAXT ? formattedInteger<uintmax_t>(val) : \
+	    flags&__FLAG_SIZET ? formattedInteger<size_t>(val) : \
+	    flags&__FLAG_PTRDIFFT ? formattedInteger<std::make_unsigned<ptrdiff_t>::type>(val): \
+	    formattedInteger<unsigned long long>(val))
+
 /**
  * Logs a log message in the NanoLog system given all the static and dynamic
  * information associated with the log message. This function is meant to work
