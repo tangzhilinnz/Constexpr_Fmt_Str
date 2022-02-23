@@ -5,6 +5,7 @@
 #include <cstring>
 #include <cassert>
 #include <charconv>
+#include <tuple>
 
 #include "Portability.h"
 
@@ -720,42 +721,6 @@ processArgs(OutbufArg& outbuf, int& ret, const char* fmt,
 	// No arguments, do nothing.
 }
 
-
-template <class R, class T>
-constexpr std::tuple<R, bool> formattedInteger([[maybe_unused]] T n) {
-	if constexpr (std::is_integral<T>::value)
-		return { static_cast<R>(n), true };
-	else
-		return { static_cast<R>(0), false };
-}
-
-
-/**
- * To extend shorts properly, we need both signed and unsigned
- * argument extraction methods.
- */
-#define	SARG(flags, val) \
-	(flags&__FLAG_LONGINT ? formattedInteger<long>(val) : \
-	    flags&__FLAG_SHORTINT ? formattedInteger<short>(val): \
-	    flags&__FLAG_CHARINT ? formattedInteger<signed char>(val) : \
-	    formattedInteger<int>(val))
-#define	UARG(flags, val) \
-	(flags&__FLAG_LONGINT ? formattedInteger<unsigned long>(val) : \
-	    flags&__FLAG_SHORTINT ? formattedInteger<unsigned short>(val) : \
-	    flags&__FLAG_CHARINT ? formattedInteger<unsigned char>(val) : \
-	    formattedInteger<unsigned int>(val))
-#define	INTMAX_SIZE	(__FLAG_INTMAXT|__FLAG_SIZET|__FLAG_PTRDIFFT|__FLAG_LLONGINT)
-#define SJARG(flags, val) \
-	(flags&__FLAG_INTMAXT ? formattedInteger<intmax_t>(val): \
-	    flags&__FLAG_SIZET ? formattedInteger<std::make_signed<size_t>::type>(val) : \
-	    flags&__FLAG_PTRDIFFT ? formattedInteger<ptrdiff_t>(val) : \
-	    formattedInteger<long long>(val))
-#define	UJARG(flags, val) \
-	(flags&__FLAG_INTMAXT ? formattedInteger<uintmax_t>(val) : \
-	    flags&__FLAG_SIZET ? formattedInteger<size_t>(val) : \
-	    flags&__FLAG_PTRDIFFT ? formattedInteger<std::make_unsigned<ptrdiff_t>::type>(val): \
-	    formattedInteger<unsigned long long>(val))
-
 /**
  * Logs a log message in the NanoLog system given all the static and dynamic
  * information associated with the log message. This function is meant to work
@@ -898,7 +863,8 @@ getRTFmtStr(const char(&fmt)[N], const std::array<char, L>& fmtArr) {
 	OutbufArg outbuf; \
 	outbuf.pBuf_ = buffer; \
 	outbuf.pBufEnd_ = (char*)(buffer + count); \
-	/* Triggers the printf checker by passing it into a no-op function.
+	/**
+	* Triggers the printf checker by passing it into a no-op function.
 	* Trick: This call is surrounded by an if false so that the VA_ARGS don't
 	* evaluate for cases like '++i'.*/ \
 	if (false) { checkFormat(format, ##__VA_ARGS__); } \
@@ -908,6 +874,95 @@ getRTFmtStr(const char(&fmt)[N], const std::array<char, L>& fmtArr) {
 } while (0)
 
 int tz_snprintf(char* buffer, size_t  count, const char* fmt, ...);
+
+
+
+
+
+template<int nex, size_t M, const std::array<FmtInfos, M>& FIS, typename T>
+inline void
+	convertSingle(char* outbuf, T && arg) {
+	if constexpr (nex >= M) return;
+
+	else {
+
+		if constexpr (FIS[nex].terminal_ == 'i' || FIS[nex].terminal_ == 'd') {
+			if constexpr ((FIS[nex].flags_ & __FLAG_LONGINT) != 0) {
+				std::cout << "long int" << std::endl;
+			}
+			else if constexpr ((FIS[nex].flags_ & __FLAG_SHORTINT) != 0) {
+				std::cout << "short int" << std::endl;
+			}
+			else if constexpr ((FIS[nex].flags_ & __FLAG_CHARINT) != 0) {
+				std::cout << "signed char" << std::endl;
+			}
+			else if constexpr ((FIS[nex].flags_ & __FLAG_LLONGINT) != 0) {
+				std::cout << "long long int" << std::endl;
+			}
+			else if constexpr ((FIS[nex].flags_ & __FLAG_SIZET) != 0) {
+				std::cout << "size_t" << std::endl;
+			}
+			else if constexpr ((FIS[nex].flags_ & __FLAG_PTRDIFFT) != 0) {
+				std::cout << "ptrdiff_t" << std::endl;
+			}
+			else if constexpr ((FIS[nex].flags_ & __FLAG_INTMAXT) != 0) {
+				std::cout << "intmax_t" << std::endl;
+			}
+			else {
+				std::cout << "int" << std::endl;
+			}
+		}
+		else if constexpr (FIS[nex].terminal_ == 'x' || FIS[nex].terminal_ == 'X' ||
+			FIS[nex].terminal_ == 'o' || FIS[nex].terminal_ == 'u') {
+		}
+		else {}
+	}
+}
+
+
+/**
+* Specialization of processArgts that processes no arguments, i.e. this
+* is the end of the head/rest recursion. See above for full documentation.
+*/
+template<int nex, size_t M, const std::array<FmtInfos, M>& FIS>
+inline void
+	convertArgs(char* outbuf) {
+	// No arguments, do nothing.
+	return;
+}
+
+template<int nex, size_t M, const std::array<FmtInfos, M>& FIS, typename T, typename... Ts>
+inline void
+	convertArgs(char* outbuf, T && head, Ts&&... rest) {
+	// Peel off one argument to convert, and then recursively process rest
+	convertSingle<nex, M, FIS>(outbuf, std::forward<T>(head));
+	convertArgs<nex + 1, M, FIS>(outbuf, std::forward<Ts>(rest)...);
+}
+
+template<int nex, size_t M, const std::array<FmtInfos, M>& FIS, typename... T>
+inline void
+	processArgs(char* buf, T&&... args) {
+	convertArgs<nex, M, FIS>(buf, std::forward<T>(args)...);
+}
+
+template<int...>
+struct S {};
+
+template<FmtInfos...>
+struct Converter {};
+
+template<auto tuple_like, template<auto...> typename Template>
+constexpr decltype(auto) unpack()
+{
+	constexpr auto size = std::tuple_size_v<decltype(tuple_like)>;
+	return[]<std::size_t... Is>(std::index_sequence<Is...>) {
+		return Template<std::get<Is>(tuple_like)...>{};
+	}(std::make_index_sequence<size>{});
+}
+
+
+
+
 
 // sd%%sf%%%fes%h-+ 01233lzhhjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n
 constexpr int kSize = sizeWithoutInvalidSpecs("sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n");
@@ -929,7 +984,7 @@ int main() {
 
 	std::cout << "11-ll-11-ll" << std::endl;
 
-	for (int i = 0; i < 100000000; i++) {
+	for (int i = 0; i < 10000000; i++) {
 		//CFMT_STR(result, buf, 100, "sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n", 45, 's', L"adsds", 1, 1);
 		CFMT_STR(result, buf, 100, "=%f=%f=%f=%f=%f=%f=%f=%f=%f=%f=%f=%f\n", 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1);
 		//CFMT_STR(result, buf, 100, "dadadsadadadadasssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssdad");
@@ -1023,5 +1078,23 @@ int main() {
 	int& rb = b;
 	std::cout << static_cast<long>(rb) << std::endl;
 
-	system("pause");
+
+
+	do {
+
+		static constexpr auto a = std::array{ 0, 1, 2 };
+
+		static constexpr const std::array<FmtInfos, 4> infos = {
+			FmtInfos{6U, 8U, 0, 0, -1, '\000', 'i', true},
+			FmtInfos{35U, 37U, 0, 0, -1, '\000', 'd', true},
+			FmtInfos{40U, 42U, 0, 0, -1, '\000', 'd', true},
+			FmtInfos{49U, 72U, 518, -2147483648, -2147483648, '+', 'd', false}
+		};
+
+		constexpr auto s = unpack<a, S>();
+		constexpr auto converter = unpack<infos, Converter>();
+
+		processArgs<0, 4, infos>(buf, 12, 12, 12, 12, 12);
+	} while (0);
+
 }
