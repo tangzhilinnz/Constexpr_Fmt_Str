@@ -72,7 +72,7 @@ struct FmtInfos {
 	width_t width_ = 0;
 	precision_t prec_ = -1;
 	sign_t sign_ = '\0';
-	terminal_t terminal_ = '?';
+	terminal_t terminal_ = '\0';
 	width_first_t wFirst_ = true; // indicate which one was extracted first in the 
 								  // argument list when width and precision are both
 								  // dynamically resolved
@@ -519,10 +519,10 @@ storeOneChar(const char(&fmt)[N], int& offset, int num = 0) {
 				|| fmt[num + offset] == '*') {
 				offset++;
 			}
-		}
 
-		if (isTerminal(fmt[num + offset])) {
-			offset = saveOffset;
+			if (isTerminal(fmt[num + offset])) {
+				offset = saveOffset;
+			}
 		}
 
 		return fmt[num + offset];
@@ -590,12 +590,40 @@ countValidSpecs(const char(&fmt)[N]) {
 
 
 /*
+ * Count the minimum number of arguments required by valid specifiers in the format string
+ */
+template<size_t M>
+constexpr inline int
+countArgsRequired(const std::array<FmtInfos, M>& FIS) {
+	int count = 0;
+	
+	for (int i = 0; i < M; i++) {
+		count++;
+		if (FIS[i].width_ == DYNAMIC_WIDTH) count++;
+		if (FIS[i].prec_ == DYNAMIC_PRECISION) count++;
+	}
+
+	return count;
+}
+
+
+/*
+ * Count the actual number of arguments passed to CFMT_STR macro
+ */
+template<typename... Ts>
+constexpr inline int
+countArgsPassed(Ts&&... args) {
+	return sizeof...(Ts);
+}
+
+
+/*
  * return the size of the format string without invalid specififers
  * (e.g., "%-+ #0ltz%", "%%", "%-+ K")
  */
 template<int N>
 constexpr inline int
-sizeWithoutInvalidSpecs(const char(&fmt)[N]) {
+sizeExcludeInvalidSpecs(const char(&fmt)[N]) {
 	int pos = 0;
 	int specStar = 0;
 	int size = N;
@@ -686,40 +714,41 @@ fioBufPut(const char* pInBuf, size_t length, OutbufArg& outbuf) {
 	return;
 }
 
-
-template<int nex, size_t M, typename T>
-inline void
-processSingle(OutbufArg& outbuf, int& ret, const char* fmt,
-	const std::array<FmtInfos, M>& FIS, T&& arg) {
-	if (nex >= M) return;
-
-	if (nex < M - 1) {
-		size_t length = static_cast<size_t>(FIS[nex + 1].begin_ - FIS[nex].end_);
-		fioBufPut(fmt + FIS[nex].end_, length, outbuf);
-		ret += length;
-	}
+template <class R, class T>
+constexpr std::tuple<R, bool> formattedInteger([[maybe_unused]] T n) {
+	if constexpr (std::is_integral<T>::value)
+		return { static_cast<R>(n), true };
+	else
+		return { static_cast<R>(0), false };
 }
 
-
-template<int nex = 0, size_t M, typename T, typename... Ts>
-inline void
-processArgs(OutbufArg& outbuf, int& ret, const char* fmt,
-	const std::array<FmtInfos, M>& FIS, T&& head, Ts&&... rest) {
-	// Peel off one argument to convert, and then recursively process rest
-	processSingle<nex>(outbuf, ret, fmt, FIS, std::forward<T>(head));
-	processArgs<nex + 1>(outbuf, ret, fmt, FIS, std::forward<Ts>(rest)...);
-}
 
 /**
- * Specialization of processArgts that processes no arguments, i.e. this
- * is the end of the head/rest recursion. See above for full documentation.
+ * To extend shorts properly, we need both signed and unsigned
+ * argument extraction methods.
  */
-template<int nex = 0, size_t M>
-inline void
-processArgs(OutbufArg& outbuf, int& ret, const char* fmt,
-	const std::array<FmtInfos, M>& FIS) {
-	// No arguments, do nothing.
-}
+#define	SARG(flags, val) \
+	(flags&__FLAG_LONGINT ? formattedInteger<long>(val) : \
+	    flags&__FLAG_SHORTINT ? formattedInteger<short>(val): \
+	    flags&__FLAG_CHARINT ? formattedInteger<signed char>(val) : \
+	    formattedInteger<int>(val))
+#define	UARG(flags, val) \
+	(flags&__FLAG_LONGINT ? formattedInteger<unsigned long>(val) : \
+	    flags&__FLAG_SHORTINT ? formattedInteger<unsigned short>(val) : \
+	    flags&__FLAG_CHARINT ? formattedInteger<unsigned char>(val) : \
+	    formattedInteger<unsigned int>(val))
+#define	INTMAX_SIZE	(__FLAG_INTMAXT|__FLAG_SIZET|__FLAG_PTRDIFFT|__FLAG_LLONGINT)
+#define SJARG(flags, val) \
+	(flags&__FLAG_INTMAXT ? formattedInteger<intmax_t>(val): \
+	    flags&__FLAG_SIZET ? formattedInteger<std::make_signed<size_t>::type>(val) : \
+	    flags&__FLAG_PTRDIFFT ? formattedInteger<ptrdiff_t>(val) : \
+	    formattedInteger<long long>(val))
+#define	UJARG(flags, val) \
+	(flags&__FLAG_INTMAXT ? formattedInteger<uintmax_t>(val) : \
+	    flags&__FLAG_SIZET ? formattedInteger<size_t>(val) : \
+	    flags&__FLAG_PTRDIFFT ? formattedInteger<std::make_unsigned<ptrdiff_t>::type>(val): \
+	    formattedInteger<unsigned long long>(val))
+
 
 /**
  * Logs a log message in the NanoLog system given all the static and dynamic
@@ -754,11 +783,11 @@ inline int
 fioFormat(OutbufArg& outbuf, const char* fmt, const size_t len,
 	const std::array<FmtInfos, M>& FIS, Ts&&... args) {
 
-	if constexpr (M > static_cast<uint32_t>(sizeof...(Ts))) {
-		std::cerr << "CFMT: forced abort due to illegal number of variadic "
-			"arguments passed to CFMT_STR for converting!!!";
-		abort();
-	}
+	//if constexpr (M > static_cast<uint32_t>(sizeof...(Ts))) {
+	//	std::cerr << "CFMT: forced abort due to illegal number of variadic "
+	//		"arguments passed to CFMT_STR for converting!!!";
+	//	abort();
+	//}
 
 	//const char* fmt = (L == 0) ? &format[0] : formatArr.data();
 	//const size_t len = (L == 0) ? N : L;
@@ -839,7 +868,7 @@ getRTFmtStr(const char(&fmt)[N], const std::array<char, L>& fmtArr) {
 
 #define CFMT_STR(result, buffer, count, format, ...) do { \
 	constexpr int kNVS = countValidSpecs(format); \
-	constexpr int kLen = sizeWithoutInvalidSpecs(format); \
+	constexpr int kLen = sizeExcludeInvalidSpecs(format); \
 	/**
 	 * Very Important*** These must be 'static' so that we can save pointers
 	 * to these variables and have them persist beyond the invocation.
@@ -860,96 +889,152 @@ getRTFmtStr(const char(&fmt)[N], const std::array<char, L>& fmtArr) {
 	static constexpr std::array<FmtInfos, kNVS> kFmtInfos = analyzeFormatString<kNVS>(format); \
 	static constexpr auto kformatArr = preprocessInvalidSpecs<kLen>(format); \
 	static constexpr auto kRTStr = getRTFmtStr(format, kformatArr); \
-	OutbufArg outbuf; \
-	outbuf.pBuf_ = buffer; \
-	outbuf.pBufEnd_ = (char*)(buffer + count); \
-	/**
-	* Triggers the printf checker by passing it into a no-op function.
-	* Trick: This call is surrounded by an if false so that the VA_ARGS don't
-	* evaluate for cases like '++i'.*/ \
-	if (false) { checkFormat(format, ##__VA_ARGS__); } \
-	result = fioFormat(outbuf, std::get<const char*>(kRTStr), std::get<int>(kRTStr), kFmtInfos, ##__VA_ARGS__); \
-	/* null - terminate the string */ \
-	if (count != 0) { *outbuf.pBuf_ = '\0'; } \
-} while (0)
+	constexpr int kArgsRequired = countArgsRequired(kFmtInfos); \
+	constexpr int kArgsPassed = countArgsPassed(__VA_ARGS__); \
+	if constexpr (kArgsRequired > kArgsPassed) { \
+		std::cerr << "CFMT: forced abort due to illegal number of variadic " \
+		"arguments passed to CFMT_STR for converting\n" \
+		"(Required: " << kArgsRequired << " ---- " << "Passed: " << kArgsPassed << ")"; \
+	    abort(); \
+	} \
+	else { \
+		OutbufArg outbuf; \
+		outbuf.pBuf_ = buffer; \
+		outbuf.pBufEnd_ = (char*)(buffer + count); \
+		/* Triggers the printf checker by passing it into a no-op function.
+		* Trick: This call is surrounded by an if false so that the VA_ARGS don't
+		* evaluate for cases like '++i'.*/ \
+		if (false) { checkFormat(format, ##__VA_ARGS__); } \
+		result = fioFormat(outbuf, std::get<const char*>(kRTStr), std::get<int>(kRTStr), kFmtInfos, ##__VA_ARGS__); \
+		/* null - terminate the string */ \
+		if (count != 0) { *outbuf.pBuf_ = '\0'; } \
+	} \
+} while (0);
 
 int tz_snprintf(char* buffer, size_t  count, const char* fmt, ...);
 
 
-
-
-
-template<int nex, size_t M, const std::array<FmtInfos, M>& FIS, typename T>
-inline void
-	convertSingle(char* outbuf, T && arg) {
-	if constexpr (nex >= M) return;
-
+// ============================================================================
+// ============================================================================
+template<int IDX, int... Is, typename T>
+void s_single(T&& arg) {
+	if constexpr (std::get<IDX>(std::forward_as_tuple(Is...)) >= 2) {
+		std::cout << "compiler constant: "
+			<< std::get<IDX>(std::forward_as_tuple(Is...))
+			<< "<---->" << std::forward<T>(arg) << std::endl;
+	}
 	else {
+		std::cout << "compiler constant is less than 2: "
+			<< std::get<IDX>(std::forward_as_tuple(Is...))
+			<< "<---->" << std::forward<T>(arg) << std::endl;
+	}
+}
 
-		if constexpr (FIS[nex].terminal_ == 'i' || FIS[nex].terminal_ == 'd') {
-			if constexpr ((FIS[nex].flags_ & __FLAG_LONGINT) != 0) {
+template<int IDX, int... Is, typename T, typename... Ts>
+void s_helper(T&& arg, Ts&&... rest) {
+	s_single<IDX, Is...>(std::forward<T>(arg));
+	s_impl<IDX + 1, Is...>(std::forward<Ts>(rest)...);
+}
+
+template<int IDX, int... Is, typename... Ts>
+void s_impl(Ts&&... args) {
+	s_helper<IDX, Is...>(std::forward<Ts>(args)...);
+}
+
+template<int IDX, int... Is>
+void s_impl() {}
+
+template<int... Is>
+struct S {
+	template <int IDX = 0, typename... Ts>
+	constexpr void operator()(Ts&&... args) const {
+		if constexpr (static_cast <uint32_t>(sizeof...(Is)) /*std::get<3>(std::forward_as_tuple(Is...))*/ >
+			static_cast<uint32_t>(sizeof...(Ts))) {
+			std::cerr << "CFMT: forced abort due to illegal number of variadic "
+				"arguments passed to CFMT_STR for converting!!!";
+			abort();
+		}
+		else {
+			s_impl<IDX, Is...>(std::forward<Ts>(args)...);
+		}
+	}
+};
+// ============================================================================
+// ============================================================================
+
+// ============================================================================
+// ============================================================================
+template<int IDX, FmtInfos... IFs, typename T>
+void converter_single(T&& arg) {
+
+	if constexpr (IDX >= static_cast <uint32_t>(sizeof...(IFs))) return;
+	else {
+		constexpr auto& FIS = std::get<IDX>(std::forward_as_tuple(IFs...));
+
+		if constexpr (FIS.terminal_ == 'i' || FIS.terminal_ == 'd') {
+			if constexpr ((FIS.flags_ & __FLAG_LONGINT) != 0) {
 				std::cout << "long int" << std::endl;
 			}
-			else if constexpr ((FIS[nex].flags_ & __FLAG_SHORTINT) != 0) {
+			else if constexpr ((FIS.flags_ & __FLAG_SHORTINT) != 0) {
 				std::cout << "short int" << std::endl;
 			}
-			else if constexpr ((FIS[nex].flags_ & __FLAG_CHARINT) != 0) {
+			else if constexpr ((FIS.flags_ & __FLAG_CHARINT) != 0) {
 				std::cout << "signed char" << std::endl;
 			}
-			else if constexpr ((FIS[nex].flags_ & __FLAG_LLONGINT) != 0) {
+			else if constexpr ((FIS.flags_ & __FLAG_LLONGINT) != 0) {
 				std::cout << "long long int" << std::endl;
 			}
-			else if constexpr ((FIS[nex].flags_ & __FLAG_SIZET) != 0) {
+			else if constexpr ((FIS.flags_ & __FLAG_SIZET) != 0) {
 				std::cout << "size_t" << std::endl;
 			}
-			else if constexpr ((FIS[nex].flags_ & __FLAG_PTRDIFFT) != 0) {
+			else if constexpr ((FIS.flags_ & __FLAG_PTRDIFFT) != 0) {
 				std::cout << "ptrdiff_t" << std::endl;
 			}
-			else if constexpr ((FIS[nex].flags_ & __FLAG_INTMAXT) != 0) {
+			else if constexpr ((FIS.flags_ & __FLAG_INTMAXT) != 0) {
 				std::cout << "intmax_t" << std::endl;
 			}
 			else {
 				std::cout << "int" << std::endl;
 			}
 		}
-		else if constexpr (FIS[nex].terminal_ == 'x' || FIS[nex].terminal_ == 'X' ||
-			FIS[nex].terminal_ == 'o' || FIS[nex].terminal_ == 'u') {
+		else if constexpr (FIS.terminal_ == 'x' || FIS.terminal_ == 'X' ||
+			FIS.terminal_ == 'o' || FIS.terminal_ == 'u') {
 		}
 		else {}
 	}
 }
 
-
-/**
-* Specialization of processArgts that processes no arguments, i.e. this
-* is the end of the head/rest recursion. See above for full documentation.
-*/
-template<int nex, size_t M, const std::array<FmtInfos, M>& FIS>
-inline void
-	convertArgs(char* outbuf) {
-	// No arguments, do nothing.
-	return;
+template<int IDX, FmtInfos... IFs, typename T, typename... Ts>
+void converter_helper(T&& arg, Ts&&... rest) {
+	converter_single<IDX, IFs...>(std::forward<T>(arg));
+	converter_impl<IDX + 1, IFs...>(std::forward<Ts>(rest)...);
 }
 
-template<int nex, size_t M, const std::array<FmtInfos, M>& FIS, typename T, typename... Ts>
-inline void
-	convertArgs(char* outbuf, T && head, Ts&&... rest) {
-	// Peel off one argument to convert, and then recursively process rest
-	convertSingle<nex, M, FIS>(outbuf, std::forward<T>(head));
-	convertArgs<nex + 1, M, FIS>(outbuf, std::forward<Ts>(rest)...);
+template<int IDX, FmtInfos... IFs, typename... Ts>
+void converter_impl(Ts&&... args) {
+	converter_helper<IDX, IFs...>(std::forward<Ts>(args)...);
 }
 
-template<int nex, size_t M, const std::array<FmtInfos, M>& FIS, typename... T>
-inline void
-	processArgs(char* buf, T&&... args) {
-	convertArgs<nex, M, FIS>(buf, std::forward<T>(args)...);
-}
+template<int IDX, FmtInfos... IFs>
+void converter_impl() {}
 
-template<int...>
-struct S {};
-
-template<FmtInfos...>
-struct Converter {};
+template<FmtInfos... IFs>
+struct Converter {
+	template <int IDX = 0, typename... Ts>
+	constexpr void operator()(Ts&&... args) const {
+		if constexpr (static_cast <uint32_t>(sizeof...(IFs)) >
+			static_cast<uint32_t>(sizeof...(Ts))) {
+			std::cerr << "CFMT: forced abort due to illegal number of variadic "
+				"arguments passed to CFMT_STR for converting!!!";
+			abort();
+		}
+		else {
+			converter_impl<IDX, IFs...>(std::forward<Ts>(args)...);
+		}
+	}
+};
+// ============================================================================
+// ============================================================================
 
 template<auto tuple_like, template<auto...> typename Template>
 constexpr decltype(auto) unpack()
@@ -957,23 +1042,20 @@ constexpr decltype(auto) unpack()
 	constexpr auto size = std::tuple_size_v<decltype(tuple_like)>;
 	return[]<std::size_t... Is>(std::index_sequence<Is...>) {
 		return Template<std::get<Is>(tuple_like)...>{};
-	}(std::make_index_sequence<size>{});
+	} (std::make_index_sequence<size>{});
 }
 
 
-
-
-
-// sd%%sf%%%fes%h-+ 01233lzhhjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n
-constexpr int kSize = sizeWithoutInvalidSpecs("sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n");
-constexpr int kNVS = countValidSpecs("sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n");
-//constexpr static std::array<char, SIZE> myStr = preprocessInvalidSpecs<SIZE>("sd%%sf%%%fes%h-+ 01233lzhhjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***f23.\n");
-constexpr static std::array<char, kSize> myStr = preprocessInvalidSpecs<kSize>("sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n");
-constexpr int kSize1 = sizeWithoutInvalidSpecs("sdsssssssss%-+ *.*... *llzthhlh#-054d=ssssssadfadfasfsasadasdasdsa.\n");
-constexpr static auto myStr1 = preprocessInvalidSpecs<kSize1>("sdsssssssss%-+ *.*... *llzthhlh#-054d=ssssssadfadfasfsasadasdasdsa.\n");
-constexpr static auto myStr2 = preprocessInvalidSpecs<2>("%ks");
-// "sd%sf%%fes%sds%%%%gjt *.***k12.dsd%%s%%d%f%f%dsss%h-+ 01233lzhhjt *.***d23.\n"
-constexpr std::array<FmtInfos, kNVS> fmtInfos = analyzeFormatString<kNVS>("sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n");
+//// sd%%sf%%%fes%h-+ 01233lzhhjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n
+//constexpr int kSize = sizeExcludeInvalidSpecs("sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n");
+//constexpr int kNVS = countValidSpecs("sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n");
+////constexpr static std::array<char, SIZE> myStr = preprocessInvalidSpecs<SIZE>("sd%%sf%%%fes%h-+ 01233lzhhjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***f23.\n");
+//constexpr static std::array<char, kSize> myStr = preprocessInvalidSpecs<kSize>("sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n");
+//constexpr int kSize1 = sizeExcludeInvalidSpecs("sdsssssssss%-+ *.*... *llzthhlh#-054d=ssssssadfadfasfsasadasdasdsa.\n");
+//constexpr static auto myStr1 = preprocessInvalidSpecs<kSize1>("sdsssssssss%-+ *.*... *llzthhlh#-054d=ssssssadfadfasfsasadasdasdsa.\n");
+//constexpr static auto myStr2 = preprocessInvalidSpecs<2>("%ks");
+//// "sd%sf%%fes%sds%%%%gjt *.***k12.dsd%%s%%d%f%f%dsss%h-+ 01233lzhhjt *.***d23.\n"
+//constexpr std::array<FmtInfos, kNVS> fmtInfos = analyzeFormatString<kNVS>("sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n");
 
 int main() {
 	auto start = system_clock::now();
@@ -985,10 +1067,10 @@ int main() {
 	std::cout << "11-ll-11-ll" << std::endl;
 
 	for (int i = 0; i < 10000000; i++) {
-		//CFMT_STR(result, buf, 100, "sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n", 45, 's', L"adsds", 1, 1);
-		CFMT_STR(result, buf, 100, "=%f=%f=%f=%f=%f=%f=%f=%f=%f=%f=%f=%f\n", 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1);
+		CFMT_STR(result, buf, 100, "sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n", 45, 's', L"adsds", 1, 1,'a');
+		//CFMT_STR(result, buf, 100, "=%f=%f=%f=%f=%f=%f=%f=%f=%f=%f=%f=%f\n", 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1);
 		//CFMT_STR(result, buf, 100, "dadadsadadadadasssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssdad");
-		//CFMT_STR(result, buf, 100, "sd+ 01236%s66657==k31%s==lllllz%ahhjt *.***d23.\n", 45, 's', L"adsds",1,1);
+		//CFMT_STR(result, buf, 100, "sd+ 01236%s66657==k31%s==lllllz%ahhjt *.***d23.\n", 45, 's', L"adsds", 1, 1, 34);
 		//CFMT_STR(result, buf, 100, "sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n", 2, 45, 's', L"adsds");
 		//CFMT_STR(result, buf, 100, "34342323%hls-+ 0#s...llks12.0#%**.***+-.**lls*.*20%%ahjhj",2, L"aad");
 		//CFMT_STR(result, buf, 100, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
@@ -1078,23 +1160,40 @@ int main() {
 	int& rb = b;
 	std::cout << static_cast<long>(rb) << std::endl;
 
+	constexpr auto intResult = formattedInteger<intmax_t>(3);
+	re = to_chars(buf, buf + 100, std::get<0>(intResult), 10);
+	*re.ptr = '\0';
+	std::cout << buf << std::endl;
 
 
-	do {
 
-		static constexpr auto a = std::array{ 0, 1, 2 };
 
-		static constexpr const std::array<FmtInfos, 4> infos = {
+	{
+		static constexpr auto a = std::array<int, 4>{ 1, 2, 4, 6};
+		static constexpr std::array<int, 0> a_zero = {};
+		//constexpr std::array<char, 0> c = {};
+
+		static constexpr std::array<FmtInfos, 4> infos = {
 			FmtInfos{6U, 8U, 0, 0, -1, '\000', 'i', true},
 			FmtInfos{35U, 37U, 0, 0, -1, '\000', 'd', true},
 			FmtInfos{40U, 42U, 0, 0, -1, '\000', 'd', true},
 			FmtInfos{49U, 72U, 518, -2147483648, -2147483648, '+', 'd', false}
 		};
 
-		constexpr auto s = unpack<a, S>();
+		//constexpr auto converter = converterFromSTDArray<4, infos>();
+
+
+		constexpr const auto s = unpack<a, S>();
+		constexpr const auto s_zero = unpack<a_zero, S>();
 		constexpr auto converter = unpack<infos, Converter>();
 
-		processArgs<0, 4, infos>(buf, 12, 12, 12, 12, 12);
-	} while (0);
+		//s('a','b', 'c', 'd');
+		//s_zero();
+		converter('a', 'b', 'c', 12, 34);
+	}
 
+
+
+
+	system("pause");
 }
