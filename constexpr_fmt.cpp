@@ -45,13 +45,78 @@ using namespace chrono;
 #define DYNAMIC_WIDTH      0x80000000
 #define DYNAMIC_PRECISION  0x80000000
 
-#define BUF 100
+#define BUF 400
+
+// A macro to disallow the copy constructor and operator= functions
+#define DISALLOW_COPY_AND_ASSIGN(TypeName) \
+    TypeName(const TypeName&) = delete; \
+    TypeName& operator=(const TypeName&) = delete;
 
 
 /** used by CFMT_STR */
 struct OutbufArg {
-	char* pBuf_;            // running pointer to the next char
-	char* pBufEnd_;         // pointer to buffer end 
+
+	template <size_t N>
+	OutbufArg(char(&buffer)[N]) : pBuf_(buffer), size_(N), written_(0) {
+	}
+
+	OutbufArg(char* buffer, size_t size) : pBuf_(buffer), size_(size), written_(0) {
+	}
+
+	size_t getWrittenNum() noexcept {
+		return written_;
+	}
+
+	void write(char ch) noexcept {
+		++written_;
+
+		if (size_ > 1) {
+			*pBuf_++ = ch;
+			--size_;
+		}
+	}
+
+	/**
+	 * Copies [n] bytes from source p to destination pBuf_, leaving pBuf_ 
+	 * pointing at byte following block copied.
+	 * If [n] exceeds the number of bytes available in pBuf_, only the number
+	 * of bytes that fit within the buffer are copied. In this case [n] is
+	 * still added to written_ (although no further copying will be performed)
+	 * so that written_ can record the number of characters that would have 
+	 * been copied if the supplied buffer was of sufficient size.
+	 */
+	void write(const char* p, size_t n) {
+		written_ += n;
+
+		if (size_ > 1) {
+			size_t count = std::min(size_, n);
+			std::memcpy(pBuf_, p, count);
+			size_ -= count;
+			pBuf_ += count;
+		}
+	}
+
+	void done() noexcept {
+	    *pBuf_ = '\0';
+	}
+
+private:
+
+	// running pointer to the next char
+	char* pBuf_/*{ nullptr }*/;
+
+	// pointer to buffer end
+	// char* pBufEnd_{ nullptr };
+
+	// writing buffer size
+	size_t size_/*{ 0 }*/;
+
+	// record the number of characters that would have been written if writing
+	// buffer had been sufficiently large, not counting the terminating null 
+	// character. 
+	size_t written_/*{ 0 }*/;
+
+	//DISALLOW_COPY_AND_ASSIGN(OutbufArg);
 };
 
 
@@ -673,51 +738,6 @@ checkFormat(CFMT_PRINTF_FORMAT const char*, ...) {}
 
 
 /**
- * This is a support routine for fioFormat(). This routine copies [length]
- * bytes from source to destination, leaving the destination buffer pointer
- * (pArg->pBuf) pointing at byte following block copied.
- *
- * If [length] exceeds the number of bytes available in the buffer, only the
- * number of bytes that fit within the buffer are copied. In this case
- * OK is still returned (although no further copying will be performed) so
- * that fioFormat() can return the number of characters that would have been
- * copied if the supplied buffer was of sufficient size.
- *
- * \param pInBuf
- *      pointer to input buffer
- * \param length
- *      length of input buffer
- * \param pArg
- *      fioBufPut argument structure
- *
- * RETURNS: OK always
- */
-inline void
-fioBufPut(const char* pInBuf, size_t length, OutbufArg& outbuf) {
-	size_t remaining;
-
-	//if (length == 0) return;
-
-	// check if sufficient free space remains in the buffer
-	remaining = (size_t)(outbuf.pBufEnd_ - outbuf.pBuf_ - 1);
-	// the last byte position is reserved for the terminating '\0' 
-
-	// fail if at the end of buffer, recall need a single byte for null
-	if (std::make_signed<size_t>::type(remaining) <= 0)
-		return;
-
-	else if (length > remaining)
-		length = remaining;
-
-	memcpy(outbuf.pBuf_, pInBuf, length);
-
-	outbuf.pBuf_ += length;
-
-	return;
-}
-
-
-/**
  * Logs a log message in the NanoLog system given all the static and dynamic
  * information associated with the log message. This function is meant to work
  * in conjunction with the #define-d NANO_LOG() and expects the caller to
@@ -861,12 +881,10 @@ getRTFmtStr(const char(&fmt)[N], const std::array<char, L>& fmtArr) {
 	    abort(); \
 	} \
 	else { \
-		OutbufArg outbuf; \
-		outbuf.pBuf_ = buffer; \
-		outbuf.pBufEnd_ = (char*)(buffer + count); \
+		OutbufArg outbuf(buufer, count); \
 		if constexpr (0 == kNVS) { \
-			fioBufPut(std::get<const char*>(kRTStr), std::get<int>(kRTStr) - 1, outbuf); \
-			result = std::get<int>(kRTStr) - 1; \
+			outbuf.write(std::get<const char*>(kRTStr), std::get<int>(kRTStr) - 1); \
+			result = outbuf.getWrittenNum; \
 		} \
 		else { \
 		    /* Triggers the printf checker by passing it into a no-op function.
@@ -884,49 +902,49 @@ int tz_snprintf(char* buffer, size_t  count, const char* fmt, ...);
 
 // ============================================================================
 // ============================================================================
-template<int nex, int... Is, typename T>
-void s_single(T&& arg) {
-	if constexpr (std::get<nex>(std::forward_as_tuple(Is...)) >= 2) {
-		std::cout << "compiler constant: "
-			<< std::get<nex>(std::forward_as_tuple(Is...))
-			<< "<---->" << std::forward<T>(arg) << std::endl;
-	}
-	else {
-		std::cout << "compiler constant is less than 2: "
-			<< std::get<nex>(std::forward_as_tuple(Is...))
-			<< "<---->" << std::forward<T>(arg) << std::endl;
-	}
-}
-
-template<int nex, int... Is, typename T, typename... Ts>
-void s_helper(T&& arg, Ts&&... rest) {
-	s_single<nex, Is...>(std::forward<T>(arg));
-	s_impl<nex + 1, Is...>(std::forward<Ts>(rest)...);
-}
-
-template<int nex, int... Is, typename... Ts>
-void s_impl(Ts&&... args) {
-	s_helper<nex, Is...>(std::forward<Ts>(args)...);
-}
-
-template<int nex, int... Is>
-void s_impl() {}
-
-template<int... Is>
-struct S {
-	template <int nex = 0, typename... Ts>
-	constexpr void operator()(Ts&&... args) const {
-		if constexpr (static_cast <uint32_t>(sizeof...(Is)) /*std::get<3>(std::forward_as_tuple(Is...))*/ >
-			static_cast<uint32_t>(sizeof...(Ts))) {
-			std::cerr << "CFMT: forced abort due to illegal number of variadic "
-				"arguments passed to CFMT_STR for converting!!!";
-			abort();
-		}
-		else {
-			s_impl<nex, Is...>(std::forward<Ts>(args)...);
-		}
-	}
-};
+//template<int nex, int... Is, typename T>
+//void s_single(T&& arg) {
+//	if constexpr (std::get<nex>(std::forward_as_tuple(Is...)) >= 2) {
+//		std::cout << "compiler constant: "
+//			<< std::get<nex>(std::forward_as_tuple(Is...))
+//			<< "<---->" << std::forward<T>(arg) << std::endl;
+//	}
+//	else {
+//		std::cout << "compiler constant is less than 2: "
+//			<< std::get<nex>(std::forward_as_tuple(Is...))
+//			<< "<---->" << std::forward<T>(arg) << std::endl;
+//	}
+//}
+//
+//template<int nex, int... Is, typename T, typename... Ts>
+//void s_helper(T&& arg, Ts&&... rest) {
+//	s_single<nex, Is...>(std::forward<T>(arg));
+//	s_impl<nex + 1, Is...>(std::forward<Ts>(rest)...);
+//}
+//
+//template<int nex, int... Is, typename... Ts>
+//void s_impl(Ts&&... args) {
+//	s_helper<nex, Is...>(std::forward<Ts>(args)...);
+//}
+//
+//template<int nex, int... Is>
+//void s_impl() {}
+//
+//template<int... Is>
+//struct S {
+//	template <int nex = 0, typename... Ts>
+//	constexpr void operator()(Ts&&... args) const {
+//		if constexpr (static_cast <uint32_t>(sizeof...(Is)) /*std::get<3>(std::forward_as_tuple(Is...))*/ >
+//			static_cast<uint32_t>(sizeof...(Ts))) {
+//			std::cerr << "CFMT: forced abort due to illegal number of variadic "
+//				"arguments passed to CFMT_STR for converting!!!";
+//			abort();
+//		}
+//		else {
+//			s_impl<nex, Is...>(std::forward<Ts>(args)...);
+//		}
+//	}
+//};
 // ============================================================================
 // ============================================================================
 
@@ -963,10 +981,10 @@ inline constexpr int formattedWidth([[maybe_unused]] T&& n) {
 //#define	INTMAX_SIZE	(__FLAG_INTMAXT|__FLAG_SIZET|__FLAG_PTRDIFFT|__FLAG_LLONGINT)
 
 template<SpecInfo SI, int M, typename T>
-inline void converter_single(OutbufArg& outbuf, const char* fmt, char(&buf)[M], T&& arg,
+/*inline */void converter_single(OutbufArg& outbuf, const char* fmt, char(&buf)[M], T&& arg,
 	const int W = 0, const int P = -1) {
 
-	//char buf[BUF];	// space for %c, %[diouxX], %[eEfgG]
+	//char buf[100];	// space for %c, %[diouxX], %[eEfgG]
 	std::to_chars_result ret;
 	//char* cp = nullptr;
 	size_t len = 0;
@@ -979,50 +997,50 @@ inline void converter_single(OutbufArg& outbuf, const char* fmt, char(&buf)[M], 
 			if constexpr ((SI.flags_ & __FLAG_LONGINT) != 0) {
 				//std::tie(ulval, OK) = formattedInteger<long int>(std::forward<T>(arg));
 				//std::cout << "long int" << std::endl;
-				ret = std::to_chars(buf, buf + BUF, static_cast<long int>(arg));
+				ret = std::to_chars(buf, buf + 100, static_cast<long int>(arg));
 				//len = ret.ptr - buf;
 			}
 			else if constexpr ((SI.flags_ & __FLAG_SHORTINT) != 0) {
 				//std::tie(ulval, OK) = formattedInteger<short int>(std::forward<T>(arg));
 				//std::cout << "short int" << std::endl;
-				ret = std::to_chars(buf, buf + BUF, static_cast<short int>(arg));
+				ret = std::to_chars(buf, buf + 100, static_cast<short int>(arg));
 				//len = ret.ptr - buf;
 			}
 			else if constexpr ((SI.flags_ & __FLAG_CHARINT) != 0) {
 				//std::tie(ulval, OK) = formattedInteger<signed char>(std::forward<T>(arg));
 				//std::cout << "signed char" << std::endl;
-				ret = std::to_chars(buf, buf + BUF, static_cast<signed char>(arg));
+				ret = std::to_chars(buf, buf + 100, static_cast<signed char>(arg));
 				//len = ret.ptr - buf;
 			}
 			else if constexpr ((SI.flags_ & __FLAG_LLONGINT) != 0) {
 				//std::tie(ujval, OK) = formattedInteger<long long int>(std::forward<T>(arg));
 				//std::cout << "long long int" << std::endl;
-				ret = std::to_chars(buf, buf + BUF, static_cast<long long int>(arg));
+				ret = std::to_chars(buf, buf + 100, static_cast<long long int>(arg));
 				//len = ret.ptr - buf;
 			}
 			else if constexpr ((SI.flags_ & __FLAG_SIZET) != 0) {
 				//std::tie(ujval, OK) =
 				//	formattedInteger<std::make_signed<size_t>::type>(std::forward<T>(arg));
 				//std::cout << "size_t" << std::endl;
-				ret = std::to_chars(buf, buf + BUF, static_cast<std::make_signed<size_t>::type>(arg));
+				ret = std::to_chars(buf, buf + 100, static_cast<std::make_signed<size_t>::type>(arg));
 				//len = ret.ptr - buf;
 			}
 			else if constexpr ((SI.flags_ & __FLAG_PTRDIFFT) != 0) {
 				//std::tie(ujval, OK) = formattedInteger<ptrdiff_t>(std::forward<T>(arg));
 				//std::cout << "ptrdiff_t" << std::endl;
-				ret = std::to_chars(buf, buf + BUF, static_cast<ptrdiff_t>(arg));
+				ret = std::to_chars(buf, buf + 100, static_cast<ptrdiff_t>(arg));
 				//len = ret.ptr - buf;
 			}
 			else if constexpr ((SI.flags_ & __FLAG_INTMAXT) != 0) {
 				//std::tie(ujval, OK) = formattedInteger<intmax_t>(std::forward<T>(arg));
 				//std::cout << "intmax_t" << std::endl;
-				ret = std::to_chars(buf, buf + BUF, static_cast<intmax_t>(arg));
+				ret = std::to_chars(buf, buf + 100, static_cast<intmax_t>(arg));
 				//len = ret.ptr - buf;
 			}
 			else {
 				//std::tie(ulval, OK) = formattedInteger<int>(std::forward<T>(arg));
 				//std::cout << "int" << std::endl;
-				ret = std::to_chars(buf, buf + BUF, static_cast<int>(arg));
+				ret = std::to_chars(buf, buf + 100, static_cast<int>(arg));
 				//len = ret.ptr - buf;
 			}
 
@@ -1039,22 +1057,25 @@ inline void converter_single(OutbufArg& outbuf, const char* fmt, char(&buf)[M], 
 	}
 	else {}
 
-	fioBufPut(buf, len, outbuf);
+	outbuf.write(buf, len);
 	//*ret.ptr = '\0';
 
 }
 
+template</*int nex, */SpecInfo SI, SpecInfo... SIs, int M, typename... Ts>
+/*inline */void converter_impl(OutbufArg& outbuf, const char* fmt, char(&buf)[M], Ts&&...args);
 
-template<int nex, SpecInfo... SIs, int M, typename T, typename... Ts>
-inline void converter_args(OutbufArg& outbuf, const char* fmt, char(&buf)[M], T&& arg, Ts&&... rest) {
-	constexpr auto& SI = std::get<nex>(std::forward_as_tuple(SIs...));
+
+template</*int nex*/SpecInfo SI, SpecInfo... SIs, int M, typename T, typename... Ts>
+/*inline */void converter_args(OutbufArg& outbuf, const char* fmt, char(&buf)[M], T&& arg, Ts&&... rest) {
+	//constexpr auto& SI = std::get<nex>(std::forward_as_tuple(SIs...));
 	converter_single<SI>(outbuf, fmt, buf, std::forward<T>(arg));
-	converter_impl<nex + 1, SIs...>(outbuf, fmt, buf, std::forward<Ts>(rest)...);
+	converter_impl</*nex + 1, */SIs...>(outbuf, fmt, buf, std::forward<Ts>(rest)...);
 }
 
-template<int nex, const SpecInfo&... SIs, int M, typename D, typename T, typename... Ts>
-inline void converter_D_args(OutbufArg& outbuf, const char* fmt, char(&buf)[M], D&& d, T&& arg, Ts&&... rest) {
-	constexpr auto& SI = std::get<nex>(std::forward_as_tuple(SIs...));
+template</*int nex,*/SpecInfo SI, SpecInfo... SIs, int M, typename D, typename T, typename... Ts>
+/*inline */void converter_D_args(OutbufArg& outbuf, const char* fmt, char(&buf)[M], D&& d, T&& arg, Ts&&... rest) {
+	//constexpr auto& SI = std::get<nex>(std::forward_as_tuple(SIs...));
 
 	if constexpr (SI.width_ == DYNAMIC_WIDTH) {
 		// test 
@@ -1077,12 +1098,12 @@ inline void converter_D_args(OutbufArg& outbuf, const char* fmt, char(&buf)[M], 
 	else { /* should never happen */
 		abort();
 	}
-	converter_impl<nex + 1, SIs...>(outbuf, fmt, buf, std::forward<Ts>(rest)...);
+	converter_impl</*nex + 1, */SIs...>(outbuf, fmt, buf, std::forward<Ts>(rest)...);
 }
 
-template<int nex, SpecInfo... SIs, int M, typename D1, typename D2, typename T, typename... Ts>
-inline void converter_D_D_args(OutbufArg& outbuf, const char* fmt, char(&buf)[M], D1&& d1, D2&& d2, T&& arg, Ts&&... rest) {
-	constexpr auto& SI = std::get<nex>(std::forward_as_tuple(SIs...));
+template</*int nex, */SpecInfo SI, SpecInfo... SIs, int M, typename D1, typename D2, typename T, typename... Ts>
+/*inline */void converter_D_D_args(OutbufArg& outbuf, const char* fmt, char(&buf)[M], D1&& d1, D2&& d2, T&& arg, Ts&&... rest) {
+	//constexpr auto& SI = std::get<nex>(std::forward_as_tuple(SIs...));
 
 	if constexpr (SI.wFirst_) {
 		// test 
@@ -1108,38 +1129,41 @@ inline void converter_D_D_args(OutbufArg& outbuf, const char* fmt, char(&buf)[M]
 			formattedPrec(std::forward<D1>(d1)));
 	}
 	
-	converter_impl<nex + 1, SIs...>(outbuf, fmt, buf, std::forward<Ts>(rest)...);
+	converter_impl</*nex + 1, */SIs...>(outbuf, fmt, buf, std::forward<Ts>(rest)...);
 }
 
-template<int nex, SpecInfo... SIs, int M, typename... Ts>
-inline void converter_impl(OutbufArg& outbuf, const char* fmt, char(&buf)[M], Ts&&...args) {
-	if constexpr (nex >= static_cast <uint32_t>(sizeof...(SIs))) return;
-	else {
-		constexpr auto& SI = std::get<nex>(std::forward_as_tuple(SIs...));
+template</*int nex, */SpecInfo SI, SpecInfo... SIs, int M, typename... Ts>
+/*inline */void converter_impl(OutbufArg& outbuf, const char* fmt, char(&buf)[M], Ts&&...args) {
+	//if constexpr (nex >= static_cast <uint32_t>(sizeof...(SIs))) return;
+	//else {
+		//constexpr auto& SI = std::get<nex>(std::forward_as_tuple(SIs...));
 
 		if constexpr (SI.width_ == DYNAMIC_WIDTH 
 			&& SI.prec_ == DYNAMIC_PRECISION) {
-			converter_D_D_args<nex, SIs...>(outbuf, fmt, buf, std::forward<Ts>(args)...);
+			converter_D_D_args</*nex,*/SI, SIs...>(outbuf, fmt, buf, std::forward<Ts>(args)...);
 		}
 		else if constexpr (SI.width_ == DYNAMIC_WIDTH
 			|| SI.prec_ == DYNAMIC_PRECISION) {
-			converter_D_args<nex, SIs...>(outbuf, fmt, buf, std::forward<Ts>(args)...);
+			converter_D_args</*nex,*/SI, SIs...>(outbuf, fmt, buf, std::forward<Ts>(args)...);
 		}
 		else {
-			converter_args<nex, SIs...>(outbuf, fmt, buf, std::forward<Ts>(args)...);
+			converter_args</*nex,*/SI, SIs...>(outbuf, fmt, buf, std::forward<Ts>(args)...);
 		}
-	}
+	//}
 }
 
-template<int nex, SpecInfo... SIs, int M>
-inline void converter_impl(OutbufArg& outbuf, const char* fmt, char(&buf)[M]) { }
+template<int M, typename... Ts>
+/*inline */void converter_impl(OutbufArg& outbuf, const char* fmt, char(&buf)[M], Ts&&...args) { }
+
+template</*int nex, *//*SpecInfo... SIs,*/ int M>
+/*inline */void converter_impl(OutbufArg& outbuf, const char* fmt, char(&buf)[M]) { }
 
 template<SpecInfo... SIs>
 struct Converter {
 	constexpr Converter() {}
 
-	template <int nex = 0, int M, typename... Ts>
-	void operator()(OutbufArg& outbuf, const char* fmt, char(&buffer)[M] ,Ts&&... args) const {
+	template </*int nex = 0, */typename... Ts>
+	void operator()(OutbufArg& outbuf, const char* fmt,Ts&&... args) const {
 		//constexpr auto numArgsReuqired =
 		//	countArgsRequired(std::array<SpecInfo, sizeof...(SIs)>{ {SIs...} });
 		//if constexpr (static_cast<uint32_t>(numArgsReuqired) > 
@@ -1153,7 +1177,8 @@ struct Converter {
 		//else {
 		//	converter_impl<nex, SIs...>(outbuf, fmt, std::forward<Ts>(args)...);
 		//}
-		converter_impl<nex, SIs...>(outbuf, fmt, buffer, std::forward<Ts>(args)...);
+		char buffer[BUF];
+		converter_impl</*nex, */SIs...>(outbuf, fmt, buffer, std::forward<Ts>(args)...);
 
 		//auto processSingle = [&]<int nex = 0, typename T>(T&& input) {};
 
@@ -1214,47 +1239,60 @@ int main() {
 		//result = tz_snprintf(buf, 10, "34342323%hlk-+ 0#%...llks12.0#%**.***+-.**llk*.*20%%ahjhj");
 		//result = tz_snprintf(buf, 100, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
 		//result = tz_snprintf(buf, 100, "%hhd%hhd%hhd%hhd%hhd", i, i, i, i, i);
+		//result = tz_snprintf(buf, 100, "%lld%lld%lld%lld", (long long)i, (long long)i, (long long)i, (long long)i, (long long)i);
+		/*result = tz_snprintf(buf, 400, "%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld", 
+			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i);*/
+		//result = tz_snprintf(buf, 400, "%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd",
+		//	i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
 
-		OutbufArg outbuf;
-		outbuf.pBuf_ = buf;
-		outbuf.pBufEnd_ = (char*)(buf + 100);
-		std::to_chars_result ret;
-		ret = std::to_chars(buf, buf + 100, i);
-		fioBufPut(buf, ret.ptr - buf, outbuf);
-		ret = std::to_chars(buf, buf + 100, i);
-		fioBufPut(buf, ret.ptr - buf, outbuf);
-		ret = std::to_chars(buf, buf + 100, i);
-		fioBufPut(buf, ret.ptr - buf, outbuf);
-		ret = std::to_chars(buf, buf + 100, i);
-		fioBufPut(buf, ret.ptr - buf, outbuf);
-		ret = std::to_chars(buf, buf + 100, i);
-		fioBufPut(buf, ret.ptr - buf, outbuf);
+		//result = tz_snprintf(buf, 400, "%hhd%", i);
+
+		//OutbufArg outbuf(buf);
+		//std::to_chars_result ret;
+		//ret = std::to_chars(buf, buf + 100, (long long)i);
+		//outbuf.write(buf, ret.ptr - buf);
+		//ret = std::to_chars(buf, buf + 100, (long long)i);
+		//outbuf.write(buf, ret.ptr - buf);
+		//ret = std::to_chars(buf, buf + 100, (long long)i);
+		//outbuf.write(buf, ret.ptr - buf);
+		//ret = std::to_chars(buf, buf + 100, (long long)i);
+		//outbuf.write(buf, ret.ptr - buf);
+		//ret = std::to_chars(buf, buf + 100, (long long)i);
+		//outbuf.write(buf, ret.ptr - buf);
+		//outbuf.done();
 
 
 		{	
-			constexpr static std::array<SpecInfo, 5> SIs = {
-				//SpecInfo{6U, 8U, 0, 0, -1, '\000', 'i', true},
-				//SpecInfo{6U, 8U, 0, 0, -1, '\000', 'i', true},
-				//SpecInfo{6U, 8U, 0, 0, -1, '\000', 'i', true},
-				//SpecInfo{6U, 8U, 0, 0, -1, '\000', 'i', true},
-				//SpecInfo{6U, 8U, 0, 0, -1, '\000', 'i', true},
-				SpecInfo{6U, 8U, 0, 0, -1, '\000', 'i', true},
-				SpecInfo{6U, 8U, 0, 0, -1, '\000', 'i', true},
-				SpecInfo{6U, 8U, 0, 0, -1, '\000', 'i', true},
-				SpecInfo{6U, 8U, 0, 0, -1, '\000', 'i', true},
-				SpecInfo{6U, 8U, 0, 0, -1, '\000', 'i', true}
+			constexpr static std::array<SpecInfo, 11> SIs = {
+				//SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true}
 
 			};
 
-			constexpr static auto converter = unpack<SIs, Converter>();
-			//using CONV = decltype(unpack<SIs, Converter>());
+			constexpr auto converter = unpack<SIs, Converter>();
 
-			OutbufArg outbuf;
-			outbuf.pBuf_ = buf;
-			outbuf.pBufEnd_ = (char*)(buf + 100);
-			char buffer[BUF];
-			converter/*CONV::conv<0>*/(outbuf, "sadasdasd", buffer, i, i, i, i, i, 1.1, 1.1, 1.1, 1.1, 1.1);
-			*outbuf.pBuf_ = '\0';
+			OutbufArg outbuf(buf);
+			converter/*CONV::conv<0>*/(outbuf, "sadasdasd", "s", "s", "s", "s", "s", "s", "s","s", "s", "s", "s");
+			outbuf.done();
 
 		}
 
@@ -1268,7 +1306,6 @@ int main() {
 
 	std::cout << "cost: "
 		<< double(duration.count()) * microseconds::period::num / microseconds::period::den << "seconds" << std::endl;
-
 
 	//wint_t c = L'd';
 	////Foo(2, 3, 4u, (int64_t)9, 'a', "s", 2.3, L'A', L"tangzhilin", c);
@@ -1361,6 +1398,7 @@ int main() {
 
 	//	constexpr const auto s = unpack<a, S>();
 	//	constexpr const auto s_zero = unpack<a_zero, S>();
+	//	constexpr const auto s_zero = unpack<a_zero, S>();
 	//	constexpr auto converter = unpack<infos, Converter>();
 
 	//	//s('a','b', 'c', 'd');
@@ -1372,9 +1410,8 @@ int main() {
 
 	//	converter(outbuf, "sadasdasd", 13, 34, 34, 34,34);
 	//}
-
-
-
+    int i;
+    std::cin >> i;
 
 	system("pause");
 }
