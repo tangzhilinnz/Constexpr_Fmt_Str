@@ -19,204 +19,201 @@ using namespace chrono;
 
 
 
-/*
- * Given an integer u from 0 to 9999, we want to perform 3 divisions
- * by constants 10, 100 and 1000 in parallel and calculate four digits
- * u - u/10*10, u/10 - u/100*10, etc. These digits can be shuffled,
- * converted to ascii and stored in memory as four consecutive bytes.
- *
- * One common approach to constant division is double-width multiplication
- * by a magic constant and shifting high-word to the right by a constant
- * number of bits.
- *
- * Double-width multiplication in xmm register can be done with pmuludq
- * but it operates on two 32-bit words while we need at least three
- * multiplications. For u that fits into 16-bit word, we can try pmaddwd
- * which multiplies eight signed 16-bit words, takes sums of pairs and
- * stores the results in four 32-bit words.
- *
- * The algorithm below uses these magic multiplications:
- *
- * u/10   : u * 26215 / 2^18,
- * u/100  : u * 10486 / 2^20,
- * u/1000 : u * 8389  / 2^23.
- *
- * The shifts are all different but it doesn't matter. Instead of
- * shifting to the right, low bits are masked and values are later
- * multiplied to scale the results by 256.
- */
 
-inline char* nasonov9(char* p, uint32_t u) {
-	// __m128i _mm_set_epi16 (short e7, short e6, short e5, short e4, short e3,
-	//                        short e2, short e1, short e0)
-	// Set packed 16-bit integers in dst with the supplied values.
-	// dst[15:0] := e0
-	// dst[31:16] := e1
-	// dst[47:32] := e2
-	// dst[63:48] := e3
-	// dst[79:64] := e4
-	// dst[95:80] := e5
-	// dst[111:96] := e6
-	// dst[127:112] := e7
+template <bool Upper, size_t Divisor, class T, size_t N>
+std::tuple<const char*, size_t> format(char(&buf)[N], T d) {
 
-	// __m128i _mm_set1_epi16 (short a)
-	// Broadcast 16-bit integer a to all all elements of dst. This intrinsic
-	// may generate vpbroadcastw.
-	// FOR j := 0 to 7
-	// i := j*16
-	// dst[i+15:i] := a[15:0]
-	// ENDFOR
+	if constexpr (Divisor == 10) {
+		static constexpr const char digit_pairs[201] = { "00010203040506070809"
+														"10111213141516171819"
+														"20212223242526272829"
+														"30313233343536373839"
+														"40414243444546474849"
+														"50515253545556575859"
+														"60616263646566676869"
+														"70717273747576777879"
+														"80818283848586878889"
+														"90919293949596979899" };
 
-	// __m128i _mm_madd_epi16 (__m128i a, __m128i b)
-	// Multiply packed signed 16-bit integers in a and b, producing intermediate
-	// signed 32-bit integers. Horizontally add adjacent pairs of intermediate 
-	// 32-bit integers, and pack the results in dst.
-	// FOR j := 0 to 3
-	// i := j*32
-	// dst[i+31:i] := SignExtend32(a[i+31:i+16]*b[i+31:i+16]) + 
-	//                SignExtend32(a[i+15:i]*b[i+15:i])
-	// ENDFOR
+		char* it = &buf[N - 2];
+		if constexpr (std::is_signed<T>::value) {
+			if (d >= 0) {
+				int div = d / 100;
+				while (div) {
+					std::memcpy(it, &digit_pairs[2 * (d - div * 100)], 2);
+					d = div;
+					it -= 2;
+					div = d / 100;
+				}
 
-	// __m128i _mm_and_si128 (__m128i a, __m128i b)
-	// Compute the bitwise AND of 128 bits (representing integer data) in a and
-	// b, and store the result in dst.
-	// dst[127:0] := (a[127:0] AND b[127:0])
+				std::memcpy(it, &digit_pairs[2 * d], 2);
 
-	// __m128i _mm_slli_si128 (__m128i a, int imm8)
-	// Shift a left by imm8 bytes while shifting in zeros, and store the results
-	// in dst.
+				if (d < 10) {
+					it++;
+				}
+			}
+			else {
+				int div = d / 100;
+				while (div) {
+					std::memcpy(it, &digit_pairs[-2 * (d - div * 100)], 2);
+					d = div;
+					it -= 2;
+					div = d / 100;
+				}
 
-	// __m128i _mm_or_si128 (__m128i a, __m128i b)
-	// Compute the bitwise OR of 128 bits (representing integer data) in a and b,
-	// and store the result in dst.
-	// dst[127:0] := (a[127:0] OR b[127:0])
+				std::memcpy(it, &digit_pairs[-2 * d], 2);
 
-	// __m128i _mm_packs_epi32 (__m128i a, __m128i b)
-	// Convert packed signed 32-bit integers from a and b to packed 16-bit integers
-	// using signed saturation, and store the results in dst.
-	// dst[15:0] := Saturate16(a[31:0])
-	// dst[31:16] := Saturate16(a[63:32])
-	// dst[47:32] := Saturate16(a[95:64])
-	// dst[63:48] := Saturate16(a[127:96])
-	// dst[79:64] := Saturate16(b[31:0])
-	// dst[95:80] := Saturate16(b[63:32])
-	// dst[111:96] := Saturate16(b[95:64])
-	// dst[127:112] := Saturate16(b[127:96])
+				if (d <= -10) {
+					it--;
+				}
 
-	// __m128i _mm_srli_epi16 (__m128i a, int imm8)
-	// Shift packed 16-bit integers in a right by imm8 while shifting in zeros, 
-	// and store the results in dst.
+				*it = '-';
+			}
+		}
+		else {
+			if (d >= 0) {
+				int div = d / 100;
+				while (div) {
+					std::memcpy(it, &digit_pairs[2 * (d - div * 100)], 2);
+					d = div;
+					it -= 2;
+					div = d / 100;
+				}
 
-	// __m128i _mm_packs_epi16 (__m128i a, __m128i b)
-	// Convert packed signed 16-bit integers from a and b 
-	// to packed 8-bit integers using signed saturation, 
-	// and store the results in dst.
-	// dst[7:0] := Saturate8(a[15:0])
-	// dst[15:8] := Saturate8(a[31:16])
-	// dst[23:16] := Saturate8(a[47:32])
-	// dst[31:24] := Saturate8(a[63:48])
-	// dst[39:32] := Saturate8(a[79:64])
-	// dst[47:40] := Saturate8(a[95:80])
-	// dst[55:48] := Saturate8(a[111:96])
-	// dst[63:56] := Saturate8(a[127:112])
-	// dst[71:64] := Saturate8(b[15:0])
-	// dst[79:72] := Saturate8(b[31:16])
-	// dst[87:80] := Saturate8(b[47:32])
-	// dst[95:88] := Saturate8(b[63:48])
-	// dst[103:96] := Saturate8(b[79:64])
-	// dst[111:104] := Saturate8(b[95:80])
-	// dst[119:112] := Saturate8(b[111:96])
-	// dst[127:120] := Saturate8(b[127:112])
+				std::memcpy(it, &digit_pairs[2 * d], 2);
 
-	// void _mm_storel_epi64 (__m128i* mem_addr, __m128i a)
-	// Store 64-bit integer from the first element of a into memory.
-	// MEM[mem_addr+63:mem_addr] := a[63:0]
+				if (d < 10) {
+					it++;
+				}
+			}
+		}
 
-	uint32_t v = u / 10000;
-	uint32_t w = v / 10000;
-	u -= v * 10000;
-	v -= w * 10000;
+		return std::make_tuple(it, &buf[N] - it);
+	}
+	else if constexpr (Divisor == 16) {
+		[[maybe_unused]] static constexpr const char xdigit_pairs_l[513] = { "000102030405060708090a0b0c0d0e0f"
+																			"101112131415161718191a1b1c1d1e1f"
+																			"202122232425262728292a2b2c2d2e2f"
+																			"303132333435363738393a3b3c3d3e3f"
+																			"404142434445464748494a4b4c4d4e4f"
+																			"505152535455565758595a5b5c5d5e5f"
+																			"606162636465666768696a6b6c6d6e6f"
+																			"707172737475767778797a7b7c7d7e7f"
+																			"808182838485868788898a8b8c8d8e8f"
+																			"909192939495969798999a9b9c9d9e9f"
+																			"a0a1a2a3a4a5a6a7a8a9aaabacadaeaf"
+																			"b0b1b2b3b4b5b6b7b8b9babbbcbdbebf"
+																			"c0c1c2c3c4c5c6c7c8c9cacbcccdcecf"
+																			"d0d1d2d3d4d5d6d7d8d9dadbdcdddedf"
+																			"e0e1e2e3e4e5e6e7e8e9eaebecedeeef"
+																			"f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff" };
 
-	const __m128i first_madd =
-		_mm_set_epi16(-32768, -32768, 0, 26215, 0, 10486, 0, 8389);
-	const __m128i mask =
-		_mm_set_epi16(0xffff, 0, 0xfffc, 0, 0xfff0, 0, 0xff80, 0);
-	const __m128i second_madd =
-		_mm_set_epi16(-256, -640, 64, -160, 16, -20, 2, 0);
+		[[maybe_unused]] static constexpr const char xdigit_pairs_u[513] = { "000102030405060708090A0B0C0D0E0F"
+																			"101112131415161718191A1B1C1D1E1F"
+																			"202122232425262728292A2B2C2D2E2F"
+																			"303132333435363738393A3B3C3D3E3F"
+																			"404142434445464748494A4B4C4D4E4F"
+																			"505152535455565758595A5B5C5D5E5F"
+																			"606162636465666768696A6B6C6D6E6F"
+																			"707172737475767778797A7B7C7D7E7F"
+																			"808182838485868788898A8B8C8D8E8F"
+																			"909192939495969798999A9B9C9D9E9F"
+																			"A0A1A2A3A4A5A6A7A8A9AAABACADAEAF"
+																			"B0B1B2B3B4B5B6B7B8B9BABBBCBDBEBF"
+																			"C0C1C2C3C4C5C6C7C8C9CACBCCCDCECF"
+																			"D0D1D2D3D4D5D6D7D8D9DADBDCDDDEDF"
+																			"E0E1E2E3E4E5E6E7E8E9EAEBECEDEEEF"
+																			"F0F1F2F3F4F5F6F7F8F9FAFBFCFDFEFF" };
 
-	// first_madd = [8389, 0, 10486, 0, 26215, 0, -32768, -32768]
-	// mask = [0, 0xff80, 0, 0xfff0, 0, 0xfffc, 0, 0xffff]
-	// second_madd = [0, 2, -20, 16, -160, 64, -640, -256]
+		// NOTE(eteran): we include the x/X, here as an easy way to put the
+		//               upper/lower case prefix for hex numbers
+		[[maybe_unused]] static constexpr const char alphabet_l[] = "0123456789abcdefx";
+		[[maybe_unused]] static constexpr const char alphabet_u[] = "0123456789ABCDEFX";
 
-	// short integer can perfectly contain v and u which are from 0 to 9999 
-	// x = _mm_madd_epi16([v, v, v, v, v, v, v, v], first_madd)
-	//   = [v * 8389, v * 10486, v * 26215, (v * -32768) + (v * -32768)]
-	//   = [v * 8389, v * 10486, v * 26215, [0x0000, -v]] 
-	// y = [u * 8389, u * 10486, u * 26215, [0x0000, -u]]
-	__m128i x = _mm_madd_epi16(_mm_set1_epi16(v), first_madd);
-	__m128i y = _mm_madd_epi16(_mm_set1_epi16(u), first_madd);
+		typename std::make_unsigned<T>::type ud = d;
 
-	// x = [0, v/1000*128, 0, v/100*16, 0, v/10*4, 0, -v]
-	// y = [0, u/1000*128, 0, u/100*16, 0, u/10*4, 0, -u]
-	x = _mm_and_si128(x, mask);
-	y = _mm_and_si128(y, mask);
+		char* p = buf + N;
 
-	// x = [0, v/1000*128, v/1000*128, v/100*16, v/100*16, v/10*4, v/10*4, -v]
-	// y = [0, u/1000*128, u/1000*128, u/100*16, u/100*16, u/10*4, u/10*4, -u]
-	x = _mm_or_si128(x, _mm_slli_si128(x, 2));
-	y = _mm_or_si128(y, _mm_slli_si128(y, 2));
+		if (ud >= 0) {
+			while (ud > 16) {
+				p -= 2;
+				if constexpr (Upper) {
+					std::memcpy(p, &xdigit_pairs_u[2 * (ud & 0xff)], 2);
+				}
+				else {
+					std::memcpy(p, &xdigit_pairs_l[2 * (ud & 0xff)], 2);
+				}
+				ud /= 256;
+			}
 
-	// is multiplied to produce 4 scaled digits:
-	// x = [(v/1000*128)*2, 
-	//      (v/100*16)*16 - (v/1000*128)*2*10, 
-	//      (v/10*4)*64 -(v/100*16)*16*10, 
-	//      (-v)*-256 - (v/10*4)*10*64]
-	// y = [(u/1000*128)*2, 
-	//      (u/100*16)*16 - (u/1000*128)*2*10, 
-	//      (u/10*4)*64 -(u/100*16)*16*10, 
-	//      (-u)*-256 - (u/10*4)*10*64]
-	x = _mm_madd_epi16(x, second_madd);
-	y = _mm_madd_epi16(y, second_madd);
+			while (ud > 0) {
+				p -= 1;
+				if constexpr (Upper) {
+					std::memcpy(p, &xdigit_pairs_u[2 * (ud & 0x0f) + 1], 1);
+				}
+				else {
+					std::memcpy(p, &xdigit_pairs_l[2 * (ud & 0x0f) + 1], 1);
+				}
+				ud /= 16;
+			}
 
-	// z = [v/1000, 
-	//      v/100 -  v/1000 * 10, 
-	//      v/10  -  v/100 * 10, 
-	//      v     -  v/10 * 10,
-	//      u/1000,
-	//      u/100 - u/1000 * 10, 
-	//      u/10  - u/100 * 10, 
-	//      u     - u/10 * 10]
-	__m128i z = _mm_srli_epi16(_mm_packs_epi32(x, y), 8);
+		}
 
-	// z = [v/1000, 
-	//      v/100 -  v/1000 * 10, 
-	//      v/10  -  v/100 * 10, 
-	//      v     -  v/10 * 10,
-	//      u/1000,
-	//      u/100 - u/1000 * 10, 
-	//      u/10  - u/100 * 10, 
-	//      u     - u/10 * 10,
-	//
-	//      v/1000, 
-	//      v/100 -  v/1000 * 10, 
-	//      v/10  -  v/100 * 10, 
-	//      v     -  v/10 * 10,
-	//      u/1000,
-	//      u/100 - u/1000 * 10, 
-	//      u/10  - u/100 * 10, 
-	//      u     - u/10 * 10]
-	z = _mm_packs_epi16(z, z);
-	p[0] = '0' | w;
-	_mm_storel_epi64((__m128i*)(p + 1), _mm_or_si128(z, _mm_set1_epi32(0x30303030)));
+		return std::make_tuple(p, (buf + N) - p);
+	}
+	else if constexpr (Divisor == 8) {
+		static constexpr const char digit_pairs[129] = { "0001020304050607"
+														"1011121314151617"
+														"2021222324252627"
+														"3031323334353637"
+														"4041424344454647"
+														"5051525354555657"
+														"6061626364656667"
+														"7071727374757677" };
+		typename std::make_unsigned<T>::type ud = d;
 
-	return p;
+		char* p = buf + N;
+
+		if (ud >= 0) {
+			while (ud > 64) {
+				p -= 2;
+				std::memcpy(p, &digit_pairs[2 * (ud & 077)], 2);
+				ud /= 64;
+			}
+
+			while (ud > 0) {
+				p -= 1;
+				std::memcpy(p, &digit_pairs[2 * (ud & 007) + 1], 1);
+				ud /= 8;
+			}
+		}
+
+		return std::make_tuple(p, (buf + N) - p);
+	}
+	if constexpr (Divisor == 2) {
+		static constexpr const char digit_pairs[9] = { "00011011" };
+
+		typename std::make_unsigned<T>::type ud = d;
+
+		char* p = buf + N;
+
+		if (ud >= 0) {
+			while (ud > 4) {
+				p -= 2;
+				std::memcpy(p, &digit_pairs[2 * (ud & 0x03)], 2);
+				ud /= 4;
+			}
+
+			while (ud > 0) {
+				p -= 1;
+				std::memcpy(p, &digit_pairs[2 * (ud & 0x01) + 1], 1);
+				ud /= 2;
+			}
+		}
+
+		return std::make_tuple(p, (buf + N) - p);
+	}
 }
-
-
-
-
-
-
 
 
 
@@ -1013,7 +1010,7 @@ inline void converter_single(OutbufArg& outbuf, const char* fmt, T&& arg,
 	const int W = 0, const int P = -1) {
 
 	char buf[100];	// space for %c, %[diouxX], %[eEfgG]
-	char* cp = nullptr;
+	const char* cp = nullptr;
 	std::to_chars_result ret;
 	size_t len = 0;
 
@@ -1058,7 +1055,7 @@ inline void converter_single(OutbufArg& outbuf, const char* fmt, T&& arg,
 			 
 			if (jval < 0) jval = -jval;
 
-			nasonov9(buf, jval);
+			std::tie(cp, len) = format<false, 10>(buf, jval);
 
 			//// many numbers are 1 digit
 			//while (jval >= 10) {
@@ -1072,12 +1069,11 @@ inline void converter_single(OutbufArg& outbuf, const char* fmt, T&& arg,
 			////len = ret.ptr - buf;
 			//len = static_cast<size_t>(buf + 100 - cp);
 
-			len = 9;
 		}
 		else {
-			//cp = buf;
+			cp = buf;
 			len = sizeof("(ER)") - 1;
-			memcpy(/*cp*/buf, "(ER)", len + 1);
+			memcpy((void*)cp, "(ER)", len + 1);
 		}
 	}
 
@@ -1086,7 +1082,7 @@ inline void converter_single(OutbufArg& outbuf, const char* fmt, T&& arg,
 	}
 	else {}
 
-	outbuf.write(buf/*cp*/, len);
+	outbuf.write(cp, len);
 
 	if constexpr (sizeof ...(SIs) > 0) {
 		constexpr auto& SI_Nex = std::get<0>(std::forward_as_tuple(SIs...));
@@ -1405,8 +1401,8 @@ int main() {
 		//CFMT_STR(result, buf, 100, "34342323%hls-+ 0#s...llks12.0#%**.***+-.**lls*.*20%%ahjhj",2, L"aad",2,2);
 		//CFMT_STR(result, buf, 100, "%%s%%s%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
 		//CFMT_STR(result, buf, 100, "h-+ 01233lzhhjt *.***hhhlll8.**s", 22,323,"adada");
-		//CFMT_STR(result, buf, 400, "test snprintf %hhdtest", i,i,i,i,i, i, i, i, i, i);
-		//CFMT_STR(result, buf, 400, "test snprintf %hdtest%hdtest%hdtest%hdtest%hdtest%hdtest%hdtest%hdtest%hdtest%hd", i, i, i, i, i, i, i, i, i, i);
+		//CFMT_STR(result, buf, 400, "test snprintf %hhdtest", (int)i,i,i,i,i, i, i, i, i, i);
+		CFMT_STR(result, buf, 400, "test snprintf %hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhd", i, i, i, i, i, i, i, i, i, i);
 		//result = tz_snprintf(/*result,*/ buf, 400, "test snprintf %hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhd", i,i,i,i,i, i, i, i, i, i);
 		//result = tz_snprintf(buf, 400, "test snprintf %dtest%dtest%dtest%dtest%dtest%dtest%dtest%dtest%dtest%d", i, i, i, i, i, i, i, i, i, i);
 		//result = snprintf(buf, 100, "342324233hlk-+ 0#...saerereshdkGshjz..-+sf,dsdsffs+- #..*hdgfgf");
@@ -1417,11 +1413,12 @@ int main() {
 		//result = tz_snprintf(buf, 100, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
 		//result = tz_snprintf(buf, 100, "%hhd%hhd%hhd%hhd%hhd", i, i, i, i, i);
 		//result = tz_snprintf(buf, 100, "%lld%lld%lld%lld%lld", 1ll, 1ll, 1ll, 1ll, 1ll/*(long long)i, (long long)i, (long long)i, (long long)i, (long long)i*/);
-		 /*result = tz_snprintf(buf, 400, "%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld", 
-		 	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-		 	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-		 	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-		 	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i);*/
+		 ///*result = tz_snprintf*/CFMT_STR(result, buf, 400, "%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld",
+			// i, i,i,i,i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i
+		 //	/*(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+		 //	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+		 //	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+		 //	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i*/);
 		// result = tz_snprintf(buf, 400, "%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd",
 		// 	i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i,i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
 
