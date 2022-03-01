@@ -288,12 +288,12 @@ struct OutbufArg {
 	}
 
 	/**
-	 * Copies [n] bytes from source p to destination pBuf_, leaving pBuf_ 
+	 * Copies [n] bytes from source p to destination pBuf_, leaving pBuf_
 	 * pointing at byte following block copied.
 	 * If [n] exceeds the number of bytes available in pBuf_, only the number
 	 * of bytes that fit within the buffer are copied. In this case [n] is
 	 * still added to written_ (although no further copying will be performed)
-	 * so that written_ can record the number of characters that would have 
+	 * so that written_ can record the number of characters that would have
 	 * been copied if the supplied buffer was of sufficient size.
 	 */
 	inline void write(const char* p, size_t n) {
@@ -308,12 +308,12 @@ struct OutbufArg {
 	}
 
 	void done() {
-	    *pBuf_ = '\0';
+		*pBuf_ = '\0';
 	}
 
-//private:
+	//private:
 
-	// running pointer to the next char
+		// running pointer to the next char
 	char* pBuf_/*{ nullptr }*/;
 
 	// pointer to buffer end
@@ -874,7 +874,7 @@ template<size_t M>
 constexpr inline int
 countArgsRequired(const std::array<SpecInfo, M>& SIs) {
 	int count = 0;
-	
+
 	for (int i = 0; i < M; i++) {
 		count++;
 		if (SIs[i].width_ == DYNAMIC_WIDTH) count++;
@@ -1052,7 +1052,7 @@ inline void converter_single(OutbufArg& outbuf, const char* fmt, T&& arg,
 			}
 
 			//cp = buf + 100;
-			 
+
 			if (jval < 0) jval = -jval;
 
 			std::tie(cp, len) = format<false, 10>(buf, jval);
@@ -1227,19 +1227,19 @@ constexpr decltype(auto) unpack() {
  * \param args
  *      Argument pack for all the arguments for the log invocation
  */
- template<SpecInfo... SIs, typename... Ts>
- inline void fioFormat(
-	 OutbufArg& outbuf, 
-	 const char* fmtStr, const size_t length,
-	 const int headStrEnd, const int tailStrBegin, 
-	 const Converter<SIs ...>& converter, 
-	 Ts&&... args) {
+template<SpecInfo... SIs, typename... Ts>
+inline void fioFormat(
+	OutbufArg& outbuf,
+	const char* fmtStr, const size_t length,
+	const int headStrEnd, const int tailStrBegin,
+	const Converter<SIs ...>& converter,
+	Ts&&... args) {
 
-	 outbuf.write(fmtStr, static_cast<size_t>(headStrEnd));
-	 converter(outbuf, fmtStr, std::forward<Ts>(args)...);
-	 outbuf.write(fmtStr + tailStrBegin, 
-		 static_cast<size_t>(length - tailStrBegin - 1));
- }
+	outbuf.write(fmtStr, static_cast<size_t>(headStrEnd));
+	converter(outbuf, fmtStr, std::forward<Ts>(args)...);
+	outbuf.write(fmtStr + tailStrBegin,
+		static_cast<size_t>(length - tailStrBegin - 1));
+}
 
 
 /**
@@ -1265,56 +1265,109 @@ constexpr decltype(auto) unpack() {
  *      as the number of values specified in the valid format specifiers.
  */
 
-#define CFMT_STR(result, buffer, count, format, ...) do { \
-	constexpr int kNVS = countValidSpecs(format); \
-	constexpr int kLen = sizeExcludeInvalidSpecs(format); \
-	/**
-	 * Very Important*** These must be 'static' so that we can save pointers
-	 * to these variables and have them persist beyond the invocation.
-	 * The static logId is used to forever associate this local scope (tied
-	 * to an expansion of #NANO_LOG) with an id and the paramTypes array is
-	 * used by the compression function, which is invoked in another thread
-	 * at a much later time.
-	 * A static variable inside a scope or function is something different than
-	 * a global static variable. Since there can be as many scoped statics with
-	 * the same name as you like (provided they are all in different scopes),
-	 * the compiler might have to change their names internally (incorporating
-	 * the function's name or the line number or whatever), so that the linker
-	 * can tell them apart.
-	 * Adding the static keyword to the file scope version of variables doesn't
-	 * change their extent, but it does change its visibility with respect to
-	 * other translation units; the name is not exported to the linker, so it
-	 * cannot be accessed by name from another translation unit. */ \
-	static constexpr std::array<SpecInfo, kNVS> kSIs = analyzeFormatString<kNVS>(format); \
-	static constexpr auto kConv = unpack<kSIs, Converter>(); \
-	static constexpr auto kHeadTail = headTailStrIdx(kSIs); \
-	static constexpr auto kformatArr = preprocessInvalidSpecs<kLen>(format); \
-	static constexpr auto kRTStr = getRTFmtStr(format, kformatArr); \
-	constexpr int kArgsRequired = countArgsRequired(kSIs); \
-	constexpr int kArgsPassed = countArgsPassed(__VA_ARGS__); \
-	if constexpr (kArgsRequired > kArgsPassed) { \
-		std::cerr << "CFMT: forced abort due to illegal number of variadic " \
-		"arguments passed to CFMT_STR for converting\n" \
-		"(Required: " << kArgsRequired << " ---- " << "Passed: " << kArgsPassed << ")"; \
-	    abort(); \
-	} \
-	else { \
-		OutbufArg outbuf(buffer, count); \
-		if constexpr (0 == kNVS) { \
-			outbuf.write(std::get<const char*>(kRTStr), std::get<int>(kRTStr) - 1); \
-		} \
-		else { \
-		    /* Triggers the printf checker by passing it into a no-op function.
-		     * Trick: This call is surrounded by an if false so that the VA_ARGS don't
-		     * evaluate for cases like '++i'.*/ \
-		    if (false) { checkFormat(format, ##__VA_ARGS__); } \
-		    fioFormat(outbuf, std::get<const char*>(kRTStr), std::get<int>(kRTStr), \
-				std::get<0>(kHeadTail), std::get<1>(kHeadTail), kConv, ##__VA_ARGS__); \
-		} \
-		result = outbuf.getWrittenNum(); \
-		if (count != 0) { outbuf.done(); } /* null - terminate the string */ \
-	} \
-} while (0);
+ #define CFMT_STR(result, buffer, count, format, ...) do { \
+ 	constexpr int kNVS = countValidSpecs(format); \
+ 	constexpr int kLen = sizeExcludeInvalidSpecs(format); \
+ 	/**
+ 	 * Very Important*** These must be 'static' so that we can save pointers
+ 	 * to these variables and have them persist beyond the invocation.
+ 	 * The static logId is used to forever associate this local scope (tied
+ 	 * to an expansion of #NANO_LOG) with an id and the paramTypes array is
+ 	 * used by the compression function, which is invoked in another thread
+ 	 * at a much later time.
+ 	 * A static variable inside a scope or function is something different than
+ 	 * a global static variable. Since there can be as many scoped statics with
+ 	 * the same name as you like (provided they are all in different scopes),
+ 	 * the compiler might have to change their names internally (incorporating
+ 	 * the function's name or the line number or whatever), so that the linker
+ 	 * can tell them apart.
+ 	 * Adding the static keyword to the file scope version of variables doesn't
+ 	 * change their extent, but it does change its visibility with respect to
+ 	 * other translation units; the name is not exported to the linker, so it
+ 	 * cannot be accessed by name from another translation unit. */ \
+ 	static constexpr std::array<SpecInfo, kNVS> kSIs = analyzeFormatString<kNVS>(format); \
+ 	static constexpr auto kConv = unpack<kSIs, Converter>(); \
+ 	static constexpr auto kHeadTail = headTailStrIdx(kSIs); \
+ 	static constexpr auto kformatArr = preprocessInvalidSpecs<kLen>(format); \
+ 	static constexpr auto kRTStr = getRTFmtStr(format, kformatArr); \
+ 	constexpr int kArgsRequired = countArgsRequired(kSIs); \
+ 	constexpr int kArgsPassed = /*countArgsPassed(__VA_ARGS__)*/std::tuple_size_v<decltype(std::make_tuple(__VA_ARGS__))>; \
+ 	if constexpr (kArgsRequired > kArgsPassed) { \
+ 		std::cerr << "CFMT: forced abort due to illegal number of variadic " \
+ 		"arguments passed to CFMT_STR for converting\n" \
+ 		"(Required: " << kArgsRequired << " ---- " << "Passed: " << kArgsPassed << ")"; \
+ 	    abort(); \
+ 	} \
+ 	else { \
+ 		OutbufArg outbuf(buffer, count); \
+ 		if constexpr (0 == kNVS) { \
+ 			outbuf.write(std::get<const char*>(kRTStr), std::get<int>(kRTStr) - 1); \
+ 		} \
+ 		else { \
+ 		    /* Triggers the printf checker by passing it into a no-op function.
+ 		     * Trick: This call is surrounded by an if false so that the VA_ARGS don't
+ 		     * evaluate for cases like '++i'.*/ \
+ 		    if (false) { checkFormat(format, ##__VA_ARGS__); } \
+ 		    fioFormat(outbuf, std::get<const char*>(kRTStr), std::get<int>(kRTStr), \
+ 				std::get<0>(kHeadTail), std::get<1>(kHeadTail), kConv, ##__VA_ARGS__); \
+ 		} \
+ 		result = outbuf.getWrittenNum(); \
+ 		if (count != 0) { outbuf.done(); } /* null - terminate the string */ \
+ 	} \
+ } while (0);
+
+//template<size_t N, const char(&format)[N], typename... Ts>
+//CFMT_ALWAYS_INLINE void
+//CFMT_STR(int& result, char* buffer, const int count, Ts&&... args) {
+//	constexpr int kNVS = countValidSpecs(format);
+//	constexpr int kLen = sizeExcludeInvalidSpecs(format);
+//	/**
+//	 * Very Important*** These must be 'static' so that we can save pointers
+//	 * to these variables and have them persist beyond the invocation.
+//	 * The static logId is used to forever associate this local scope (tied
+//	 * to an expansion of #NANO_LOG) with an id and the paramTypes array is
+//	 * used by the compression function, which is invoked in another thread
+//	 * at a much later time.
+//	 * A static variable inside a scope or function is something different than
+//	 * a global static variable. Since there can be as many scoped statics with
+//	 * the same name as you like (provided they are all in different scopes),
+//	 * the compiler might have to change their names internally (incorporating
+//	 * the function's name or the line number or whatever), so that the linker
+//	 * can tell them apart.
+//	 * Adding the static keyword to the file scope version of variables doesn't
+//	 * change their extent, but it does change its visibility with respect to
+//	 * other translation units; the name is not exported to the linker, so it
+//	 * cannot be accessed by name from another translation unit. */
+//	static constexpr std::array<SpecInfo, kNVS> kSIs = analyzeFormatString<kNVS>(format);
+//	static constexpr auto kConv = unpack<kSIs, Converter>();
+//	static constexpr auto kHeadTail = headTailStrIdx(kSIs);
+//	static constexpr auto kformatArr = preprocessInvalidSpecs<kLen>(format);
+//	static constexpr auto kRTStr = getRTFmtStr(format, kformatArr);
+//	constexpr int kArgsRequired = countArgsRequired(kSIs);
+//	constexpr int kArgsPassed = /*countArgsPassed(args)*/sizeof ...(Ts);
+//	if constexpr (kArgsRequired > kArgsPassed) {
+//		std::cerr << "CFMT: forced abort due to illegal number of variadic "
+//			"arguments passed to CFMT_STR for converting\n"
+//			"(Required: " << kArgsRequired << " ---- " << "Passed: " << kArgsPassed << ")";
+//		abort();
+//	}
+//	else {
+//		OutbufArg outbuf(buffer, count);
+//		if constexpr (0 == kNVS) {
+//			outbuf.write(std::get<const char*>(kRTStr), std::get<int>(kRTStr) - 1);
+//		}
+//		else {
+//			/* Triggers the printf checker by passing it into a no-op function.
+//			 * Trick: This call is surrounded by an if false so that the VA_ARGS don't
+//			 * evaluate for cases like '++i'.*/
+//			 //if (false) { checkFormat(format, args); }
+//			fioFormat(outbuf, std::get<const char*>(kRTStr), std::get<int>(kRTStr),
+//				std::get<0>(kHeadTail), std::get<1>(kHeadTail), kConv, std::forward<Ts>(args)...);
+//		}
+//		result = outbuf.getWrittenNum();
+//		if (count != 0) { outbuf.done(); } /* null - terminate the string */
+//	}
+//}
 
 int tz_snprintf(char* buffer, size_t  count, const char* fmt, ...);
 
@@ -1381,6 +1434,7 @@ constexpr std::array<SpecInfo, kNVS> fmtInfos = analyzeFormatString<kNVS>("sd%%s
 constexpr int kNVS1 = countValidSpecs("dsdsdsdsdsdsd.\n");
 constexpr std::array<SpecInfo, kNVS1> fmtInfos1 = analyzeFormatString<kNVS1>("dsdsdsdsdsdsd.\n");
 
+#define COUNT(fmt, ...) countArgsPassed(__VA_ARGS__)
 
 int main() {
 	auto start = system_clock::now();
@@ -1401,8 +1455,9 @@ int main() {
 		//CFMT_STR(result, buf, 100, "34342323%hls-+ 0#s...llks12.0#%**.***+-.**lls*.*20%%ahjhj",2, L"aad",2,2);
 		//CFMT_STR(result, buf, 100, "%%s%%s%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
 		//CFMT_STR(result, buf, 100, "h-+ 01233lzhhjt *.***hhhlll8.**s", 22,323,"adada");
-		//CFMT_STR(result, buf, 400, "test snprintf %hhdtest", (int)i,i,i,i,i, i, i, i, i, i);
-		CFMT_STR(result, buf, 400, "test snprintf %hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhd", i, i, i, i, i, i, i, i, i, i);
+		CFMT_STR(result, buf, 400, "test snprintf %hhdtest%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd", (int)i, static_cast<long>(i), i, i, i, (i), (i, 3), i, i, i);
+		//CFMT_STR(result, buf, 400, "test snprintf %hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhd", i, i, i, i, i, i, i, i, i, i);
+		//CFMT_STR(result, buf, 400, "test snprintf %hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhd", "s", i, "s", "s", i, "s", "s", "s", i, "s");
 		//result = tz_snprintf(/*result,*/ buf, 400, "test snprintf %hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhd", i,i,i,i,i, i, i, i, i, i);
 		//result = tz_snprintf(buf, 400, "test snprintf %dtest%dtest%dtest%dtest%dtest%dtest%dtest%dtest%dtest%d", i, i, i, i, i, i, i, i, i, i);
 		//result = snprintf(buf, 100, "342324233hlk-+ 0#...saerereshdkGshjz..-+sf,dsdsffs+- #..*hdgfgf");
@@ -1413,105 +1468,116 @@ int main() {
 		//result = tz_snprintf(buf, 100, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
 		//result = tz_snprintf(buf, 100, "%hhd%hhd%hhd%hhd%hhd", i, i, i, i, i);
 		//result = tz_snprintf(buf, 100, "%lld%lld%lld%lld%lld", 1ll, 1ll, 1ll, 1ll, 1ll/*(long long)i, (long long)i, (long long)i, (long long)i, (long long)i*/);
-		 ///*result = tz_snprintf*/CFMT_STR(result, buf, 400, "%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld",
+		 //result = tz_snprintf/*CFMT_STR*/(/*result,*/ buf, 400, "%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd",
 			// i, i,i,i,i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i
-		 //	/*(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-		 //	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-		 //	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-		 //	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i*/);
-		// result = tz_snprintf(buf, 400, "%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd",
-		// 	i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i,i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
+			///*(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+			//(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+			//(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+			//(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i*/);
+			//static constexpr const char fmt[] = "%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld";
+			//static constexpr const char fmt[] = "%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd";
+			//static constexpr const size_t size = sizeof(fmt);
+			//CFMT_STR<size, fmt>(result, buf, 400,
+			//	i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i
+			//	/*"s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s",
+			//	"s", "s", "s", "s", "s", "s", "s", "s", "s", "s","s"*/
+			//	/*(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+			//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+			//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+			//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i*/);
+				// result = tz_snprintf(buf, 400, "%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd",
+				// 	i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i,i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
 
-		//result = tz_snprintf(buf, 400, "%hhd%", i);
+				//result = tz_snprintf(buf, 400, "%hhd%", i);
 
-		//OutbufArg outbuf(buf);
-		//std::to_chars_result ret;
-		//char buffer[100];
-		//ret = std::to_chars(buffer, buffer + 100, (long long)i);
-		////outbuf.write(buffer, ret.ptr - buffer);
-		//std::memcpy(outbuf.pBuf_, buffer, ret.ptr - buffer);
-		////ret = std::to_chars(buf, buf + 100, (long long)i);
-		////outbuf.write(buf, ret.ptr - buf);
-		////ret = std::to_chars(buf, buf + 100, (long long)i);
-		////outbuf.write(buf, ret.ptr - buf);
-		////ret = std::to_chars(buf, buf + 100, (long long)i);
-		////outbuf.write(buf, ret.ptr - buf);
-		////ret = std::to_chars(buf, buf + 100, (long long)i);
-		////outbuf.write(buf, ret.ptr - buf);
-		//outbuf.done();
+				//OutbufArg outbuf(buf);
+				//std::to_chars_result ret;
+				//char buffer[100];
+				//ret = std::to_chars(buffer, buffer + 100, (long long)i);
+				////outbuf.write(buffer, ret.ptr - buffer);
+				//std::memcpy(outbuf.pBuf_, buffer, ret.ptr - buffer);
+				////ret = std::to_chars(buf, buf + 100, (long long)i);
+				////outbuf.write(buf, ret.ptr - buf);
+				////ret = std::to_chars(buf, buf + 100, (long long)i);
+				////outbuf.write(buf, ret.ptr - buf);
+				////ret = std::to_chars(buf, buf + 100, (long long)i);
+				////outbuf.write(buf, ret.ptr - buf);
+				////ret = std::to_chars(buf, buf + 100, (long long)i);
+				////outbuf.write(buf, ret.ptr - buf);
+				//outbuf.done();
 
 
-		//{
-		//	constexpr static std::array<SpecInfo, 40> SIs = {
+				//{
+				//	constexpr static std::array<SpecInfo, 40> SIs = {
 
-		//		// SpecInfo{6U, 8U, __FLAG_SHORTINT, 0, -1, '\000', 'i', true},
-		//		// SpecInfo{6U, 8U, __FLAG_SHORTINT, 0, -1, '\000', 'i', true},
-		//		// SpecInfo{6U, 8U, __FLAG_SHORTINT, 0, -1, '\000', 'i', true},
-		//		// SpecInfo{6U, 8U, __FLAG_SHORTINT, 0, -1, '\000', 'i', true},
-		//		// SpecInfo{6U, 8U, __FLAG_SHORTINT, 0, -1, '\000', 'i', true},
-		//		// SpecInfo{6U, 8U, __FLAG_SHORTINT, 0, -1, '\000', 'i', true},
-		//		// SpecInfo{6U, 8U, __FLAG_SHORTINT, 0, -1, '\000', 'i', true},
-		//		// SpecInfo{6U, 8U, __FLAG_SHORTINT, 0, -1, '\000', 'i', true},
-		//		// SpecInfo{6U, 8U, __FLAG_SHORTINT, 0, -1, '\000', 'i', true},
-		//		// SpecInfo{6U, 8U, __FLAG_SHORTINT, 0, -1, '\000', 'i', true},
-		//		// SpecInfo{6U, 8U, __FLAG_SHORTINT, 0, -1, '\000', 'i', true},
-		//		// SpecInfo{6U, 8U, __FLAG_SHORTINT, 0, -1, '\000', 'i', true},
-		//		// SpecInfo{6U, 8U, __FLAG_SHORTINT, 0, -1, '\000', 'i', true},
-		//		// SpecInfo{6U, 8U, __FLAG_SHORTINT, 0, -1, '\000', 'i', true},
-		//		// SpecInfo{6U, 8U, __FLAG_SHORTINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		// SpecInfo{6U, 8U, __FLAG_SHORTINT, 0, -1, '\000', 'i', true},
+				//		// SpecInfo{6U, 8U, __FLAG_SHORTINT, 0, -1, '\000', 'i', true},
+				//		// SpecInfo{6U, 8U, __FLAG_SHORTINT, 0, -1, '\000', 'i', true},
+				//		// SpecInfo{6U, 8U, __FLAG_SHORTINT, 0, -1, '\000', 'i', true},
+				//		// SpecInfo{6U, 8U, __FLAG_SHORTINT, 0, -1, '\000', 'i', true},
+				//		// SpecInfo{6U, 8U, __FLAG_SHORTINT, 0, -1, '\000', 'i', true},
+				//		// SpecInfo{6U, 8U, __FLAG_SHORTINT, 0, -1, '\000', 'i', true},
+				//		// SpecInfo{6U, 8U, __FLAG_SHORTINT, 0, -1, '\000', 'i', true},
+				//		// SpecInfo{6U, 8U, __FLAG_SHORTINT, 0, -1, '\000', 'i', true},
+				//		// SpecInfo{6U, 8U, __FLAG_SHORTINT, 0, -1, '\000', 'i', true},
+				//		// SpecInfo{6U, 8U, __FLAG_SHORTINT, 0, -1, '\000', 'i', true},
+				//		// SpecInfo{6U, 8U, __FLAG_SHORTINT, 0, -1, '\000', 'i', true},
+				//		// SpecInfo{6U, 8U, __FLAG_SHORTINT, 0, -1, '\000', 'i', true},
+				//		// SpecInfo{6U, 8U, __FLAG_SHORTINT, 0, -1, '\000', 'i', true},
+				//		// SpecInfo{6U, 8U, __FLAG_SHORTINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
 
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
-		//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true}
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true},
+				//		SpecInfo{6U, 8U, __FLAG_LLONGINT, 0, -1, '\000', 'i', true}
 
-		//	};
+				//	};
 
-		//	static constexpr auto converter = unpack<SIs, Converter>();
+				//	static constexpr auto converter = unpack<SIs, Converter>();
 
-		//	OutbufArg outbuf(buf);
-		//	converter(outbuf, "sadasdasd"/*1,1,1,1,1*//*i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i*/,
-		//		"s","s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s",
-		//		"s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s");
-		//	outbuf.done();
+				//	OutbufArg outbuf(buf);
+				//	converter(outbuf, "sadasdasd"/*1,1,1,1,1*//*i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i*/,
+				//		"s","s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s",
+				//		"s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s");
+				//	outbuf.done();
 
-		//}
+				//}
 
 	}
 
@@ -1523,6 +1589,9 @@ int main() {
 
 	std::cout << "cost: "
 		<< double(duration.count()) * microseconds::period::num / microseconds::period::den << "seconds" << std::endl;
+
+	int i = 0;
+	std::cout << COUNT("test snprintf %hhdtest", (int)i, static_cast<long>(i), i, i, i, (i), (3, i), i, i, i) << std::endl;
 
 	//wint_t c = L'd';
 	////Foo(2, 3, 4u, (int64_t)9, 'a', "s", 2.3, L'A', L"tangzhilin", c);
@@ -1627,8 +1696,8 @@ int main() {
 
 	//	converter(outbuf, "sadasdasd", 13, 34, 34, 34,34);
 	//}
-    int i;
-    std::cin >> i;
+    int j;
+    std::cin >> j;
 
 	system("pause");
 }
