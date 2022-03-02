@@ -516,9 +516,9 @@ getOneSepc(const char(&fmt)[N], int num = 0) {
 	terminal_t terminal = '\0';
 	width_first_t widthFirst = true;
 
-	int intLen = 0;
+	int intWidth = 0;
 	int pos = 0;
-	int specStar = 0;
+	int specStartPos = 0;
 	int sizeOfInvalidSpecs = 0;
 	bool exit = false;
 
@@ -527,7 +527,7 @@ getOneSepc(const char(&fmt)[N], int num = 0) {
 		// if num is greater than 0, fmt[pos] can never be '\0'
 		for (; /*(fmt[pos] != '\0') && */(fmt[pos] != '%'); pos++);
 
-		specStar = pos; // record the position of '%' as it appears
+		specStartPos = pos; // record the position of '%' as it appears
 		pos++;   // fmt[pos] == '%', so pos++ skips over '%'
 
 		while (isFlag(fmt[pos]) || isDigit(fmt[pos]) || isLength(fmt[pos])
@@ -536,21 +536,27 @@ getOneSepc(const char(&fmt)[N], int num = 0) {
 		}
 
 		if (isTerminal(fmt[pos])) {
-			num--;
+			if (--num <= 0) begin = pos + 1 - sizeOfInvalidSpecs;
 		}
 		else { // isTerminal(fmt[pos]) == false
-			// pos - specStar is the size of this invlaid specifier
-			sizeOfInvalidSpecs += pos - specStar;
+			// pos - specStartPos is the size of this invlaid specifier
+			sizeOfInvalidSpecs += pos - specStartPos;
 		}
 
 		pos++;   // skips over '%', terminal, or non-terminal
 	}
 
-	while (!exit) {
-		// consume the current non-format string until reaching the next '%'
-		for (; (fmt[pos] != '%'); pos++);
+	while (true) {
+		// consume the current non-format string until reaching the next '%' or the final '\0'
+		for (; (fmt[pos] != '\0') && (fmt[pos] != '%'); pos++);
 
-		specStar = pos; // record the position of '%' as it appears
+		if (fmt[pos] == '\0') {
+			end = pos - sizeOfInvalidSpecs;
+			exit = true;
+			break;
+		}
+
+		specStartPos = pos; // record the position of '%' as it appears
 		pos++;   // fmt[pos] == '%', so pos++ skips over '%'
 
 		while (isFlag(fmt[pos]) || isDigit(fmt[pos]) || isLength(fmt[pos])
@@ -559,18 +565,18 @@ getOneSepc(const char(&fmt)[N], int num = 0) {
 		}
 
 		if (isTerminal(fmt[pos])) {
+			end = specStartPos - sizeOfInvalidSpecs;
 			break;
 		}
 		else { // isTerminal(fmt[pos]) == false
-			// pos - specStar is the size of this invlaid specifier
-			sizeOfInvalidSpecs += pos - specStar;
+			// pos - specStartPos is the size of this invlaid specifier
+			sizeOfInvalidSpecs += pos - specStartPos;
 		}
 
 		pos++;   // skips over '%' or non-terminal
 	}
 
-	begin = specStar;
-	pos = specStar + 1;  // fmt[specStar] == '%', so specStar + 1 over '%'
+	pos = specStartPos + 1;  // fmt[specStartPos] == '%', so specStartPos + 1 over '%'
 
 	while (!exit) {
 
@@ -645,40 +651,40 @@ getOneSepc(const char(&fmt)[N], int num = 0) {
 		case 'h':
 			pos++;
 			if (fmt[pos] == 'h') {
-				intLen = __FLAG_CHARINT;
+				intWidth = __FLAG_CHARINT;
 				break;
 			}
 			else {
-				intLen = __FLAG_SHORTINT;
+				intWidth = __FLAG_SHORTINT;
 				pos--;
 				break;
 			}
 		case 'l':
 			pos++;
 			if (fmt[pos] == 'l') {
-				intLen = __FLAG_LLONGINT;
+				intWidth = __FLAG_LLONGINT;
 				break;
 			}
 			else {
-				intLen = __FLAG_LONGINT;
+				intWidth = __FLAG_LONGINT;
 				pos--;
 				break;
 			}
 		case 'j':
-			intLen = __FLAG_INTMAXT;
+			intWidth = __FLAG_INTMAXT;
 			break;
 		case 't':
-			intLen = __FLAG_PTRDIFFT;
+			intWidth = __FLAG_PTRDIFFT;
 			break;
 		case 'z':
-			intLen = __FLAG_SIZET;
+			intWidth = __FLAG_SIZET;
 			break;
 
 		case 'c': case 'd': case 'i': case 'a': case 'A': case 'e': case 'E':
 		case 'f': case 'F': case 'g': case 'G': case 'n': case 'o': case 'p':
 		case 's': case 'u': case 'X': case 'x':
 			terminal = fmt[pos];
-			end = pos + 1;
+			// end = pos + 1;
 			exit = true;
 			break;
 
@@ -690,10 +696,9 @@ getOneSepc(const char(&fmt)[N], int num = 0) {
 		pos++;
 	}
 
-	flags |= intLen;
-	begin -= sizeOfInvalidSpecs;
-	end -= sizeOfInvalidSpecs;
-
+	flags |= intWidth;
+	//begin -= sizeOfInvalidSpecs;
+	//end -= sizeOfInvalidSpecs;
 	return { begin, end, flags, width, prec, sign, terminal, widthFirst };
 }
 
@@ -1005,7 +1010,7 @@ inline void converter_impl(OutbufArg& outbuf, const char* fmt, Ts&&...args);
 template<typename... Ts>
 inline void converter_impl(OutbufArg& outbuf, const char* fmt, Ts&&...args);
 
-template<SpecInfo SI, /*SpecInfo... SIs*/int Len, typename T>
+template<SpecInfo SI, typename T>
 inline void converter_single(OutbufArg& outbuf, const char* fmt, T&& arg,
 	const int W = 0, const int P = -1) {
 
@@ -1082,11 +1087,15 @@ inline void converter_single(OutbufArg& outbuf, const char* fmt, T&& arg,
 	}
 	else {}
 
-	outbuf.write(cp, len);
 
-	if constexpr (/*sizeof ...(SIs) > 0*/-1 != Len) {
-		outbuf.write(fmt + SI.end_, static_cast<size_t>(Len));
+	outbuf.write(fmt + SI.begin_, static_cast<size_t>(SI.end_ - SI.begin_));
+
+	if constexpr (isTerminal(SI.terminal_) && SI.terminal_ != 'n') {
+		outbuf.write(cp, len);
 	}
+	//if constexpr (/*sizeof ...(SIs) > 0*/-1 != Len) {
+	//	outbuf.write(fmt + SI.end_, static_cast<size_t>(Len));
+	//}
 }
 
 
@@ -1368,9 +1377,9 @@ constexpr int kSize1 = sizeExcludeInvalidSpecs("sdsssssssss%-+ *.*... *llzthhlh#
 constexpr static auto myStr1 = preprocessInvalidSpecs<kSize1>("sdsssssssss%-+ *.*... *llzthhlh#-054d=ssssssadfadfasfsasadasdasdsa.\n");
 constexpr static auto myStr2 = preprocessInvalidSpecs<2>("%ks");
 // "sd%sf%%fes%sds%%%%gjt *.***k12.dsd%%s%%d%f%f%dsss%h-+ 01233lzhhjt *.***d23.\n"
-constexpr std::array<SpecInfo, kNVS> fmtInfos = analyzeFormatString<kNVS>("sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n");
-constexpr int kNVS1 = countValidSpecs("dsdsdsdsdsdsd.\n");
-constexpr std::array<SpecInfo, kNVS1> fmtInfos1 = analyzeFormatString<kNVS1>("dsdsdsdsdsdsd.\n");
+constexpr std::array<SpecInfo, kNVS + 1> specInfos = analyzeFormatString<kNVS + 1>("sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n");
+constexpr int kNVS1 = countValidSpecs("dsdsdsds%k%kds%h.h.hlcdsd.\n");
+constexpr std::array<SpecInfo, kNVS1 + 1> specInfos1 = analyzeFormatString<kNVS1 + 1>("dsdsdsds%k%kds%h.h.hlcdsd.\n");
 
 #define COUNT(fmt, ...) countArgsPassed(__VA_ARGS__)
 
