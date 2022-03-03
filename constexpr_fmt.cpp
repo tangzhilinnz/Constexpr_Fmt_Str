@@ -968,15 +968,17 @@ squeezeSoundSize(const char(&fmt)[N]) {
 //checkFormat(CFMT_PRINTF_FORMAT const char*, ...) {}
 
 
-template<int N, size_t L>
+template<size_t N, size_t L>
 constexpr inline const char*/*std::tuple<const char*, int>*/
 getRTFmtStr(const char(&fmt)[N], const std::array<char, L>& fmtArr) {
-	if constexpr (0 == L)
+	if constexpr (0 == L) {
 		// return { fmt, /*static_cast<size_t>(N)*/ N };
+
 		return fmt;
+	}
 	else 
 		// return { fmtArr.data(), static_cast<int>(L) };
-		return fmtArr.data();
+		return /*fmtArr.data()*/const_cast<const char*>(&fmtArr[0]);
 }
 
 
@@ -1034,13 +1036,13 @@ inline constexpr int formattedWidth([[maybe_unused]] T&& n) {
 //#define	INTMAX_SIZE	(__FLAG_INTMAXT|__FLAG_SIZET|__FLAG_PTRDIFFT|__FLAG_LLONGINT)
 
 /* template converter_impl declaration */
-template</*SpecInfo SI, */SpecInfo... SIs, typename... Ts>
-inline void converter_impl(OutbufArg& outbuf, const char* fmt, Ts&&...args);
+template<const char* fmt,/*SpecInfo SI, */SpecInfo... SIs, typename... Ts>
+inline void converter_impl(OutbufArg& outbuf, /*const char* fmt,*/ Ts&&...args);
 //template<typename... Ts>
 //inline void converter_impl(OutbufArg& outbuf, const char* fmt, Ts&&...args);
 
-template<SpecInfo SI, typename T>
-inline void converter_single(OutbufArg& outbuf, const char* fmt, T&& arg,
+template<const char* fmt, SpecInfo SI, typename T>
+inline void converter_single(OutbufArg& outbuf, /*const char* fmt,*/ T&& arg,
 	const int W = 0, const int P = -1) {
 
 	char buf[100];	// space for %c, %[diouxX], %[eEfgG]
@@ -1129,11 +1131,11 @@ inline void converter_single(OutbufArg& outbuf, const char* fmt, T&& arg,
 }
 
 
-template<SpecInfo SI, SpecInfo... SIs, typename T, typename... Ts>
-inline void converter_args(OutbufArg& outbuf, const char* fmt, T&& arg, Ts&&... rest) {
+template<const char* fmt, SpecInfo SI, SpecInfo... SIs, typename T, typename... Ts>
+inline void converter_args(OutbufArg& outbuf, /*const char* fmt,*/ T&& arg, Ts&&... rest) {
 	//constexpr int len = countTailStrLength<SI, SIs...>();
-	converter_single<SI/*, SIs...*/>(outbuf, fmt, std::forward<T>(arg));
-	converter_impl<SIs...>(outbuf, fmt, std::forward<Ts>(rest)...);
+	converter_single<fmt, SI/*, SIs...*/>(outbuf, /*fmt,*/ std::forward<T>(arg));
+	converter_impl<fmt, SIs...>(outbuf, /*fmt,*/ std::forward<Ts>(rest)...);
 }
 
 
@@ -1142,15 +1144,15 @@ inline void converter_args(OutbufArg& outbuf, const char* fmt, T&& arg, Ts&&... 
 //	outbuf.write(fmt + SI_T.begin_, static_cast<size_t>(SI_T.end_ - SI_T.begin_));
 //}
 
-template<SpecInfo SI, SpecInfo... SIs, typename D, typename T, typename... Ts>
-inline void converter_D_args(OutbufArg& outbuf, const char* fmt, D&& d, T&& arg, Ts&&... rest) {
+template<const char* fmt, SpecInfo SI, SpecInfo... SIs, typename D, typename T, typename... Ts>
+inline void converter_D_args(OutbufArg& outbuf, /*const char* fmt,*/ D&& d, T&& arg, Ts&&... rest) {
 	if constexpr (SI.width_ == DYNAMIC_WIDTH) {
 		// test 
 		std::cout << "\nwidth: " << d << std::endl;
 		std::cout << "arg: " << arg << std::endl;
 		std::cout << std::endl;
 
-		converter_single<SI/*, SIs...*/>(outbuf, fmt, std::forward<T>(arg),
+		converter_single<fmt, SI/*, SIs...*/>(outbuf, /*fmt,*/ std::forward<T>(arg),
 			formattedWidth(std::forward<D>(d)), -1);
 	}
 	else if constexpr (SI.prec_ == DYNAMIC_PRECISION) {
@@ -1159,17 +1161,17 @@ inline void converter_D_args(OutbufArg& outbuf, const char* fmt, D&& d, T&& arg,
 		std::cout << "arg: " << arg << std::endl;
 		std::cout << std::endl;
 
-		converter_single<SI/*, SIs...*/>(outbuf, fmt, std::forward<T>(arg), 0,
+		converter_single<fmt, SI/*, SIs...*/>(outbuf, /*fmt,*/ std::forward<T>(arg), 0,
 			formattedPrec(std::forward<D>(d)));
 	}
 	else { /* should never happen */
 		abort();
 	}
-	converter_impl<SIs...>(outbuf, fmt, std::forward<Ts>(rest)...);
+	converter_impl<fmt, SIs...>(outbuf, /*fmt,*/ std::forward<Ts>(rest)...);
 }
 
-template<SpecInfo SI, SpecInfo... SIs, typename D1, typename D2, typename T, typename... Ts>
-inline void converter_D_D_args(OutbufArg& outbuf, const char* fmt, D1&& d1, D2&& d2, T&& arg, Ts&&... rest) {
+template<const char* fmt, SpecInfo SI, SpecInfo... SIs, typename D1, typename D2, typename T, typename... Ts>
+inline void converter_D_D_args(OutbufArg& outbuf, /*const char* fmt,*/ D1&& d1, D2&& d2, T&& arg, Ts&&... rest) {
 	if constexpr (SI.wFirst_) {
 		// test 
 		std::cout << "\nwidth: " << d1 << std::endl;
@@ -1177,7 +1179,7 @@ inline void converter_D_D_args(OutbufArg& outbuf, const char* fmt, D1&& d1, D2&&
 		std::cout << "arg: " << arg << std::endl;
 		std::cout << std::endl;
 
-		converter_single<SI/*, SIs...*/>(outbuf, fmt, std::forward<T>(arg),
+		converter_single<fmt, SI/*, SIs...*/>(outbuf, /*fmt,*/ std::forward<T>(arg),
 			formattedWidth(std::forward<D1>(d1)),
 			formattedPrec(std::forward<D2>(d2)));
 	}
@@ -1188,16 +1190,16 @@ inline void converter_D_D_args(OutbufArg& outbuf, const char* fmt, D1&& d1, D2&&
 		std::cout << "arg: " << arg << std::endl;
 		std::cout << std::endl;
 
-		converter_single<SI/*, SIs...*/>(outbuf, fmt, std::forward<T>(arg),
+		converter_single<fmt, SI/*, SIs...*/>(outbuf, /*fmt,*/ std::forward<T>(arg),
 			formattedWidth(std::forward<D2>(d2)),
 			formattedPrec(std::forward<D1>(d1)));
 	}
 
-	converter_impl<SIs...>(outbuf, fmt, std::forward<Ts>(rest)...);
+	converter_impl<fmt, SIs...>(outbuf, /*fmt,*/ std::forward<Ts>(rest)...);
 }
 
-template</*SpecInfo SI, */SpecInfo... SIs, typename... Ts>
-inline void converter_impl(OutbufArg& outbuf, const char* fmt, Ts&&...args) {
+template<const char* fmt, /*SpecInfo SI, */SpecInfo... SIs, typename... Ts>
+inline void converter_impl(OutbufArg& outbuf, /*const char* fmt,*/ Ts&&...args) {
 	// According to CFMT_STR implementation, at least one argument exists in the
 	// template parameter pack SpecInfo... SIs.
 	constexpr auto& SI = std::get<0>(std::forward_as_tuple(SIs...));
@@ -1205,14 +1207,14 @@ inline void converter_impl(OutbufArg& outbuf, const char* fmt, Ts&&...args) {
 	if constexpr (sizeof ...(SIs) > 1) {
 		if constexpr (SI.width_ == DYNAMIC_WIDTH
 			&& SI.prec_ == DYNAMIC_PRECISION) {
-			converter_D_D_args</*SI, */SIs...>(outbuf, fmt, std::forward<Ts>(args)...);
+			converter_D_D_args<fmt,/*SI, */SIs...>(outbuf, /*fmt,*/ std::forward<Ts>(args)...);
 		}
 		else if constexpr (SI.width_ == DYNAMIC_WIDTH
 			|| SI.prec_ == DYNAMIC_PRECISION) {
-			converter_D_args</*SI, */SIs...>(outbuf, fmt, std::forward<Ts>(args)...);
+			converter_D_args<fmt,/*SI, */SIs...>(outbuf, /*fmt,*/ std::forward<Ts>(args)...);
 		}
 		else {
-			converter_args</*SI, */SIs...>(outbuf, fmt, std::forward<Ts>(args)...);
+			converter_args<fmt,/*SI, */SIs...>(outbuf, /*fmt,*/ std::forward<Ts>(args)...);
 		}
 	}
 	else {
@@ -1225,12 +1227,12 @@ inline void converter_impl(OutbufArg& outbuf, const char* fmt, Ts&&...args) {
 //inline void converter_impl(OutbufArg& outbuf, const char* fmt, Ts&&...args) {
 //}
 
-template<const char* Fmt, SpecInfo... SIs>
+template<const char* fmt, SpecInfo... SIs>
 struct Converter {
 	constexpr Converter() {}
 
 	template <typename... Ts>
-	void operator()(OutbufArg& outbuf, const char* fmt, Ts&&... args) const {
+	void operator()(OutbufArg& outbuf, /*const char* fmt,*/ Ts&&... args) const {
 		constexpr auto numArgsReuqired =
 			countArgsRequired(std::array<SpecInfo, sizeof...(SIs)>{ {SIs...} });
 		if constexpr (static_cast<uint32_t>(numArgsReuqired) >
@@ -1242,7 +1244,7 @@ struct Converter {
 			abort();
 		}
 		else {
-			converter_impl<SIs...>(outbuf, fmt, std::forward<Ts>(args)...);
+			converter_impl<fmt, SIs...>(outbuf, /*fmt,*/ std::forward<Ts>(args)...);
 		}
 	}
 
@@ -1250,10 +1252,10 @@ struct Converter {
 
 template<auto fmt, auto tuple_like, template<auto...> typename Template>
 constexpr decltype(auto) unpack() {
-	constexpr auto size = std::tuple_size_v<decltype(std::forward_as_tuple(fmt, tuple_like)) > ;
-	//constexpr auto size = std::tuple_size_v<decltype(tuple_like)>;
+	//constexpr auto size = std::tuple_size_v<decltype(std::forward_as_tuple(fmt, tuple_like)) > ;
+	constexpr auto size = std::tuple_size_v<decltype(tuple_like)>;
 	return []<std::size_t... Is>(std::index_sequence<Is...>) {
-		return Template<std::get<Is>(tuple_like)...>{};
+		return Template<fmt, std::get<Is>(tuple_like)...>{};
 	} (std::make_index_sequence<size>{});
 }
 // ============================================================================
@@ -1283,8 +1285,9 @@ constexpr decltype(auto) unpack() {
  *      as the number of values specified in the valid format specifiers.
  */
 #define CFMT_STR(result, buffer, count, format, ...) do { \
-constexpr int kNVSIs = countValidSpecs(format); \
-constexpr int kLen = squeezeSoundSize(format); \
+static constexpr const char fmtStr[] = format; \
+constexpr int kNVSIs = countValidSpecs(/*format*/format); \
+constexpr int kLen = squeezeSoundSize(/*format*/format); \
 /**
  * A static variable inside a scope or function is something different than
  * a global static variable. Since there can be as many scoped statics with
@@ -1297,14 +1300,14 @@ constexpr int kLen = squeezeSoundSize(format); \
  * other translation units; the name is not exported to the linker, so it
  * cannot be accessed by name from another translation unit. */ \
 static constexpr std::array<SpecInfo, kNVSIs + 1> kSIs \
-	= analyzeFormatString<kNVSIs + 1>(format); \
-static constexpr auto kformatArr = preprocessInvalidSpecs<kLen>(format); \
-static constexpr auto kRTStr = getRTFmtStr(format, kformatArr); \
-static constexpr const char fmt1[] = "test"; \
-constexpr const char* kRTStr1 = fmt1; \
-static constexpr auto kConverter = unpack<kRTStr1, kSIs, Converter>(); \
+	= analyzeFormatString<kNVSIs + 1>(/*format*/format); \
+static constexpr auto kformatArr = preprocessInvalidSpecs<kLen>(/*format*/format); \
+static constexpr auto kRTStr = getRTFmtStr(/*format*/fmtStr, kformatArr); \
+/*static constexpr const char fmt1[] = format;*/ \
+/*constexpr const char* kRTStr1 = fmt1;*/ \
+static constexpr auto kConverter = unpack<kRTStr, kSIs, Converter>(); \
 OutbufArg outbuf(buffer, count); \
-kConverter(outbuf, kRTStr, ##__VA_ARGS__); \
+kConverter(outbuf, /*kRTStr, */##__VA_ARGS__); \
 result = outbuf.getWrittenNum(); \
 outbuf.done(); /* null - terminate the string */ \
 } while (0);
@@ -1397,9 +1400,9 @@ int main() {
 		//CFMT_STR(result, buf, 100, "sd+ 01236%s66657==k31%s==lllllz%ahhjt *.***d23.\n", 45, 's', L"adsds", 1, 1, 34);
 		//CFMT_STR(result, buf, 100, "sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n", 2,2,2, 45, 's', L"adsds");
 		//CFMT_STR(result, buf, 100, "34342323%hls-+ 0#s...llks12.0#%**.***+-.**lls*.*20%%ahjhj",2, L"aad",2,2);
-		//CFMT_STR(result, buf, 100, "%%s%%s%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+		CFMT_STR(result, buf, 100, "%%s%%s%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
 		//CFMT_STR(result, buf, 100, "h-+ 01233lzhhjt *.***hhhlll8.**s", 22,323,"adada");
-		/*result = tz_snprintf*/CFMT_STR(result, buf, 400, "test snprintf %hhdtest%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhdtest%hhd", (int)i, static_cast<long>(i), (3 - 2 < 3 ? i : 3), foo(i), i, (i), (i, 3), i, i, i);
+		///*result = tz_snprintf*/CFMT_STR(result, buf, 400, "test snprintf %hhdtest%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhdtest%hhd", (int)i, static_cast<long>(i), (3 - 2 < 3 ? i : 3), foo(i), i, (i), (i, 3), i, i, i);
 		///*result = tz_snprintf*/CFMT_STR(result, buf, 400, 
 		//	"test snprintf %hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhd\n"
 		//	"test snprintf %hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhd\n"
@@ -1407,7 +1410,7 @@ int main() {
 		//	//"test snprintf %hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhd\n"
 		//	, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i
 		//	, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
-		//CFMT_STR(result, buf, 400, "test snprintf %hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd", i, i, i, i, i, i, i, i, i, i);
+		//CFMT_STR(result, buf, 400, "test snprintf %hhdtest%hhdtest%hhdtest", i, i, i, i, i, i, i, i, i, i);
 		//CFMT_STR(result, buf, 400, "test snprintf %hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhd", "s", i, "s", "s", i, "s", "s", "s", i, "s");
 		//result = tz_snprintf(/*result,*/ buf, 400, "test snprintf %hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhdtest%hhd", i,i,i,i,i, i, i, i, i, i);
 		//result = tz_snprintf(buf, 400, "test snprintf %dtest%dtest%dtest%dtest%dtest%dtest%dtest%dtest%dtest%d", i, i, i, i, i, i, i, i, i, i);
@@ -1419,14 +1422,14 @@ int main() {
 		//result = tz_snprintf(buf, 100, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
 		//result = tz_snprintf(buf, 100, "%hhd%hhd%hhd%hhd%hhd", i, i, i, i, i);
 		//result = tz_snprintf(buf, 100, "%lld%lld%lld%lld%lld", 1ll, 1ll, 1ll, 1ll, 1ll/*(long long)i, (long long)i, (long long)i, (long long)i, (long long)i*/);
-		 ///*result = tz_snprintf*/CFMT_STR(result, buf, 400, "%hhdtest%hhdtest%hhdtest%hhdtest%hhdhjll -#+*..*885 0jzt  004 h",
-			// i, i,i,i,i/*, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i*/
-			// //"s", "s", "s", "s", "s", "s", "s", "s", "s", "s" "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s",
-			// //"s", "s", "s", "s", "s", "s", "s", "s", "s", "s","s","s"
-			///*(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+		 ///*result = tz_snprintf*/CFMT_STR(result, buf, 400, "%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld",
+			// //i, i,i,i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i,i
+			// /*"s", "s", "s", "s", "s", "s", "s", "s", "s", "s" "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s",
+			// "s", "s", "s", "s", "s", "s", "s", "s", "s", "s","s","s"*/
 			//(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
 			//(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-			//(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i*/);
+			//(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+			//(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i);
 			//static constexpr const char fmt[] = "%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld";
 			//static constexpr const char fmt[] = "%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd";
 			//static constexpr const size_t size = sizeof(fmt);
