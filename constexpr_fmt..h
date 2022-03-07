@@ -11,12 +11,92 @@
 
 #include "Portability.h"
 
+#define	to_char(n)	((n) + '0')
+
+using u_short = unsigned short;
+static constexpr const u_short digit_pairs[100] = {
+	0x3030, 0x3130, 0x3230, 0x3330, 0x3430, 0x3530, 0x3630, 0x3730, 0x3830, 0x3930,
+	0x3031, 0x3131, 0x3231, 0x3331, 0x3431, 0x3531, 0x3631, 0x3731, 0x3831, 0x3931,
+	0x3032, 0x3132, 0x3232, 0x3332, 0x3432, 0x3532, 0x3632, 0x3732, 0x3832, 0x3932,
+	0x3033, 0x3133, 0x3233, 0x3333, 0x3433, 0x3533, 0x3633, 0x3733, 0x3833, 0x3933,
+	0x3034, 0x3134, 0x3234, 0x3334, 0x3434, 0x3534, 0x3634, 0x3734, 0x3834, 0x3934,
+	0x3035, 0x3135, 0x3235, 0x3335, 0x3435, 0x3535, 0x3635, 0x3735, 0x3835, 0x3935,
+	0x3036, 0x3136, 0x3236, 0x3336, 0x3436, 0x3536, 0x3636, 0x3736, 0x3836, 0x3936,
+	0x3037, 0x3137, 0x3237, 0x3337, 0x3437, 0x3537, 0x3637, 0x3737, 0x3837, 0x3937,
+	0x3038, 0x3138, 0x3238, 0x3338, 0x3438, 0x3538, 0x3638, 0x3738, 0x3838, 0x3938,
+	0x3039, 0x3139, 0x3239, 0x3339, 0x3439, 0x3539, 0x3639, 0x3739, 0x3839, 0x3939
+};
+
+
+template <size_t N>
+std::tuple<const char*, size_t> formatDec(char(&buf)[N], uintmax_t d) {
+
+	char* it = &buf[N - 2];
+	intmax_t div = d / 100;
+
+	while (div ) {
+		*reinterpret_cast<u_short*>(it) = digit_pairs[d - div * 100];
+		d = div;
+		it -= 2;
+		div = d / 100;
+		// d > 0
+	}
+	// d < 100
+
+	*reinterpret_cast<u_short*>(it) = digit_pairs[d];
+
+	if (d < 10) {
+		it++;
+	}
+
+	return std::make_tuple(it, &buf[N] - it);
+}
+
+
+//static constexpr const char digit_pairs[201] = {
+//	"00010203040506070809"
+//	"10111213141516171819"
+//	"20212223242526272829"
+//	"30313233343536373839"
+//	"40414243444546474849"
+//	"50515253545556575859"
+//	"60616263646566676869"
+//	"70717273747576777879"
+//	"80818283848586878889"
+//	"90919293949596979899" 
+//};
+
+//template <size_t N>
+//inline
+//std::tuple<const char*, size_t> formatDec(char(&buf)[N], uintmax_t d) {
+//
+//	char* it = &buf[N - 2];
+//	intmax_t div = d / 100;
+//
+//	while (div) {
+//		std::memcpy(it, &digit_pairs[2 * (d - div * 100)], 2);
+//		d = div;
+//		it -= 2;
+//		div = d / 100;
+//		// d > 0
+//	}
+//
+//	std::memcpy(it, &digit_pairs[2 * d], 2);
+//
+//	if (d < 10) {
+//		it++;
+//	}
+//
+//	return std::make_tuple(it, &buf[N] - it);
+//
+//}
+
 
 template <bool Upper, size_t Divisor, class T, size_t N>
 std::tuple<const char*, size_t> format(char(&buf)[N], T d) {
 
 	if constexpr (Divisor == 10) {
-		static constexpr const char digit_pairs[201] = { "00010203040506070809"
+		/*static constexpr const char digit_pairs[201] = { "00010203040506070809"
 														"10111213141516171819"
 														"20212223242526272829"
 														"30313233343536373839"
@@ -25,7 +105,7 @@ std::tuple<const char*, size_t> format(char(&buf)[N], T d) {
 														"60616263646566676869"
 														"70717273747576777879"
 														"80818283848586878889"
-														"90919293949596979899" };
+														"90919293949596979899" };*/
 
 		char* it = &buf[N - 2];
 		if constexpr (std::is_signed<T>::value) {
@@ -247,8 +327,6 @@ std::tuple<const char*, size_t> format(char(&buf)[N], T d) {
 #define DYNAMIC_PRECISION  0x80000000
 
 #define BUF 400
-
-#define	to_char(n)	((n) + '0')
 
 // A macro to disallow the copy constructor and operator= functions
 #define DISALLOW_COPY_AND_ASSIGN(TypeName) \
@@ -515,9 +593,9 @@ toDigit(char c) {
  * \return
  *      Returns an SpecInfo object describing the detailed information of num-th format specifier
  */
-template<int N>
+//template<int N>
 constexpr inline SpecInfo
-getOneSepc(const char(&fmt)[N]/*const char* fmt*/, int num = 0) {
+getOneSepc(/*const char(&fmt)[N]*/const char* fmt, int num = 0) {
 	begin_t begin = 0;
 	end_t end = 0;
 	flags_t flags = 0;
@@ -532,6 +610,9 @@ getOneSepc(const char(&fmt)[N]/*const char* fmt*/, int num = 0) {
 	int specStartPos = 0;
 	int sizeOfInvalidSpecs = 0;
 	bool exit = false;
+
+	//const char* fmt = *pFmt;
+	//int num = N;
 
 	while (num > 0) {
 		// consume the current non-format string until reaching the next '%'
@@ -764,10 +845,11 @@ getOneSepc(const char(&fmt)[N]/*const char* fmt*/, int num = 0) {
  // template<std::size_t N>
  // using make_index_sequence = std::make_integer_sequence<std::size_t, N>;
  // The program is ill-formed if N is negative. If N is zero, the indicated type is integer_sequence<T>.
-template<int N, std::size_t... Indices>
-constexpr std::array<SpecInfo, sizeof...(Indices)> // Returns the number of elements in pack Indices
-analyzeFormatStringHelper(const char(&fmt)[N], std::index_sequence<Indices...>) {
-	return { { getOneSepc(fmt, Indices)... } };
+template</*int N,*/ std::size_t... Indices>
+constexpr auto/*std::array<SpecInfo, sizeof...(Indices)>*/ // Returns the number of elements in pack Indices
+analyzeFormatStringHelper(/*const char(&fmt)[N]*/const char* fmt, std::index_sequence<Indices...>) {
+	//return { { getOneSepc(fmt, Indices)... } };
+	return std::make_tuple(getOneSepc(fmt, Indices)...);
 }
 
 
@@ -793,9 +875,9 @@ analyzeFormatStringHelper(const char(&fmt)[N], std::index_sequence<Indices...>) 
  *      info (position of the head '%', position of the end of specifier,
  *      width, precision, sign and terminal) of each specifier.
  */
-template<int NParams, size_t N>
-constexpr std::array<SpecInfo, NParams>
-analyzeFormatString(const char(&fmt)[N]) {
+template<int NParams/*, size_t N*/>
+constexpr /*std::array<SpecInfo, NParams>*/auto
+analyzeFormatString(/*const char(&fmt)[N]*/const char* fmt) {
 	return analyzeFormatStringHelper(fmt, std::make_index_sequence<NParams>{});
 }
 
@@ -1006,13 +1088,29 @@ template<const char* const* fmt, SpecInfo... SIs, typename... Ts>
 inline void converter_impl(OutbufArg& outbuf, Ts&&...args);
 
 template<const char* const* fmt, SpecInfo SI, typename T>
-inline void converter_single(OutbufArg& outbuf, T&& arg,
-	const int W = 0, const int P = -1) {
+inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0, 
+    precision_t P = -1) {
 
 	char buf[100];	// space for %c, %[diouxX], %[eEfgG]
 	const char* cp = nullptr;
 	std::to_chars_result ret;
 	size_t len = 0;
+
+	flags_t flags = SI.flags_;
+	sign_t sign = SI.sign_;
+	if constexpr (SI.width_ != DYNAMIC_WIDTH 
+		&& SI.prec_ == DYNAMIC_PRECISION) {
+		W = SI.width_;
+	}
+	else if constexpr (SI.width_ == DYNAMIC_WIDTH 
+		&& SI.prec_ != DYNAMIC_PRECISION) {
+		P = SI.prec_;
+	}
+	else if constexpr (SI.width_ != DYNAMIC_WIDTH
+		&& SI.prec_ != DYNAMIC_PRECISION) {
+		W = SI.width_;
+		P = SI.prec_;
+	}
 
 	if constexpr (SI.terminal_ == 'i' || SI.terminal_ == 'd') {
 		if constexpr (std::is_integral_v<std::remove_reference_t<T>>) {
@@ -1053,9 +1151,16 @@ inline void converter_single(OutbufArg& outbuf, T&& arg,
 
 			//cp = buf + 100;
 
-			if (jval < 0) jval = -jval;
+			if (jval < 0) { 
+				jval = -jval; 
+				sign = '-';
+			}
+			//if (static_cast<intmax_t>(jval) < 0)
+			//	jval = -static_cast<intmax_t>(jval);
 
-			std::tie(cp, len) = format<false, 10>(buf, jval);
+			std::tie(cp, len) = /*format<false, 10>(buf, jval)*/formatDec(buf, jval);
+			//cp = formatDec(buf, jval);
+			//len = buf + 100 - cp;
 
 			//// many numbers are 1 digit
 			//while (jval >= 10) {
@@ -1082,8 +1187,9 @@ inline void converter_single(OutbufArg& outbuf, T&& arg,
 	}
 	else {}
 
-
-	outbuf.write(*fmt + SI.begin_, static_cast<size_t>(SI.end_ - SI.begin_));
+	if constexpr (SI.end_ - SI.begin_ > 0) {
+		outbuf.write(*fmt + SI.begin_, static_cast<size_t>(SI.end_ - SI.begin_));
+	}
 
 	if constexpr (SI.terminal_ != 'n') {
 		outbuf.write(cp, len);
@@ -1181,12 +1287,12 @@ inline void converter_impl(OutbufArg& outbuf, Ts&&...args) {
 	}
 }
 
-template<const char* const* fmt, SpecInfo... SIs>
+template</*const char* const* fmt, */SpecInfo... SIs>
 struct Converter {
 	constexpr Converter() {}
 
-	template <typename... Ts>
-	void operator()(OutbufArg& outbuf, Ts&&... args) const {
+	template <const char* const* fmt, typename... Ts>
+	void /*operator()*/convert(OutbufArg& outbuf, Ts&&... args) const {
 		constexpr auto numArgsReuqired = countArgsRequired<SIs...>();
 		if constexpr (static_cast<uint32_t>(numArgsReuqired) > 
 			static_cast<uint32_t>(sizeof...(Ts))) {
@@ -1203,35 +1309,41 @@ struct Converter {
 
 };
 
-template<auto fmt, auto tuple_like, template<auto...> typename Template>
-constexpr decltype(auto) unpack() {
-	constexpr auto size = std::tuple_size_v<decltype(tuple_like)>;
-	return []<std::size_t... Is>(std::index_sequence<Is...>) {
-		return Template<fmt, std::get<Is>(tuple_like)...>{};
-	} (std::make_index_sequence<size>{});
-}
-
-
-
-//template<auto fmtStr, int N, template<auto...> typename Template, auto fmt>
-//constexpr decltype(auto) unpack() {
-//	return[&]<std::size_t... Is>(std::index_sequence<Is...>) {
-//		return Template<fmtStr, getOneSepc(*fmt, Is)...>{};
-//	} (std::make_index_sequence<N>{});
+//template<auto tuple_like, template<auto...> typename Template>
+//constexpr /*decltype(auto)*/auto unpack_bak() {
+//	constexpr auto size = std::tuple_size_v<decltype(tuple_like)>;
+//	return []<std::size_t... Is>(std::index_sequence<Is...>) {
+//		return Template<std::get<Is>(tuple_like)...>{};
+//	} (std::make_index_sequence<size>{});
 //}
 
-template<size_t N, size_t L>
-constexpr inline const char*/*std::tuple<const char*, int>*/
-getRTFmtStr(const char(&fmt)[N], const std::array<char, L>& fmtArr) {
-	if constexpr (0 == L) {
-		// return { fmt, /*static_cast<size_t>(N)*/ N };
 
-		return fmt;
-	}
-	else
-		// return { fmtArr.data(), static_cast<int>(L) };
-		return /*fmtArr.data()*/const_cast<const char*>(&fmtArr[0]);
+
+template</*auto fmtStr, */int N, template<auto...> typename Template, auto fmt/*, size_t M*/>
+constexpr decltype(auto) unpack(/*const char(&fmt)[M]*/) {
+	//constexpr auto SIs = analyzeFormatString<N>(*fmt);
+	//return[&]<std::size_t... Is>(std::index_sequence<Is...>) {
+	//	return Template<std::get<Is>(SIs)...>{};
+	//} (std::make_index_sequence<N>{});
+
+	return[&]<std::size_t... Is>(std::index_sequence<Is...>) {
+		//static constexpr SpecInfo SI = getOneSepc(fmt, Is);
+		return Template </*fmtStr, */getOneSepc(*fmt, Is)... > {};
+	} (std::make_index_sequence<N>{});
 }
+
+//template<size_t N, size_t L>
+//constexpr inline const char*/*std::tuple<const char*, int>*/
+//getRTFmtStr(const char(&fmt)[N], const std::array<char, L>& fmtArr) {
+//	if constexpr (0 == L) {
+//		// return { fmt, /*static_cast<size_t>(N)*/ N };
+//
+//		return fmt;
+//	}
+//	else
+//		// return { fmtArr.data(), static_cast<int>(L) };
+//		return /*fmtArr.data()*/const_cast<const char*>(&fmtArr[0]);
+//}
 
 // ============================================================================
 // ============================================================================
@@ -1261,7 +1373,7 @@ getRTFmtStr(const char(&fmt)[N], const std::array<char, L>& fmtArr) {
 #define CFMT_STR(result, buffer, count, format, ...) do { \
 constexpr int kNVSIs = countValidSpecInfos(format); \
 constexpr int kSS = squeezeSoundSize(format); \
-/*static constexpr auto fmtRawStr = format;*/ \
+static constexpr auto fmtRawStr = format; \
 /**
  * A static variable inside a scope or function is something different than
  * a global static variable. Since there can be as many scoped statics with
@@ -1273,18 +1385,19 @@ constexpr int kSS = squeezeSoundSize(format); \
  * change their extent, but it does change its visibility with respect to
  * other translation units; the name is not exported to the linker, so it
  * cannot be accessed by name from another translation unit. */ \
-static constexpr std::array<SpecInfo, kNVSIs + 1> kSIs \
-	= analyzeFormatString<kNVSIs + 1>(format); \
+	/*static constexpr std::array<SpecInfo, kNVSIs + 1> kSIs*/ \
+	/*= analyzeFormatString<kNVSIs + 1>(format);*/ \
 static constexpr auto kfmtArr = preprocessInvalidSpecs<kSS>(format); \
-static constexpr auto kRTStr = getRTFmtStr(format, kfmtArr); \
-   /*= [&](){ return (kSS < sizeof(format)? kfmtArr.data() : format); }(); */\
+static constexpr auto kRTStr /*= getRTFmtStr(format, kfmtArr);*/ \
+   = [&](){ return (kSS < sizeof(format)? kfmtArr.data() : format); }(); \
 /** 
  * use the address of the pointer to a string literal (&kRTStr) with static
  * storage duration and internal linkage instead of a raw string literal to
  * comply with c++ standard 14.3.2/1 */ \
-static constexpr auto kConverter = unpack<&kRTStr, kSIs,/*&kRTStr, kNVSIs + 1,*/ Converter/*, &fmtRawStr*/>(); \
+static constexpr auto kConverter = unpack<kNVSIs + 1, Converter, &fmtRawStr>(); \
+/*static constexpr auto kConverter = unpack_bak<&kSIs, Converter>();*/ \
 OutbufArg outbuf(buffer, count); \
-kConverter(outbuf, ##__VA_ARGS__); \
+kConverter.convert<&kRTStr>(outbuf, ##__VA_ARGS__); \
 result = outbuf.getWrittenNum(); \
 outbuf.done(); /* null - terminate the string */ \
 } while (0);
