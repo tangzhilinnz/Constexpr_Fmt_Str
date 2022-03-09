@@ -28,7 +28,7 @@ static constexpr const /*u_*/short digit_pairs[100] = {
 };
 
 
-static constexpr const /*u_*/unsigned digit_pairs_large[1000] = {
+static constexpr const /*u_*/int digit_pairs_large[1000] = {
 	0X30303000, 0X31303000, 0X32303000, 0X33303000, 0X34303000, 0X35303000, 0X36303000, 0X37303000, 0X38303000, 0X39303000, 
 	0X30313000, 0X31313000, 0X32313000, 0X33313000, 0X34313000, 0X35313000, 0X36313000, 0X37313000, 0X38313000, 0X39313000, 
 	0X30323000, 0X31323000, 0X32323000, 0X33323000, 0X34323000, 0X35323000, 0X36323000, 0X37323000, 0X38323000, 0X39323000, 
@@ -139,7 +139,7 @@ std::tuple<char*, size_t> formatDec(char(&buf)[N], uintmax_t/*T&&*/ d) {
 	intmax_t div = d / 100/*1000*/;
 
 	while (div) {
-		*reinterpret_cast</*u_*/short/*unsigned*/*>(it) = digit_pairs/*digit_pairs_large*/[d - div * 100/*1000*/];
+		*reinterpret_cast</*u_*/short/*int*/*>(it) = digit_pairs/*digit_pairs_large*/[d - div * 100/*1000*/];
 		d = div;
 		it -= 2/*3*/;
 		div = d / 100/*1000*/;
@@ -147,18 +147,18 @@ std::tuple<char*, size_t> formatDec(char(&buf)[N], uintmax_t/*T&&*/ d) {
 	}
 	// d < 100
 
-	*reinterpret_cast</*u_*/short/*unsigned*/*>(it) = digit_pairs/*digit_pairs_large*/[d];
+	*reinterpret_cast</*u_*/short/*int*/*>(it) = digit_pairs/*digit_pairs_large*/[d];
 
 	if (d < 10) {
 		it++;
 		//it += 3;
 	}
-	//else if (d < 100) {
-	//	it += 2;
-	//}
-	//else {
-	//	it++;
-	//}
+	/*else if (d < 100) {
+		it += 2;
+	}
+	else {
+		it++;
+	}*/
 
 	return std::make_tuple(it, &buf[N] - it);
 
@@ -1204,7 +1204,8 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 
 	char buf[100];	// space for %c, %[diouxX], %[eEfgG]
 	const char* cp = nullptr;
-	std::to_chars_result ret;
+	int dprec = 0;		/* a copy of prec if [diouxX], 0 otherwise */
+	//std::to_chars_result ret;
 	size_t len = 0;
 
 	flags_t flags = SI.flags_;
@@ -1307,6 +1308,14 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 	if constexpr (SI.end_ - SI.begin_ > 0) {
 		outbuf.write(*fmt + SI.begin_, static_cast<size_t>(SI.end_ - SI.begin_));
 	}
+
+	/*-
+	 * ``... diouXx conversions ... if a precision is
+	 * specified (P >= 0), the 0 flag will be ignored.''
+	 *	-- ANSI X3J11
+	 */
+    if ((dprec = P) >= 0)
+        flags &= ~__FLAG_ZEROPAD;
 
 	if constexpr (SI.terminal_ != 'n') {
 		outbuf.write(cp, len);
