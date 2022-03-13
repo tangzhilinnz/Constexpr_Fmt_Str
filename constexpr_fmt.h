@@ -12,6 +12,10 @@
 #include "Portability.h"
 
 #define	to_char(n)	((n) + '0')
+#define	PADSIZE		16
+
+static constexpr const char* blanks = "                ";
+static constexpr const char* zeroes = "0000000000000000";
 
 using u_short = unsigned short;
 static constexpr const /*u_*/short digit_pairs[100] = {
@@ -26,6 +30,12 @@ static constexpr const /*u_*/short digit_pairs[100] = {
 	0x3038, 0x3138, 0x3238, 0x3338, 0x3438, 0x3538, 0x3638, 0x3738, 0x3838, 0x3938,
 	0x3039, 0x3139, 0x3239, 0x3339, 0x3439, 0x3539, 0x3639, 0x3739, 0x3839, 0x3939
 };
+
+// Converts value in the range [0, 1000) to a string.
+constexpr inline const char* digits3(size_t value) {
+	// GCC generates slightly better code when value is pointer-size.
+	return &"000001002003004005006007008009010011012013014015016017018019020021022023024025026027028029030031032033034035036037038039040041042043044045046047048049050051052053054055056057058059060061062063064065066067068069070071072073074075076077078079080081082083084085086087088089090091092093094095096097098099100101102103104105106107108109110111112113114115116117118119120121122123124125126127128129130131132133134135136137138139140141142143144145146147148149150151152153154155156157158159160161162163164165166167168169170171172173174175176177178179180181182183184185186187188189190191192193194195196197198199200201202203204205206207208209210211212213214215216217218219220221222223224225226227228229230231232233234235236237238239240241242243244245246247248249250251252253254255256257258259260261262263264265266267268269270271272273274275276277278279280281282283284285286287288289290291292293294295296297298299300301302303304305306307308309310311312313314315316317318319320321322323324325326327328329330331332333334335336337338339340341342343344345346347348349350351352353354355356357358359360361362363364365366367368369370371372373374375376377378379380381382383384385386387388389390391392393394395396397398399400401402403404405406407408409410411412413414415416417418419420421422423424425426427428429430431432433434435436437438439440441442443444445446447448449450451452453454455456457458459460461462463464465466467468469470471472473474475476477478479480481482483484485486487488489490491492493494495496497498499500501502503504505506507508509510511512513514515516517518519520521522523524525526527528529530531532533534535536537538539540541542543544545546547548549550551552553554555556557558559560561562563564565566567568569570571572573574575576577578579580581582583584585586587588589590591592593594595596597598599600601602603604605606607608609610611612613614615616617618619620621622623624625626627628629630631632633634635636637638639640641642643644645646647648649650651652653654655656657658659660661662663664665666667668669670671672673674675676677678679680681682683684685686687688689690691692693694695696697698699700701702703704705706707708709710711712713714715716717718719720721722723724725726727728729730731732733734735736737738739740741742743744745746747748749750751752753754755756757758759760761762763764765766767768769770771772773774775776777778779780781782783784785786787788789790791792793794795796797798799800801802803804805806807808809810811812813814815816817818819820821822823824825826827828829830831832833834835836837838839840841842843844845846847848849850851852853854855856857858859860861862863864865866867868869870871872873874875876877878879880881882883884885886887888889890891892893894895896897898899900901902903904905906907908909910911912913914915916917918919920921922923924925926927928929930931932933934935936937938939940941942943944945946947948949950951952953954955956957958959960961962963964965966967968969970971972973974975976977978979980981982983984985986987988989990991992993994995996997998999"[value * 3];
+}
 
 
 //static constexpr const /*u_*/int digit_pairs_large[1000] = {
@@ -132,75 +142,57 @@ static constexpr const /*u_*/short digit_pairs[100] = {
 //};
 
 
-template <size_t N/*, class T*/>
-std::tuple<char*, size_t> formatDec(char(&buf)[N], uintmax_t/*T&&*/ d) {
-
-	char* it = &buf[N - 2/*4*/];
-	intmax_t div = d / 100/*1000*/;
-
-	while (div) {
-		*reinterpret_cast</*u_*/short/*int*/*>(it) = digit_pairs/*digit_pairs_large*/[d - div * 100/*1000*/];
-		d = div;
-		it -= 2/*3*/;
-		div = d / 100/*1000*/;
-		// d > 0
-	}
-	// d < 100
-
-	*reinterpret_cast</*u_*/short/*int*/*>(it) = digit_pairs/*digit_pairs_large*/[d];
-
-	if (d < 10) {
-		it++;
-		//it += 3;
-	}
-	/*else if (d < 100) {
-		it += 2;
-	}
-	else {
-		it++;
-	}*/
-
-	return std::make_tuple(it, &buf[N] - it);
-
-}
-
-
-//static constexpr const char digit_pairs[201] = {
-//	"00010203040506070809"
-//	"10111213141516171819"
-//	"20212223242526272829"
-//	"30313233343536373839"
-//	"40414243444546474849"
-//	"50515253545556575859"
-//	"60616263646566676869"
-//	"70717273747576777879"
-//	"80818283848586878889"
-//	"90919293949596979899" 
-//};
-//template <size_t N>
-//inline
-//std::tuple<const char*, size_t> formatDec(char(&buf)[N], uintmax_t d) {
-//
-//	char* it = &buf[N - 2];
-//	intmax_t div = d / 100;
+//template <size_t N/*, class T*/>
+//std::tuple<char*, size_t> formatDec(char(&buf)[N], uintmax_t d) {
+//	char* it = &buf[N - 3];
+//	intmax_t div = d / 1000;
 //
 //	while (div) {
-//		std::memcpy(it, &digit_pairs[2 * (d - div * 100)], 2);
+//		memcpy(it, digits3(d - div * 1000), 3);
+//
 //		d = div;
-//		it -= 2;
-//		div = d / 100;
+//		it -= 3;
+//		div = d / 1000;
 //		// d > 0
 //	}
-//
-//	std::memcpy(it, &digit_pairs[2 * d], 2);
+//	// d < 100
+//	memcpy(it, digits3(d), 3);
 //
 //	if (d < 10) {
+//		it += 2;
+//	}
+//	else if (d < 100) {
 //		it++;
 //	}
 //
 //	return std::make_tuple(it, &buf[N] - it);
 //
 //}
+
+template <size_t N/*, class T*/>
+std::tuple<char*, size_t> formatDec(char(&buf)[N], uintmax_t d) {
+	char* it = &buf[N - 2];
+	intmax_t div = d / 100;
+
+	while (div) {
+		*reinterpret_cast</*u_*/short*>(it) = digit_pairs[d - div * 100];
+
+		d = div;
+		it -= 2;
+		div = d / 100;
+		// d > 0
+	}
+	// d < 100
+
+	*reinterpret_cast</*u_*/short*>(it) = digit_pairs[d];
+
+	if (d < 10) {
+		it++;
+	}
+
+	return std::make_tuple(it, &buf[N] - it);
+
+}
 
 
 template <bool Upper, size_t Divisor, class T, size_t N>
@@ -529,6 +521,29 @@ private:
 
 	DISALLOW_COPY_AND_ASSIGN(OutbufArg);
 };
+
+
+#define PAD(howmany, with) { \
+    int n; \
+    if ((n = (howmany)) > 0) { \
+	    while (n > PADSIZE) { \
+            outbuf.write(with, PADSIZE); \
+	        n -= PADSIZE; \
+	    } \
+        outbuf.write(with, static_cast<size_t>(n)); \
+	} \
+}
+
+//void PAD(int howmany, const char* with, OutbufArg& outbuf) {
+//	int n;
+//	if ((n = (howmany)) > 0) {
+//		while (n > PADSIZE) {
+//			outbuf.write(with, PADSIZE);
+//			n -= PADSIZE;
+//		}
+//		outbuf.write(with, static_cast<size_t>(n));
+//	}
+//}
 
 
 using flags_t = int;
@@ -1206,10 +1221,11 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 	const char* cp = nullptr;
 	int dprec = 0;	// a copy of prec if [diouxX], 0 otherwise
 	int	fpprec = 0;	    // `extra' floating precision in [eEfgG]
+	int	realsz = 0;	    // field size expanded by dprec
 	size_t size = 0;
 	int fieldsz = 0;	// field size expanded by sign, etc
 	char ox[2] = { 0, 0 };	// space for 0x; ox[1] is either x, X, or \0
-	//std::to_chars_result ret;
+	std::to_chars_result ret;
 
 	flags_t flags = SI.flags_;
 	sign_t sign = SI.sign_;
@@ -1232,9 +1248,9 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 		|| SI.terminal_ == 'o' || SI.terminal_ == 'u') {
 
 		if constexpr (std::is_integral_v<std::remove_reference_t<T>>) {
-			intmax_t jval = 0;
-
 			if constexpr (SI.terminal_ == 'i' || SI.terminal_ == 'd') {
+				intmax_t jval = 0;
+
 				if constexpr ((SI.flags_ & __FLAG_LONGINT) != 0) {
 					jval = static_cast<long int>(arg);
 				}
@@ -1264,14 +1280,14 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 					jval = -jval;
 					sign = '-';
 				}
+
+				std::tie(cp, size) = formatDec(buf, jval);
 			}
 
 			if constexpr (SI.terminal_ == 'x' || SI.terminal_ == 'X'
 				|| SI.terminal_ == 'o' || SI.terminal_ == 'u') {
 
 			}
-
-			std::tie(cp, size) = formatDec(buf, jval);
 
 			/*-
 			 * ``... diouXx conversions ... if a precision is
@@ -1292,22 +1308,68 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 		outbuf.write(*fmt + SI.begin_, static_cast<size_t>(SI.end_ - SI.begin_));
 	}
 
-	// All reasonable formats wind up here. At this point, `cp' points to a
-	// string which (if not doLAdjust) should be padded out to `width' 
-	// places. If doZeroPad, it should first be prefixed by any sign or 
-	// other prefix; otherwise, it should be blank padded before the prefix 
-	// is emitted. After any left-hand padding and prefixing, emit zeroes
-	// required by a decimal [diouxX] precision, then print the string 
-	// properly, then emit zeroes required by any leftover floating 
-	// precision; finally, if doLAdjust, pad with blanks.
-
-	// compute actual size, so we know how much to pad.
-	// fieldsz excludes decimal prec; realsz includes it
-
-	fieldsz = static_cast<int>(size + fpprec); // normally fpprec is 0
-
 	if constexpr (SI.terminal_ != 'n') {
+		// All reasonable formats wind up here. At this point, `cp' points to a
+		// string which (if not flags&__FLAG_LADJUST) should be padded out to
+		// `width' places. If flags&__FLAG_ZEROPAD, it should first be prefixed
+		// by any sign or other prefix; otherwise, it should be blank padded
+		// before the prefix is emitted. After any left-hand padding and 
+		// prefixing, emit zeroes required by a decimal [diouxX] precision, 
+		// then print the string properly, then emit zeroes required by any
+		// leftover floating  precision; finally, if flags&_FLAG_LADJUST, pad
+		// with blanks.
+
+		// compute actual size, so we know how much to pad.
+		// fieldsz excludes decimal prec; realsz includes it
+
+		fieldsz = static_cast<int>(size + fpprec); // normally fpprec is 0
+		realsz = (dprec > fieldsz) ? dprec : fieldsz;
+		if (sign)
+			realsz++;
+		if (ox[1])
+			realsz += 2;
+
+		///////////////////////////// Right Adjust ////////////////////////////
+		/* right-adjusting blank padding */
+		if constexpr ((SI.flags_ & __FLAG_LADJUST) == 0) {
+			if ((flags & (/*__FLAG_LADJUST |*/ __FLAG_ZEROPAD)) == 0) {
+				PAD(W - realsz, blanks/*, outbuf*/);
+			}
+		}
+		///////////////////////////// Right Adjust ////////////////////////////
+
+		/* prefix */
+		if (sign)
+			outbuf.write(sign);
+		if (ox[1]) {	/* ox[1] is either x, X, or \0 */
+			ox[0] = '0';
+			outbuf.write(ox, 2);
+		}
+
+		///////////////////////////// Right Adjust ////////////////////////////
+		/* right-adjusting zero padding */
+		if constexpr ((SI.flags_ & __FLAG_LADJUST) == 0) {
+			if ((flags & (/*__FLAG_LADJUST |*/ __FLAG_ZEROPAD)) == __FLAG_ZEROPAD)
+				PAD(W - realsz, zeroes/*, outbuf*/);
+		}
+		///////////////////////////// Right Adjust ////////////////////////////
+
+		// [diouXx] leading zeroes from decimal precision
+		// when dprec > fieldsz, realsz == dprec and zero padding size is dprec - fieldsz;
+		// when dprec =< fieldsz, realsz == fieldsz and zero padding is skipped.
+		PAD(dprec - fieldsz, zeroes/*, outbuf*/);
+
+		// the string or number proper
 		outbuf.write(cp, size);
+
+		// trailing floating point zeroes
+		PAD(fpprec, zeroes/*, outbuf*/);
+
+		////////////////////////////// Left Adjust ////////////////////////////
+		/* left-adjusting padding (always blank) */
+		if constexpr (SI.flags_ & __FLAG_LADJUST == __FLAG_LADJUST)
+			PAD(W - realsz, blanks/*, outbuf*/);
+		////////////////////////////// Left Adjust ////////////////////////////
 	}
 }
 
@@ -1323,18 +1385,18 @@ template<const char* const* fmt, SpecInfo SI, SpecInfo... SIs, typename D, typen
 inline void converter_D_args(OutbufArg& outbuf, D&& d, T&& arg, Ts&&... rest) {
 	if constexpr (SI.width_ == DYNAMIC_WIDTH) {
 		// test 
-		std::cout << "\nwidth: " << d << std::endl;
-		std::cout << "arg: " << arg << std::endl;
-		std::cout << std::endl;
+		//std::cout << "\nwidth: " << d << std::endl;
+		//std::cout << "arg: " << arg << std::endl;
+		//std::cout << std::endl;
 
 		converter_single<fmt, SI>(outbuf, std::forward<T>(arg),
 			formattedWidth(std::forward<D>(d)), -1);
 	}
 	else if constexpr (SI.prec_ == DYNAMIC_PRECISION) {
 		// test 
-		std::cout << "\nprec: " << d << std::endl;
-		std::cout << "arg: " << arg << std::endl;
-		std::cout << std::endl;
+		//std::cout << "\nprec: " << d << std::endl;
+		//std::cout << "arg: " << arg << std::endl;
+		//std::cout << std::endl;
 
 		converter_single<fmt, SI>(outbuf, std::forward<T>(arg), 0,
 			formattedPrec(std::forward<D>(d)));
@@ -1349,10 +1411,10 @@ template<const char* const* fmt, SpecInfo SI, SpecInfo... SIs, typename D1, type
 inline void converter_D_D_args(OutbufArg& outbuf, D1&& d1, D2&& d2, T&& arg, Ts&&... rest) {
 	if constexpr (SI.wFirst_) {
 		// test 
-		std::cout << "\nwidth: " << d1 << std::endl;
-		std::cout << "prec: " << d2 << std::endl;
-		std::cout << "arg: " << arg << std::endl;
-		std::cout << std::endl;
+		//std::cout << "\nwidth: " << d1 << std::endl;
+		//std::cout << "prec: " << d2 << std::endl;
+		//std::cout << "arg: " << arg << std::endl;
+		//std::cout << std::endl;
 
 		converter_single<fmt, SI>(outbuf, std::forward<T>(arg),
 			formattedWidth(std::forward<D1>(d1)),
@@ -1360,10 +1422,10 @@ inline void converter_D_D_args(OutbufArg& outbuf, D1&& d1, D2&& d2, T&& arg, Ts&
 	}
 	else {
 		// test 
-		std::cout << "\nwidth: " << d2 << std::endl;
-		std::cout << "prec: " << d1 << std::endl;
-		std::cout << "arg: " << arg << std::endl;
-		std::cout << std::endl;
+		//std::cout << "\nwidth: " << d2 << std::endl;
+		//std::cout << "prec: " << d1 << std::endl;
+		//std::cout << "arg: " << arg << std::endl;
+		//std::cout << std::endl;
 
 		converter_single<fmt, SI>(outbuf, std::forward<T>(arg),
 			formattedWidth(std::forward<D2>(d2)),
