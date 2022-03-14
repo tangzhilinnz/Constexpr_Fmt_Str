@@ -1269,15 +1269,27 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 	if constexpr (SI.width_ != DYNAMIC_WIDTH 
 		&& SI.prec_ == DYNAMIC_PRECISION) {
 		W = SI.width_;
+		P = P < 0 ? -1 : P;
 	}
 	else if constexpr (SI.width_ == DYNAMIC_WIDTH 
 		&& SI.prec_ != DYNAMIC_PRECISION) {
+		if (W < 0) {
+			W = -W;
+			flags |= __FLAG_LADJUST;
+		}
 		P = SI.prec_;
 	}
 	else if constexpr (SI.width_ != DYNAMIC_WIDTH
 		&& SI.prec_ != DYNAMIC_PRECISION) {
 		W = SI.width_;
 		P = SI.prec_;
+	}
+	else {
+		P = P < 0 ? -1 : P;
+		if (W < 0) {
+			W = -W;
+			flags |= __FLAG_LADJUST;
+		}
 	}
 
     if constexpr (SI.terminal_ == 'i' || SI.terminal_ == 'd' 
@@ -1368,7 +1380,7 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 
 		///////////////////////////// Right Adjust ////////////////////////////
 		/* right-adjusting blank padding */
-		if constexpr ((SI.flags_/*flags*/ & (/*__FLAG_ZEROPAD |*/ __FLAG_LADJUST)) == 0) {
+		if /*constexpr*/ ((/*SI.flags_*/flags & (/*__FLAG_ZEROPAD |*/ __FLAG_LADJUST)) == 0) {
 			if ((flags & __FLAG_ZEROPAD) == 0)
 				//PAD(W - realsz, BLANKS/*, outbuf*/);
 				outbuf.writePaddings<' '>(W - realsz);
@@ -1385,7 +1397,7 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 
 		///////////////////////////// Right Adjust ////////////////////////////
 		/* right-adjusting zero padding */
-		if constexpr ((SI.flags_ /*flags*/ & (/*__FLAG_ZEROPAD |*/__FLAG_LADJUST)) == 0) {
+		if /*constexpr*/ ((/*SI.flags_*/ flags & (/*__FLAG_ZEROPAD |*/__FLAG_LADJUST)) == /*__FLAG_ZEROPAD*/0) {
 			if ((flags & __FLAG_ZEROPAD) == __FLAG_ZEROPAD)
 				//PAD(W - realsz, ZEROS/*, outbuf*/);
 				outbuf.writePaddings<'0'>(W - realsz/*, '0'*/);
@@ -1407,7 +1419,7 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 
 		////////////////////////////// Left Adjust ////////////////////////////
 		/* left-adjusting padding (always blank) */
-		if constexpr ((SI.flags_ /*flags*/ & __FLAG_LADJUST) == __FLAG_LADJUST)
+		if /*constexpr*/ ((/*SI.flags_*/ flags & __FLAG_LADJUST) == __FLAG_LADJUST)
 			//PAD(W - realsz, BLANKS/*, outbuf*/);
 		    outbuf.writePaddings<' '>(W - realsz);
 		////////////////////////////// Left Adjust ////////////////////////////
