@@ -11,11 +11,12 @@
 
 #include "Portability.h"
 
-#define	to_char(n)	((n) + '0')
+//#define	to_char(n)	((n) + '0')
 #define	PADSIZE		16
 
-static constexpr const char* blanks = "                ";
-static constexpr const char* zeroes = "0000000000000000";
+//static constexpr const char* BLANKS = "                ";
+//static constexpr const char* ZEROS = "0000000000000000";
+
 
 using u_short = unsigned short;
 static constexpr const /*u_*/short digit_pairs[100] = {
@@ -31,11 +32,15 @@ static constexpr const /*u_*/short digit_pairs[100] = {
 	0x3039, 0x3139, 0x3239, 0x3339, 0x3439, 0x3539, 0x3639, 0x3739, 0x3839, 0x3939
 };
 
+//extern const char* const ZEROS;
+//extern const char* const BLANKS;
+//extern const short digit_pairs[100];
+
 // Converts value in the range [0, 1000) to a string.
-constexpr inline const char* digits3(size_t value) {
-	// GCC generates slightly better code when value is pointer-size.
-	return &"000001002003004005006007008009010011012013014015016017018019020021022023024025026027028029030031032033034035036037038039040041042043044045046047048049050051052053054055056057058059060061062063064065066067068069070071072073074075076077078079080081082083084085086087088089090091092093094095096097098099100101102103104105106107108109110111112113114115116117118119120121122123124125126127128129130131132133134135136137138139140141142143144145146147148149150151152153154155156157158159160161162163164165166167168169170171172173174175176177178179180181182183184185186187188189190191192193194195196197198199200201202203204205206207208209210211212213214215216217218219220221222223224225226227228229230231232233234235236237238239240241242243244245246247248249250251252253254255256257258259260261262263264265266267268269270271272273274275276277278279280281282283284285286287288289290291292293294295296297298299300301302303304305306307308309310311312313314315316317318319320321322323324325326327328329330331332333334335336337338339340341342343344345346347348349350351352353354355356357358359360361362363364365366367368369370371372373374375376377378379380381382383384385386387388389390391392393394395396397398399400401402403404405406407408409410411412413414415416417418419420421422423424425426427428429430431432433434435436437438439440441442443444445446447448449450451452453454455456457458459460461462463464465466467468469470471472473474475476477478479480481482483484485486487488489490491492493494495496497498499500501502503504505506507508509510511512513514515516517518519520521522523524525526527528529530531532533534535536537538539540541542543544545546547548549550551552553554555556557558559560561562563564565566567568569570571572573574575576577578579580581582583584585586587588589590591592593594595596597598599600601602603604605606607608609610611612613614615616617618619620621622623624625626627628629630631632633634635636637638639640641642643644645646647648649650651652653654655656657658659660661662663664665666667668669670671672673674675676677678679680681682683684685686687688689690691692693694695696697698699700701702703704705706707708709710711712713714715716717718719720721722723724725726727728729730731732733734735736737738739740741742743744745746747748749750751752753754755756757758759760761762763764765766767768769770771772773774775776777778779780781782783784785786787788789790791792793794795796797798799800801802803804805806807808809810811812813814815816817818819820821822823824825826827828829830831832833834835836837838839840841842843844845846847848849850851852853854855856857858859860861862863864865866867868869870871872873874875876877878879880881882883884885886887888889890891892893894895896897898899900901902903904905906907908909910911912913914915916917918919920921922923924925926927928929930931932933934935936937938939940941942943944945946947948949950951952953954955956957958959960961962963964965966967968969970971972973974975976977978979980981982983984985986987988989990991992993994995996997998999"[value * 3];
-}
+//constexpr inline const char* digits3(size_t value) {
+//	// GCC generates slightly better code when value is pointer-size.
+//	return &"000001002003004005006007008009010011012013014015016017018019020021022023024025026027028029030031032033034035036037038039040041042043044045046047048049050051052053054055056057058059060061062063064065066067068069070071072073074075076077078079080081082083084085086087088089090091092093094095096097098099100101102103104105106107108109110111112113114115116117118119120121122123124125126127128129130131132133134135136137138139140141142143144145146147148149150151152153154155156157158159160161162163164165166167168169170171172173174175176177178179180181182183184185186187188189190191192193194195196197198199200201202203204205206207208209210211212213214215216217218219220221222223224225226227228229230231232233234235236237238239240241242243244245246247248249250251252253254255256257258259260261262263264265266267268269270271272273274275276277278279280281282283284285286287288289290291292293294295296297298299300301302303304305306307308309310311312313314315316317318319320321322323324325326327328329330331332333334335336337338339340341342343344345346347348349350351352353354355356357358359360361362363364365366367368369370371372373374375376377378379380381382383384385386387388389390391392393394395396397398399400401402403404405406407408409410411412413414415416417418419420421422423424425426427428429430431432433434435436437438439440441442443444445446447448449450451452453454455456457458459460461462463464465466467468469470471472473474475476477478479480481482483484485486487488489490491492493494495496497498499500501502503504505506507508509510511512513514515516517518519520521522523524525526527528529530531532533534535536537538539540541542543544545546547548549550551552553554555556557558559560561562563564565566567568569570571572573574575576577578579580581582583584585586587588589590591592593594595596597598599600601602603604605606607608609610611612613614615616617618619620621622623624625626627628629630631632633634635636637638639640641642643644645646647648649650651652653654655656657658659660661662663664665666667668669670671672673674675676677678679680681682683684685686687688689690691692693694695696697698699700701702703704705706707708709710711712713714715716717718719720721722723724725726727728729730731732733734735736737738739740741742743744745746747748749750751752753754755756757758759760761762763764765766767768769770771772773774775776777778779780781782783784785786787788789790791792793794795796797798799800801802803804805806807808809810811812813814815816817818819820821822823824825826827828829830831832833834835836837838839840841842843844845846847848849850851852853854855856857858859860861862863864865866867868869870871872873874875876877878879880881882883884885886887888889890891892893894895896897898899900901902903904905906907908909910911912913914915916917918919920921922923924925926927928929930931932933934935936937938939940941942943944945946947948949950951952953954955956957958959960961962963964965966967968969970971972973974975976977978979980981982983984985986987988989990991992993994995996997998999"[value * 3];
+//}
 
 
 //static constexpr const /*u_*/int digit_pairs_large[1000] = {
@@ -195,200 +200,200 @@ std::tuple<char*, size_t> formatDec(char(&buf)[N], uintmax_t d) {
 }
 
 
-template <bool Upper, size_t Divisor, class T, size_t N>
-std::tuple<const char*, size_t> format(char(&buf)[N], T d) {
-
-	if constexpr (Divisor == 10) {
-		/*static constexpr const char digit_pairs[201] = { "00010203040506070809"
-														"10111213141516171819"
-														"20212223242526272829"
-														"30313233343536373839"
-														"40414243444546474849"
-														"50515253545556575859"
-														"60616263646566676869"
-														"70717273747576777879"
-														"80818283848586878889"
-														"90919293949596979899" };*/
-
-		char* it = &buf[N - 2];
-		if constexpr (std::is_signed<T>::value) {
-			if (d >= 0) {
-				int div = d / 100;
-				while (div) {
-					std::memcpy(it, &digit_pairs[2 * (d - div * 100)], 2);
-					d = div;
-					it -= 2;
-					div = d / 100;
-				}
-
-				std::memcpy(it, &digit_pairs[2 * d], 2);
-
-				if (d < 10) {
-					it++;
-				}
-			}
-			else {
-				int div = d / 100;
-				while (div) {
-					std::memcpy(it, &digit_pairs[-2 * (d - div * 100)], 2);
-					d = div;
-					it -= 2;
-					div = d / 100;
-				}
-
-				std::memcpy(it, &digit_pairs[-2 * d], 2);
-
-				if (d <= -10) {
-					it--;
-				}
-
-				*it = '-';
-			}
-		}
-		else {
-			if (d >= 0) {
-				int div = d / 100;
-				while (div) {
-					std::memcpy(it, &digit_pairs[2 * (d - div * 100)], 2);
-					d = div;
-					it -= 2;
-					div = d / 100;
-				}
-
-				std::memcpy(it, &digit_pairs[2 * d], 2);
-
-				if (d < 10) {
-					it++;
-				}
-			}
-		}
-
-		return std::make_tuple(it, &buf[N] - it);
-	}
-	else if constexpr (Divisor == 16) {
-		[[maybe_unused]] static constexpr const char xdigit_pairs_l[513] = { "000102030405060708090a0b0c0d0e0f"
-																			"101112131415161718191a1b1c1d1e1f"
-																			"202122232425262728292a2b2c2d2e2f"
-																			"303132333435363738393a3b3c3d3e3f"
-																			"404142434445464748494a4b4c4d4e4f"
-																			"505152535455565758595a5b5c5d5e5f"
-																			"606162636465666768696a6b6c6d6e6f"
-																			"707172737475767778797a7b7c7d7e7f"
-																			"808182838485868788898a8b8c8d8e8f"
-																			"909192939495969798999a9b9c9d9e9f"
-																			"a0a1a2a3a4a5a6a7a8a9aaabacadaeaf"
-																			"b0b1b2b3b4b5b6b7b8b9babbbcbdbebf"
-																			"c0c1c2c3c4c5c6c7c8c9cacbcccdcecf"
-																			"d0d1d2d3d4d5d6d7d8d9dadbdcdddedf"
-																			"e0e1e2e3e4e5e6e7e8e9eaebecedeeef"
-																			"f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff" };
-
-		[[maybe_unused]] static constexpr const char xdigit_pairs_u[513] = { "000102030405060708090A0B0C0D0E0F"
-																			"101112131415161718191A1B1C1D1E1F"
-																			"202122232425262728292A2B2C2D2E2F"
-																			"303132333435363738393A3B3C3D3E3F"
-																			"404142434445464748494A4B4C4D4E4F"
-																			"505152535455565758595A5B5C5D5E5F"
-																			"606162636465666768696A6B6C6D6E6F"
-																			"707172737475767778797A7B7C7D7E7F"
-																			"808182838485868788898A8B8C8D8E8F"
-																			"909192939495969798999A9B9C9D9E9F"
-																			"A0A1A2A3A4A5A6A7A8A9AAABACADAEAF"
-																			"B0B1B2B3B4B5B6B7B8B9BABBBCBDBEBF"
-																			"C0C1C2C3C4C5C6C7C8C9CACBCCCDCECF"
-																			"D0D1D2D3D4D5D6D7D8D9DADBDCDDDEDF"
-																			"E0E1E2E3E4E5E6E7E8E9EAEBECEDEEEF"
-																			"F0F1F2F3F4F5F6F7F8F9FAFBFCFDFEFF" };
-
-		// NOTE(eteran): we include the x/X, here as an easy way to put the
-		//               upper/lower case prefix for hex numbers
-		[[maybe_unused]] static constexpr const char alphabet_l[] = "0123456789abcdefx";
-		[[maybe_unused]] static constexpr const char alphabet_u[] = "0123456789ABCDEFX";
-
-		typename std::make_unsigned<T>::type ud = d;
-
-		char* p = buf + N;
-
-		if (ud >= 0) {
-			while (ud > 16) {
-				p -= 2;
-				if constexpr (Upper) {
-					std::memcpy(p, &xdigit_pairs_u[2 * (ud & 0xff)], 2);
-				}
-				else {
-					std::memcpy(p, &xdigit_pairs_l[2 * (ud & 0xff)], 2);
-				}
-				ud /= 256;
-			}
-
-			while (ud > 0) {
-				p -= 1;
-				if constexpr (Upper) {
-					std::memcpy(p, &xdigit_pairs_u[2 * (ud & 0x0f) + 1], 1);
-				}
-				else {
-					std::memcpy(p, &xdigit_pairs_l[2 * (ud & 0x0f) + 1], 1);
-				}
-				ud /= 16;
-			}
-
-		}
-
-		return std::make_tuple(p, (buf + N) - p);
-	}
-	else if constexpr (Divisor == 8) {
-		static constexpr const char digit_pairs[129] = { "0001020304050607"
-														"1011121314151617"
-														"2021222324252627"
-														"3031323334353637"
-														"4041424344454647"
-														"5051525354555657"
-														"6061626364656667"
-														"7071727374757677" };
-		typename std::make_unsigned<T>::type ud = d;
-
-		char* p = buf + N;
-
-		if (ud >= 0) {
-			while (ud > 64) {
-				p -= 2;
-				std::memcpy(p, &digit_pairs[2 * (ud & 077)], 2);
-				ud /= 64;
-			}
-
-			while (ud > 0) {
-				p -= 1;
-				std::memcpy(p, &digit_pairs[2 * (ud & 007) + 1], 1);
-				ud /= 8;
-			}
-		}
-
-		return std::make_tuple(p, (buf + N) - p);
-	}
-	if constexpr (Divisor == 2) {
-		static constexpr const char digit_pairs[9] = { "00011011" };
-
-		typename std::make_unsigned<T>::type ud = d;
-
-		char* p = buf + N;
-
-		if (ud >= 0) {
-			while (ud > 4) {
-				p -= 2;
-				std::memcpy(p, &digit_pairs[2 * (ud & 0x03)], 2);
-				ud /= 4;
-			}
-
-			while (ud > 0) {
-				p -= 1;
-				std::memcpy(p, &digit_pairs[2 * (ud & 0x01) + 1], 1);
-				ud /= 2;
-			}
-		}
-
-		return std::make_tuple(p, (buf + N) - p);
-	}
-}
+//template <bool Upper, size_t Divisor, class T, size_t N>
+//std::tuple<const char*, size_t> format(char(&buf)[N], T d) {
+//
+//	if constexpr (Divisor == 10) {
+//		/*static constexpr const char digit_pairs[201] = { "00010203040506070809"
+//														"10111213141516171819"
+//														"20212223242526272829"
+//														"30313233343536373839"
+//														"40414243444546474849"
+//														"50515253545556575859"
+//														"60616263646566676869"
+//														"70717273747576777879"
+//														"80818283848586878889"
+//														"90919293949596979899" };*/
+//
+//		char* it = &buf[N - 2];
+//		if constexpr (std::is_signed<T>::value) {
+//			if (d >= 0) {
+//				int div = d / 100;
+//				while (div) {
+//					std::memcpy(it, &digit_pairs[2 * (d - div * 100)], 2);
+//					d = div;
+//					it -= 2;
+//					div = d / 100;
+//				}
+//
+//				std::memcpy(it, &digit_pairs[2 * d], 2);
+//
+//				if (d < 10) {
+//					it++;
+//				}
+//			}
+//			else {
+//				int div = d / 100;
+//				while (div) {
+//					std::memcpy(it, &digit_pairs[-2 * (d - div * 100)], 2);
+//					d = div;
+//					it -= 2;
+//					div = d / 100;
+//				}
+//
+//				std::memcpy(it, &digit_pairs[-2 * d], 2);
+//
+//				if (d <= -10) {
+//					it--;
+//				}
+//
+//				*it = '-';
+//			}
+//		}
+//		else {
+//			if (d >= 0) {
+//				int div = d / 100;
+//				while (div) {
+//					std::memcpy(it, &digit_pairs[2 * (d - div * 100)], 2);
+//					d = div;
+//					it -= 2;
+//					div = d / 100;
+//				}
+//
+//				std::memcpy(it, &digit_pairs[2 * d], 2);
+//
+//				if (d < 10) {
+//					it++;
+//				}
+//			}
+//		}
+//
+//		return std::make_tuple(it, &buf[N] - it);
+//	}
+//	else if constexpr (Divisor == 16) {
+//		[[maybe_unused]] static constexpr const char xdigit_pairs_l[513] = { "000102030405060708090a0b0c0d0e0f"
+//																			"101112131415161718191a1b1c1d1e1f"
+//																			"202122232425262728292a2b2c2d2e2f"
+//																			"303132333435363738393a3b3c3d3e3f"
+//																			"404142434445464748494a4b4c4d4e4f"
+//																			"505152535455565758595a5b5c5d5e5f"
+//																			"606162636465666768696a6b6c6d6e6f"
+//																			"707172737475767778797a7b7c7d7e7f"
+//																			"808182838485868788898a8b8c8d8e8f"
+//																			"909192939495969798999a9b9c9d9e9f"
+//																			"a0a1a2a3a4a5a6a7a8a9aaabacadaeaf"
+//																			"b0b1b2b3b4b5b6b7b8b9babbbcbdbebf"
+//																			"c0c1c2c3c4c5c6c7c8c9cacbcccdcecf"
+//																			"d0d1d2d3d4d5d6d7d8d9dadbdcdddedf"
+//																			"e0e1e2e3e4e5e6e7e8e9eaebecedeeef"
+//																			"f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff" };
+//
+//		[[maybe_unused]] static constexpr const char xdigit_pairs_u[513] = { "000102030405060708090A0B0C0D0E0F"
+//																			"101112131415161718191A1B1C1D1E1F"
+//																			"202122232425262728292A2B2C2D2E2F"
+//																			"303132333435363738393A3B3C3D3E3F"
+//																			"404142434445464748494A4B4C4D4E4F"
+//																			"505152535455565758595A5B5C5D5E5F"
+//																			"606162636465666768696A6B6C6D6E6F"
+//																			"707172737475767778797A7B7C7D7E7F"
+//																			"808182838485868788898A8B8C8D8E8F"
+//																			"909192939495969798999A9B9C9D9E9F"
+//																			"A0A1A2A3A4A5A6A7A8A9AAABACADAEAF"
+//																			"B0B1B2B3B4B5B6B7B8B9BABBBCBDBEBF"
+//																			"C0C1C2C3C4C5C6C7C8C9CACBCCCDCECF"
+//																			"D0D1D2D3D4D5D6D7D8D9DADBDCDDDEDF"
+//																			"E0E1E2E3E4E5E6E7E8E9EAEBECEDEEEF"
+//																			"F0F1F2F3F4F5F6F7F8F9FAFBFCFDFEFF" };
+//
+//		// NOTE(eteran): we include the x/X, here as an easy way to put the
+//		//               upper/lower case prefix for hex numbers
+//		[[maybe_unused]] static constexpr const char alphabet_l[] = "0123456789abcdefx";
+//		[[maybe_unused]] static constexpr const char alphabet_u[] = "0123456789ABCDEFX";
+//
+//		typename std::make_unsigned<T>::type ud = d;
+//
+//		char* p = buf + N;
+//
+//		if (ud >= 0) {
+//			while (ud > 16) {
+//				p -= 2;
+//				if constexpr (Upper) {
+//					std::memcpy(p, &xdigit_pairs_u[2 * (ud & 0xff)], 2);
+//				}
+//				else {
+//					std::memcpy(p, &xdigit_pairs_l[2 * (ud & 0xff)], 2);
+//				}
+//				ud /= 256;
+//			}
+//
+//			while (ud > 0) {
+//				p -= 1;
+//				if constexpr (Upper) {
+//					std::memcpy(p, &xdigit_pairs_u[2 * (ud & 0x0f) + 1], 1);
+//				}
+//				else {
+//					std::memcpy(p, &xdigit_pairs_l[2 * (ud & 0x0f) + 1], 1);
+//				}
+//				ud /= 16;
+//			}
+//
+//		}
+//
+//		return std::make_tuple(p, (buf + N) - p);
+//	}
+//	else if constexpr (Divisor == 8) {
+//		static constexpr const char digit_pairs[129] = { "0001020304050607"
+//														"1011121314151617"
+//														"2021222324252627"
+//														"3031323334353637"
+//														"4041424344454647"
+//														"5051525354555657"
+//														"6061626364656667"
+//														"7071727374757677" };
+//		typename std::make_unsigned<T>::type ud = d;
+//
+//		char* p = buf + N;
+//
+//		if (ud >= 0) {
+//			while (ud > 64) {
+//				p -= 2;
+//				std::memcpy(p, &digit_pairs[2 * (ud & 077)], 2);
+//				ud /= 64;
+//			}
+//
+//			while (ud > 0) {
+//				p -= 1;
+//				std::memcpy(p, &digit_pairs[2 * (ud & 007) + 1], 1);
+//				ud /= 8;
+//			}
+//		}
+//
+//		return std::make_tuple(p, (buf + N) - p);
+//	}
+//	if constexpr (Divisor == 2) {
+//		static constexpr const char digit_pairs[9] = { "00011011" };
+//
+//		typename std::make_unsigned<T>::type ud = d;
+//
+//		char* p = buf + N;
+//
+//		if (ud >= 0) {
+//			while (ud > 4) {
+//				p -= 2;
+//				std::memcpy(p, &digit_pairs[2 * (ud & 0x03)], 2);
+//				ud /= 4;
+//			}
+//
+//			while (ud > 0) {
+//				p -= 1;
+//				std::memcpy(p, &digit_pairs[2 * (ud & 0x01) + 1], 1);
+//				ud /= 2;
+//			}
+//		}
+//
+//		return std::make_tuple(p, (buf + N) - p);
+//	}
+//}
 
 
 
@@ -439,6 +444,9 @@ std::tuple<const char*, size_t> format(char(&buf)[N], T d) {
 
 /** used by CFMT_STR */
 struct OutbufArg {
+
+	//static const char* BLANKS;
+	//static const char* ZEROS;
 
 	template <size_t N>
 	OutbufArg(char(&buffer)[N]) 
@@ -496,6 +504,36 @@ struct OutbufArg {
 		pBuf_ += n;
 	}
 
+	template </*const char* const**/ char padding>
+	void writePaddings(int n/*, const char padding = ' '*/) noexcept {
+		if (n <= 0) return;
+
+		written_ += n;
+
+		// check if sufficient free space remains in the buffer
+		// the last byte position is reserved for the terminating '\0' 
+		size_t remaining = static_cast<size_t>(pBufEnd_ - pBuf_ - 1);
+
+		// fail if at the end of buffer, recall need a single byte for null
+		if (static_cast<std::make_signed<size_t>::type>(remaining) <= 0)
+			return;
+
+		else if (n > remaining)
+			n = static_cast<int>(remaining);
+
+		//while (n > PADSIZE) {
+		//	std::memcpy(pBuf_, *padding, PADSIZE);
+		//	n -= PADSIZE;
+		//	pBuf_ += PADSIZE;
+		//}
+		//std::memcpy(pBuf_, *padding, n);
+		//pBuf_ += n;
+
+		while (n-- > 0) {
+			*pBuf_++ = padding;
+		}
+	}
+
 	void done() noexcept {
 		if (static_cast<size_t>(pBufEnd_ - pBuf_) > 0) 
 			*pBuf_ = '\0';
@@ -523,25 +561,24 @@ private:
 };
 
 
-#define PAD(howmany, with) { \
-    int n; \
-    if ((n = (howmany)) > 0) { \
-	    while (n > PADSIZE) { \
-            outbuf.write(with, PADSIZE); \
-	        n -= PADSIZE; \
-	    } \
-        outbuf.write(with, static_cast<size_t>(n)); \
-	} \
-}
+//#define PAD(howmany, with) { \
+//    int n; \
+//    if ((n = (howmany)) > 0) { \
+//	    while (n > PADSIZE) { \
+//            outbuf.write(with, PADSIZE); \
+//	        n -= PADSIZE; \
+//	    } \
+//        outbuf.write(with, static_cast<size_t>(n)); \
+//	} \
+//}
 
-//void PAD(int howmany, const char* with, OutbufArg& outbuf) {
-//	int n;
-//	if ((n = (howmany)) > 0) {
-//		while (n > PADSIZE) {
+//inline void PAD(int howmany, const char* with, OutbufArg& outbuf) {
+//	if (howmany > 0) {
+//		while (howmany > PADSIZE) {
 //			outbuf.write(with, PADSIZE);
-//			n -= PADSIZE;
+//			howmany -= PADSIZE;
 //		}
-//		outbuf.write(with, static_cast<size_t>(n));
+//		outbuf.write(with, static_cast<size_t>(howmany));
 //	}
 //}
 
@@ -1243,8 +1280,8 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 		P = SI.prec_;
 	}
 
-	if constexpr (SI.terminal_ == 'i' || SI.terminal_ == 'd' 
-		|| SI.terminal_ == 'x' || SI.terminal_ == 'X' 
+    if constexpr (SI.terminal_ == 'i' || SI.terminal_ == 'd' 
+	    || SI.terminal_ == 'x' || SI.terminal_ == 'X' 
 		|| SI.terminal_ == 'o' || SI.terminal_ == 'u') {
 
 		if constexpr (std::is_integral_v<std::remove_reference_t<T>>) {
@@ -1331,10 +1368,10 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 
 		///////////////////////////// Right Adjust ////////////////////////////
 		/* right-adjusting blank padding */
-		if constexpr ((SI.flags_ & __FLAG_LADJUST) == 0) {
-			if ((flags & (/*__FLAG_LADJUST |*/ __FLAG_ZEROPAD)) == 0) {
-				PAD(W - realsz, blanks/*, outbuf*/);
-			}
+		if constexpr ((SI.flags_/*flags*/ & (/*__FLAG_ZEROPAD |*/ __FLAG_LADJUST)) == 0) {
+			if ((flags & __FLAG_ZEROPAD) == 0)
+				//PAD(W - realsz, BLANKS/*, outbuf*/);
+				outbuf.writePaddings<' '>(W - realsz);
 		}
 		///////////////////////////// Right Adjust ////////////////////////////
 
@@ -1348,27 +1385,31 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 
 		///////////////////////////// Right Adjust ////////////////////////////
 		/* right-adjusting zero padding */
-		if constexpr ((SI.flags_ & __FLAG_LADJUST) == 0) {
-			if ((flags & (/*__FLAG_LADJUST |*/ __FLAG_ZEROPAD)) == __FLAG_ZEROPAD)
-				PAD(W - realsz, zeroes/*, outbuf*/);
+		if constexpr ((SI.flags_ /*flags*/ & (/*__FLAG_ZEROPAD |*/__FLAG_LADJUST)) == 0) {
+			if ((flags & __FLAG_ZEROPAD) == __FLAG_ZEROPAD)
+				//PAD(W - realsz, ZEROS/*, outbuf*/);
+				outbuf.writePaddings<'0'>(W - realsz/*, '0'*/);
 		}
 		///////////////////////////// Right Adjust ////////////////////////////
 
 		// [diouXx] leading zeroes from decimal precision
 		// when dprec > fieldsz, realsz == dprec and zero padding size is dprec - fieldsz;
 		// when dprec =< fieldsz, realsz == fieldsz and zero padding is skipped.
-		PAD(dprec - fieldsz, zeroes/*, outbuf*/);
+		//PAD(dprec - fieldsz, ZEROS/*, outbuf*/);
+		outbuf.writePaddings<'0'>(dprec - fieldsz/*, '0'*/);
 
 		// the string or number proper
 		outbuf.write(cp, size);
 
 		// trailing floating point zeroes
-		PAD(fpprec, zeroes/*, outbuf*/);
+		//PAD(fpprec, ZEROS/*, outbuf*/);
+		outbuf.writePaddings<'0'>(fpprec/*, '0'*/);
 
 		////////////////////////////// Left Adjust ////////////////////////////
 		/* left-adjusting padding (always blank) */
-		if constexpr (SI.flags_ & __FLAG_LADJUST == __FLAG_LADJUST)
-			PAD(W - realsz, blanks/*, outbuf*/);
+		if constexpr ((SI.flags_ /*flags*/ & __FLAG_LADJUST) == __FLAG_LADJUST)
+			//PAD(W - realsz, BLANKS/*, outbuf*/);
+		    outbuf.writePaddings<' '>(W - realsz);
 		////////////////////////////// Left Adjust ////////////////////////////
 	}
 }
