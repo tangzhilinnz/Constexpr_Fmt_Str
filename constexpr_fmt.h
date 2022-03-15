@@ -1008,11 +1008,11 @@ getOneSepc(/*const char(&fmt)[N]*/const char* fmt, int num = 0) {
  // template<std::size_t N>
  // using make_index_sequence = std::make_integer_sequence<std::size_t, N>;
  // The program is ill-formed if N is negative. If N is zero, the indicated type is integer_sequence<T>.
-template</*int N,*/ std::size_t... Indices>
-constexpr auto/*std::array<SpecInfo, sizeof...(Indices)>*/ // Returns the number of elements in pack Indices
-analyzeFormatStringHelper(/*const char(&fmt)[N]*/const char* fmt, std::index_sequence<Indices...>) {
-	//return { { getOneSepc(fmt, Indices)... } };
-	return std::make_tuple(getOneSepc(fmt, Indices)...);
+template<int N, std::size_t... Indices>
+constexpr /*auto*/std::array<SpecInfo, sizeof...(Indices)> // Returns the number of elements in pack Indices
+analyzeFormatStringHelper(const char(&fmt)[N]/*const char* fmt*/, std::index_sequence<Indices...>) {
+	return { { getOneSepc(fmt, Indices)... } };
+	//return std::make_tuple(getOneSepc(fmt, Indices)...);
 }
 
 
@@ -1038,9 +1038,9 @@ analyzeFormatStringHelper(/*const char(&fmt)[N]*/const char* fmt, std::index_seq
  *      info (position of the head '%', position of the end of specifier,
  *      width, precision, sign and terminal) of each specifier.
  */
-template<int NParams/*, size_t N*/>
-constexpr /*std::array<SpecInfo, NParams>*/auto
-analyzeFormatString(/*const char(&fmt)[N]*/const char* fmt) {
+template<int NParams, size_t N>
+constexpr std::array<SpecInfo, NParams>/*auto*/
+analyzeFormatString(const char(&fmt)[N]/*const char* fmt*/) {
 	return analyzeFormatStringHelper(fmt, std::make_index_sequence<NParams>{});
 }
 
@@ -1247,10 +1247,10 @@ inline constexpr int formattedWidth([[maybe_unused]] T&& n) {
 //#define	INTMAX_SIZE	(__FLAG_INTMAXT|__FLAG_SIZET|__FLAG_PTRDIFFT|__FLAG_LLONGINT)
 
 /* template converter_impl declaration */
-template<const char* const* fmt, SpecInfo... SIs, typename... Ts>
+template<const char* const* fmt, const SpecInfo&... SIs, typename... Ts>
 inline void converter_impl(OutbufArg& outbuf, Ts&&...args);
 
-template<const char* const* fmt, SpecInfo SI, typename T>
+template<const char* const* fmt, const SpecInfo& SI, typename T>
 inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0, 
     precision_t P = -1) {
 
@@ -1266,6 +1266,7 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 
 	flags_t flags = SI.flags_;
 	sign_t sign = SI.sign_;
+
 	if constexpr (SI.width_ != DYNAMIC_WIDTH 
 		&& SI.prec_ == DYNAMIC_PRECISION) {
 		W = SI.width_;
@@ -1400,7 +1401,7 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 		if /*constexpr*/ ((/*SI.flags_*/ flags & (/*__FLAG_ZEROPAD |*/__FLAG_LADJUST)) == /*__FLAG_ZEROPAD*/0) {
 			if ((flags & __FLAG_ZEROPAD) == __FLAG_ZEROPAD)
 				//PAD(W - realsz, ZEROS/*, outbuf*/);
-				outbuf.writePaddings<'0'>(W - realsz/*, '0'*/);
+				outbuf.writePaddings<'0'>(W - realsz);
 		}
 		///////////////////////////// Right Adjust ////////////////////////////
 
@@ -1427,14 +1428,14 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 }
 
 
-template<const char* const* fmt, SpecInfo SI, SpecInfo... SIs, typename T, typename... Ts>
+template<const char* const* fmt, const SpecInfo& SI, const SpecInfo&... SIs, typename T, typename... Ts>
 inline void converter_args(OutbufArg& outbuf, T&& arg, Ts&&... rest) {
 	converter_single<fmt, SI>(outbuf, std::forward<T>(arg));
 	converter_impl<fmt, SIs...>(outbuf, std::forward<Ts>(rest)...);
 }
 
 
-template<const char* const* fmt, SpecInfo SI, SpecInfo... SIs, typename D, typename T, typename... Ts>
+template<const char* const* fmt, const SpecInfo& SI, const SpecInfo&... SIs, typename D, typename T, typename... Ts>
 inline void converter_D_args(OutbufArg& outbuf, D&& d, T&& arg, Ts&&... rest) {
 	if constexpr (SI.width_ == DYNAMIC_WIDTH) {
 		// test 
@@ -1460,7 +1461,7 @@ inline void converter_D_args(OutbufArg& outbuf, D&& d, T&& arg, Ts&&... rest) {
 	converter_impl<fmt, SIs...>(outbuf, std::forward<Ts>(rest)...);
 }
 
-template<const char* const* fmt, SpecInfo SI, SpecInfo... SIs, typename D1, typename D2, typename T, typename... Ts>
+template<const char* const* fmt, const SpecInfo& SI, const SpecInfo&... SIs, typename D1, typename D2, typename T, typename... Ts>
 inline void converter_D_D_args(OutbufArg& outbuf, D1&& d1, D2&& d2, T&& arg, Ts&&... rest) {
 	if constexpr (SI.wFirst_) {
 		// test 
@@ -1488,7 +1489,7 @@ inline void converter_D_D_args(OutbufArg& outbuf, D1&& d1, D2&& d2, T&& arg, Ts&
 	converter_impl<fmt, SIs...>(outbuf, /*fmt,*/ std::forward<Ts>(rest)...);
 }
 
-template<const char* const* fmt, SpecInfo... SIs, typename... Ts>
+template<const char* const* fmt, const SpecInfo&... SIs, typename... Ts>
 inline void converter_impl(OutbufArg& outbuf, Ts&&...args) {
 	// According to CFMT_STR implementation, at least one argument exists in the
 	// template parameter pack SpecInfo... SIs.
@@ -1523,7 +1524,7 @@ struct Converter {
 		if constexpr (static_cast<uint32_t>(numArgsReuqired) > 
 			static_cast<uint32_t>(sizeof...(Ts))) {
 			std::cerr << "CFMT: forced abort due to illegal number of variadic arguments"
-				"passed to CFMT_STR for converting\n"
+				" passed to CFMT_STR for converting\n"
 				"(Required: " << numArgsReuqired << " ---- " <<
 				"Passed: " << (sizeof...(Ts)) << ")";
 			abort();
@@ -1535,8 +1536,8 @@ struct Converter {
 
 };
 
-//template<auto tuple_like, template<auto...> typename Template>
-//constexpr /*decltype(auto)*/auto unpack_bak() {
+//template<const auto tuple_like, template<auto...> typename Template>
+//constexpr decltype(auto) unpack() {
 //	constexpr auto size = std::tuple_size_v<decltype(tuple_like)>;
 //	return []<std::size_t... Is>(std::index_sequence<Is...>) {
 //		return Template<std::get<Is>(tuple_like)...>{};
@@ -1557,19 +1558,6 @@ constexpr decltype(auto) unpack(/*const char(&fmt)[M]*/) {
 		return Template </*fmtStr, */getOneSepc(*fmt, Is)... > {};
 	} (std::make_index_sequence<N>{});
 }
-
-//template<size_t N, size_t L>
-//constexpr inline const char*/*std::tuple<const char*, int>*/
-//getRTFmtStr(const char(&fmt)[N], const std::array<char, L>& fmtArr) {
-//	if constexpr (0 == L) {
-//		// return { fmt, /*static_cast<size_t>(N)*/ N };
-//
-//		return fmt;
-//	}
-//	else
-//		// return { fmtArr.data(), static_cast<int>(L) };
-//		return /*fmtArr.data()*/const_cast<const char*>(&fmtArr[0]);
-//}
 
 // ============================================================================
 // ============================================================================
@@ -1611,7 +1599,7 @@ static constexpr auto fmtRawStr = format; \
  * change their extent, but it does change its visibility with respect to
  * other translation units; the name is not exported to the linker, so it
  * cannot be accessed by name from another translation unit. */ \
-	/*static constexpr std::array<SpecInfo, kNVSIs + 1> kSIs*/ \
+/*static constexpr std::array<SpecInfo, kNVSIs + 1> kSIs*/ \
 	/*= analyzeFormatString<kNVSIs + 1>(format);*/ \
 static constexpr auto kfmtArr = preprocessInvalidSpecs<kSS>(format); \
 static constexpr auto kRTStr /*= getRTFmtStr(format, kfmtArr);*/ \
@@ -1620,8 +1608,8 @@ static constexpr auto kRTStr /*= getRTFmtStr(format, kfmtArr);*/ \
  * use the address of the pointer to a string literal (&kRTStr) with static
  * storage duration and internal linkage instead of a raw string literal to
  * comply with c++ standard 14.3.2/1 */ \
-static constexpr auto kConverter = unpack<kNVSIs + 1, Converter, &fmtRawStr>(); \
-/*static constexpr auto kConverter = unpack_bak<&kSIs, Converter>();*/ \
+static /*constexpr*/ auto kConverter = unpack<kNVSIs + 1, Converter, &fmtRawStr>(); \
+/*static constexpr auto kConverter = unpack<kSIs, Converter>();*/ \
 OutbufArg outbuf(buffer, count); \
 kConverter.convert<&kRTStr>(outbuf, ##__VA_ARGS__); \
 result = outbuf.getWrittenNum(); \

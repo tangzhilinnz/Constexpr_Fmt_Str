@@ -13,19 +13,38 @@
 using namespace std;
 using namespace chrono;
 
+//constexpr const char BLANKS[16] = { ' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ' };
+//constexpr const char ZEROS[16] = { '0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0' };
 
-// sd%%sf%%%fes%h-+ 01233lzhhjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n
-constexpr int kSize = squeezeSoundSize("sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n");
-constexpr int kNVS = countValidSpecInfos("sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n");
-//constexpr static std::array<char, SIZE> myStr = preprocessInvalidSpecs<SIZE>("sd%%sf%%%fes%h-+ 01233lzhhjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***f23.\n");
-constexpr static std::array<char, kSize> myStr = preprocessInvalidSpecs<kSize>("sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n");
-constexpr int kSize1 = squeezeSoundSize("sdsssssssss%-+ *.*... *llzthhlh#-054d=ssssssadfadfasfsasadasdasdsa.\n");
-constexpr static auto myStr1 = preprocessInvalidSpecs<kSize1>("sdsssssssss%-+ *.*... *llzthhlh#-054d=ssssssadfadfasfsasadasdasdsa.\n");
-constexpr static auto myStr2 = preprocessInvalidSpecs<2>("%ks");
-// "sd%sf%%fes%sds%%%%gjt *.***k12.dsd%%s%%d%f%f%dsss%h-+ 01233lzhhjt *.***d23.\n"
-constexpr auto specInfos = analyzeFormatString<kNVS + 1>("sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n");
-constexpr int kNVS1 = countValidSpecInfos("dsdsdsds%k%kds%h.h.hlcdsd.\n");
-constexpr auto specInfos1 = analyzeFormatString<kNVS1 + 1>("dsdsdsds%k%kds%h.h.hlcdsd.\n");
+//constexpr const char* const BLANKS = "                ";
+//constexpr const char* const ZEROS = "0000000000000000";
+//
+//constexpr const short digit_pairs[100] = {
+//	0x3030, 0x3130, 0x3230, 0x3330, 0x3430, 0x3530, 0x3630, 0x3730, 0x3830, 0x3930,
+//	0x3031, 0x3131, 0x3231, 0x3331, 0x3431, 0x3531, 0x3631, 0x3731, 0x3831, 0x3931,
+//	0x3032, 0x3132, 0x3232, 0x3332, 0x3432, 0x3532, 0x3632, 0x3732, 0x3832, 0x3932,
+//	0x3033, 0x3133, 0x3233, 0x3333, 0x3433, 0x3533, 0x3633, 0x3733, 0x3833, 0x3933,
+//	0x3034, 0x3134, 0x3234, 0x3334, 0x3434, 0x3534, 0x3634, 0x3734, 0x3834, 0x3934,
+//	0x3035, 0x3135, 0x3235, 0x3335, 0x3435, 0x3535, 0x3635, 0x3735, 0x3835, 0x3935,
+//	0x3036, 0x3136, 0x3236, 0x3336, 0x3436, 0x3536, 0x3636, 0x3736, 0x3836, 0x3936,
+//	0x3037, 0x3137, 0x3237, 0x3337, 0x3437, 0x3537, 0x3637, 0x3737, 0x3837, 0x3937,
+//	0x3038, 0x3138, 0x3238, 0x3338, 0x3438, 0x3538, 0x3638, 0x3738, 0x3838, 0x3938,
+//	0x3039, 0x3139, 0x3239, 0x3339, 0x3439, 0x3539, 0x3639, 0x3739, 0x3839, 0x3939
+//};
+
+
+//// sd%%sf%%%fes%h-+ 01233lzhhjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n
+//constexpr int kSize = squeezeSoundSize("sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n");
+//constexpr int kNVS = countValidSpecInfos("sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n");
+////constexpr static std::array<char, SIZE> myStr = preprocessInvalidSpecs<SIZE>("sd%%sf%%%fes%h-+ 01233lzhhjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***f23.\n");
+//constexpr static std::array<char, kSize> myStr = preprocessInvalidSpecs<kSize>("sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n");
+//constexpr int kSize1 = squeezeSoundSize("sdsssssssss%-+ *.*... *llzthhlh#-054d=ssssssadfadfasfsasadasdasdsa.\n");
+//constexpr static auto myStr1 = preprocessInvalidSpecs<kSize1>("sdsssssssss%-+ *.*... *llzthhlh#-054d=ssssssadfadfasfsasadasdasdsa.\n");
+//constexpr static auto myStr2 = preprocessInvalidSpecs<2>("%ks");
+//// "sd%sf%%fes%sds%%%%gjt *.***k12.dsd%%s%%d%f%f%dsss%h-+ 01233lzhhjt *.***d23.\n"
+//constexpr auto specInfos = analyzeFormatString<kNVS + 1>("sd%%sf%%%fes%h-+ 01233lzhh%sds%%%%%%%%gjt *.***k12.dsd%%%s%%%%d%f%%f%%dsss%h-+ 01233lzhhjt *.***d23.\n");
+//constexpr int kNVS1 = countValidSpecInfos("dsdsdsds%k%kds%h.h.hlcdsd.\n");
+//constexpr auto specInfos1 = analyzeFormatString<kNVS1 + 1>("dsdsdsds%k%kds%h.h.hlcdsd.\n");
 
 
 
@@ -40,7 +59,7 @@ int test_CFMT_STR(int& i);
 int main() {
 
 	std::to_chars_result ret;
-	char buf[600];
+	char buf[800];
 	size_t size = 0;
 	char* cp = nullptr;
 
@@ -110,34 +129,538 @@ int main() {
 
 		//ran = distr(eng);
 		
+		/*CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);
+		CFMT_STR(result, buf, 800, "%hhd", i);*/
 
-		/*result = tz_snprintf*/CFMT_STR(result, buf, 600,
-			"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld"
-			"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld",
-			//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld",
-			//"%hhd",
-			//"test%dtest%dtest%dtest%dtest%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", pdata[i], pdata[(i+1)% 10000000], pdata[(i + 2) % 10000000], pdata[(i + 3) % 10000000],
-			//i, i,i,i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i,i
-			//"s", "s", "s", "s", "s", "s", "s", "s", "s", "s" "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s",
-			//"s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s",
-			//"s", "s", "s", "s", "s", "s", "s", "s", "s", "s" "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s",
-			//"s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s",
-			//922337203685477, 9223372036854771, 92233720368547712, 9223372036477123, 922337203, 9223, 92237, 92, 92233720368, 92237,
-			//922337203685477, 9223372036854771, 92233720368547712, 922337203685477123, 922337203, 9223, 92237, 92, 92233720368, 92237,
-			//922337203685477, 92233726854771, 92220368547712, 92233785477123, 9337203, 9223, 92237, 9, 92233720368, 92237,
-			//92237, 92233720771, 9223372037712, 92233785477123, 92233203, 9223, 92237, 92, 92233720368, 92237,
-			//92237, 9223372036854771, 92233720368547712, 9223372036477123, 922337203, 9223, 92237, 92, 92233720368, 92237,
-			//922337203685477, 92233720368, 92233720368, 92233720368, 922337203, 9223, 92237, 92233720368, 92233720368, 92237,
-			//92237, 92233726854771, 92237, 92233785477123, 9337203, 9223, 92237, 9, 92233720368, 92237,
-			//922337685477, 92233720771, 9223372037712, 92233785477123, 92233203, 9223, 92237, 92, 92233720368, 92237,
-			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+		//CFMT_STR(result, buf, 800, "%lld", i);
+
+
+        /*CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);
+		CFMT_STR(result, buf, 800, "%10hhd", i);*/
+
+        /*result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);
+		result = tz_snprintf(buf, 800, "%hhd", i);*/
+
+        /*CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);
+		CFMT_STR(result, buf, 800, "%d", pdata[i]);*/
+
+        /*result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);
+		result = tz_snprintf(buf, 800, "%d", pdata[i]);*/
+
+CFMT_STR(result, buf, 800, "%+0*.*d", 20, 10, i);
+CFMT_STR(result, buf, 800, "%+0*.*d", 20, 10, i);
+CFMT_STR(result, buf, 800, "%+0*.*d", 20, 10, i);
+CFMT_STR(result, buf, 800, "%+0*.*d", 20, 10, i);
+CFMT_STR(result, buf, 800, "%+0*.*d", 20, 10, i);
+CFMT_STR(result, buf, 800, "%+0*.*d", 20, 10, i);
+CFMT_STR(result, buf, 800, "%+0*.*d", 20, 10, i);
+CFMT_STR(result, buf, 800, "%+0*.*d", 20, 10, i);
+CFMT_STR(result, buf, 800, "%+0*.*d", 20, 10, i);
+CFMT_STR(result, buf, 800, "%+0*.*d", 20, 10, i);
+
+		//result = tz_snprintf/*CFMT_STR*/(/*result,*/ buf, 800,
+		//	//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd"
+		//	//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd",
+		//	//"%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd"
+		//	//"%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd",
+		//	//"%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd", 
+		//	//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld",
+		//	//"%+030hhd%+030hhd%+030.10hhd%+030.10hhd%+030.10hhd",
+		//	//"%d", pdata[i],
+		//	//"%lld",
+		//	//"test%dtest%dtest%dtest%dtest%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", pdata[i], pdata[(i+1)% 10000000], pdata[(i + 2) % 10000000], pdata[(i + 3) % 10000000]
+		//	"%+0*.*d", 20, 10, i
+		//	//i, i,i,i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i,i,
+		//	//i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i
+		//	//"s", "s", "s", "s", "s", "s", "s", "s", "s", "s" "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s",
+		//	//"s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s",
+		//	//"s", "s", "s", "s", "s", "s", "s", "s", "s", "s" "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s",
+		//	//"s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s",
+		//	//922337203685477, 9223372036854771, 92233720368547712, 9223372036477123, 922337203, 9223, 92237, 92, 92233720368, 92237,
+		//	//922337203685477, 9223372036854771, 92233720368547712, 922337203685477123, 922337203, 9223, 92237, 92, 92233720368, 92237,
+		//	//922337203685477, 92233726854771, 92220368547712, 92233785477123, 9337203, 9223, 92237, 9, 92233720368, 92237,
+		//	//92237, 92233720771, 9223372037712, 92233785477123, 92233203, 9223, 92237, 92, 92233720368, 92237,
+		//	//92237, 9223372036854771, 92233720368547712, 9223372036477123, 922337203, 9223, 92237, 92, 92233720368, 92237,
+		//	//922337203685477, 92233720368, 92233720368, 92233720368, 922337203, 9223, 92237, 92233720368, 92233720368, 92237,
+		//	//92237, 92233726854771, 92237, 92233785477123, 9337203, 9223, 92237, 9, 92233720368, 92237,
+		//	//922337685477, 92233720771, 9223372037712, 92233785477123, 92233203, 9223, 92237, 92, 92233720368, 92237
+		//	/*(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i*/);
 			//static constexpr const char fmt[] = "%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld";
 			//static constexpr const char fmt[] = "%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd";
 			//static constexpr const size_t size = sizeof(fmt);
@@ -149,8 +672,8 @@ int main() {
 			//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
 			//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
 			//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i*/);
-				// result = tz_snprintf(buf, 400, "%%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd%hd",
-				// 	i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i,i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
+				// result = tz_snprintf(buf, 400, "+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld%+lld",
+				// 	"%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd%+hhd");
 
 				//result = tz_snprintf(buf, 400, "%hhd%", i);
 
@@ -284,8 +807,4 @@ int main() {
 
 	//	converter(outbuf, "sadasdasd", 13, 34, 34, 34,34);
 	//}
-    int j;
-    std::cin >> j;
-
-	system("pause");
 }

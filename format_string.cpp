@@ -9,6 +9,7 @@
 #include <string.h>
 #include <math.h>
 #include <limits.h>
+#include "constexpr_fmt.h"
 //#include <endian.h> // __BYTE_ORDER, __LITTLE_ENDIAN　
 
 
@@ -1002,7 +1003,7 @@ fioFormat(const char* fmt, va_list vaList, OUTBUF_ARG* outarg) {
 
             //ulongLongVal = (unsigned long long) (unsigned long)va_arg(vaList, void*);  // NOSTRICT
 
-            ulongLongVal = (unsigned long long) (UINTPTR_T)cp;
+            ulongLongVal = reinterpret_cast<unsigned long long>(cp);
             base = HEX__;
             xdigs = "0123456789abcdef";
             doHexPrefix = true;
@@ -1100,13 +1101,14 @@ fioFormat(const char* fmt, va_list vaList, OUTBUF_ARG* outarg) {
 
                 case DEC__:
                     // many numbers are 1 digit
-                    while (ulongLongVal >= 10) {
-                        *(--cp) = /*(char)*/to_char(ulongLongVal % 10);
-                        ulongLongVal /= 10;
-                    }
+                    //while (ulongLongVal >= 10) {
+                    //    *(--cp) = /*(char)*/to_char(ulongLongVal % 10);
+                    //    ulongLongVal /= 10;
+                    //}
 
-                    // ulongLongVal < 10
-                    *(--cp) = /*(char)*/to_char(ulongLongVal);
+                    //// ulongLongVal < 10
+                    //*(--cp) = /*(char)*/to_char(ulongLongVal);
+                    std::tie(cp, size) = formatDec(buf, ulongLongVal);
                     break;
 
                 case HEX__:
@@ -1124,7 +1126,7 @@ fioFormat(const char* fmt, va_list vaList, OUTBUF_ARG* outarg) {
             }
 
             // size == 0 if ulongLongVal == 0 and prec == 0 
-            size = (size_t)(buf + BUF - cp);
+            //size = (size_t)(buf + BUF - cp);
 
         skipsize:
             break;
