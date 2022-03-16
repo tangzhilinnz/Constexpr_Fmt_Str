@@ -1101,14 +1101,14 @@ fioFormat(const char* fmt, va_list vaList, OUTBUF_ARG* outarg) {
 
                 case DEC__:
                     // many numbers are 1 digit
-                    //while (ulongLongVal >= 10) {
-                    //    *(--cp) = /*(char)*/to_char(ulongLongVal % 10);
-                    //    ulongLongVal /= 10;
-                    //}
+                    while (ulongLongVal >= 10) {
+                        *(--cp) = /*(char)*/to_char(ulongLongVal % 10);
+                        ulongLongVal /= 10;
+                    }
 
-                    //// ulongLongVal < 10
-                    //*(--cp) = /*(char)*/to_char(ulongLongVal);
-                    std::tie(cp, size) = formatDec(buf, ulongLongVal);
+                    // ulongLongVal < 10
+                    *(--cp) = /*(char)*/to_char(ulongLongVal);
+                    //std::tie(cp, size) = formatDec(buf, ulongLongVal);
                     break;
 
                 case HEX__:
@@ -1126,7 +1126,7 @@ fioFormat(const char* fmt, va_list vaList, OUTBUF_ARG* outarg) {
             }
 
             // size == 0 if ulongLongVal == 0 and prec == 0 
-            //size = (size_t)(buf + BUF - cp);
+            size = (size_t)(buf + BUF - cp);
 
         skipsize:
             break;
