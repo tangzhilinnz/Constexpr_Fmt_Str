@@ -1262,6 +1262,62 @@ inline constexpr int formattedWidth([[maybe_unused]] T&& n) {
 		return static_cast<int>(0);
 }
 
+template<flags_t flag, typename T>
+inline intmax_t SARG(T&& arg) {
+	if constexpr ((flag & __FLAG_LONGINT) != 0) {
+		return static_cast<intmax_t>(static_cast<long int>(arg));
+	}
+	else if constexpr ((flag & __FLAG_SHORTINT) != 0) {
+		return static_cast<intmax_t>(static_cast<short int>(arg));
+	}
+	else if constexpr ((flag & __FLAG_CHARINT) != 0) {
+		return static_cast<intmax_t>(static_cast<signed char>(arg));
+	}
+	else if constexpr ((flag & __FLAG_LLONGINT) != 0) {
+		return static_cast<intmax_t>(static_cast<long long int>(arg));
+	}
+	else if constexpr ((flag & __FLAG_SIZET) != 0) {
+		return static_cast<intmax_t>(static_cast<std::make_signed<size_t>::type>(arg));
+	}
+	else if constexpr ((flag & __FLAG_PTRDIFFT) != 0) {
+		return static_cast<intmax_t>(static_cast<ptrdiff_t>(arg));
+	}
+	else if constexpr ((flag & __FLAG_INTMAXT) != 0) {
+		return static_cast<intmax_t>(arg);
+	}
+	else {
+		return static_cast<intmax_t>(static_cast<int>(arg));
+	}
+}
+
+template<flags_t flag, typename T>
+inline uintmax_t UARG(T&& arg) {
+	if constexpr ((flag & __FLAG_LONGINT) != 0) {
+		return static_cast<uintmax_t>(static_cast<unsigned long int>(arg));
+	}
+	else if constexpr ((flag & __FLAG_SHORTINT) != 0) {
+		return static_cast<uintmax_t>(static_cast<unsigned short int>(arg));
+	}
+	else if constexpr ((flag & __FLAG_CHARINT) != 0) {
+		return static_cast<uintmax_t>(static_cast<unsigned char>(arg));
+	}
+	else if constexpr ((flag & __FLAG_LLONGINT) != 0) {
+		return static_cast<uintmax_t>(static_cast<unsigned long long int>(arg));
+	}
+	else if constexpr ((flag & __FLAG_SIZET) != 0) {
+		return static_cast<uintmax_t>(static_cast<size_t>(arg));
+	}
+	else if constexpr ((flag & __FLAG_PTRDIFFT) != 0) {
+		return static_cast<uintmax_t>(static_cast<std::make_unsigned<ptrdiff_t>::type>(arg));
+	}
+	else if constexpr ((flag & __FLAG_INTMAXT) != 0) {
+		return static_cast<uintmax_t>(arg);
+	}
+	else {
+		return static_cast<uintmax_t>(static_cast<unsigned int>(arg));
+	}
+}
+
 //#define	INTMAX_SIZE	(__FLAG_INTMAXT|__FLAG_SIZET|__FLAG_PTRDIFFT|__FLAG_LLONGINT)
 
 /* template converter_impl declaration */
@@ -1318,9 +1374,9 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 
 		if constexpr (std::is_integral_v<std::remove_reference_t<T>>) {
 			if constexpr (SI.terminal_ == 'i' || SI.terminal_ == 'd') {
-				intmax_t jval = 0;
+				intmax_t jval = /*0*/SARG<SI.flags_>(std::forward<T>(arg));
 
-				if constexpr ((SI.flags_ & __FLAG_LONGINT) != 0) {
+				/*if constexpr ((SI.flags_ & __FLAG_LONGINT) != 0) {
 					jval = static_cast<long int>(arg);
 				}
 				else if constexpr ((SI.flags_ & __FLAG_SHORTINT) != 0) {
@@ -1343,7 +1399,7 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 				}
 				else {
 					jval = static_cast<int>(arg);
-				}
+				}*/
 
 				if (jval < 0) {
 					jval = -jval;
@@ -1352,16 +1408,26 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 
 				if (jval < /*1000*/256) {
 					cp = digit_3[jval]/*.str*/;
-					size = sizeof(digit_3[jval])/*.num*/;
+					size = /*sizeof(digit_3[jval]) - 1*/jval < 10 ? 1 : (jval < 100 ? 2 : 3);
 				}
 				else 
 				    std::tie(cp, size) = formatDec(buf, jval);
 				//size = formatDec(stridx, jval);
 			}
 
-			if constexpr (SI.terminal_ == 'x' || SI.terminal_ == 'X'
-				|| SI.terminal_ == 'o' || SI.terminal_ == 'u') {
+			else if constexpr (SI.terminal_ == 'u') {
+				uintmax_t ujval = UARG<SI.flags_>(std::forward<T>(arg));
+				sign = '\0';
+				if (ujval < /*1000*/256) {
+					cp = digit_3[ujval]/*.str*/;
+					size = /*sizeof(digit_3[jval]) - 1*/ujval < 10 ? 1 : (ujval < 100 ? 2 : 3);
+				}
+				else
+					std::tie(cp, size) = formatDec(buf, ujval);
+			}
 
+			else if constexpr (SI.terminal_ == 'x' || SI.terminal_ == 'X'
+				|| SI.terminal_ == 'o') {
 			}
 
 			/*-
@@ -1437,23 +1503,7 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 		outbuf.writePaddings<'0'>(dprec - fieldsz/*, '0'*/);
 
 		// the string or number proper
-		//if constexpr (SI.terminal_ == 'i' || SI.terminal_ == 'd'
-		//	|| SI.terminal_ == 'x' || SI.terminal_ == 'X'
-		//	|| SI.terminal_ == 'o' || SI.terminal_ == 'u') {
-		//	int i = 8 - size;
-		//	if (stridx[i] < 10)
-		//		outbuf.write(stridx[i] + 0x30);
-		//	else if (stridx[i] < 100)
-		//		outbuf.write(&digits2[stridx[i] * 2], 2);
-		//	else
-		//		outbuf.write(&digits3[stridx[i] * 3], 3);
-		//	i++;
-		//	for (; i < 8; i++) {
-		//		outbuf.write(&digits3[stridx[i] * 3], 3);
-		//	}
-		//}
-		//else 
-		    outbuf.write(cp, size);
+		outbuf.write(cp, size);
 
 		// trailing floating point zeroes
 		//PAD(fpprec, ZEROS/*, outbuf*/);
