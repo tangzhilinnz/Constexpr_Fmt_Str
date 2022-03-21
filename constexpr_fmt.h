@@ -1313,91 +1313,102 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 		}
 	}
 
-    if constexpr (SI.terminal_ == 'i' || SI.terminal_ == 'd' 
-	    || SI.terminal_ == 'x' || SI.terminal_ == 'X' 
-		|| SI.terminal_ == 'o' || SI.terminal_ == 'u') {
+    if constexpr (SI.terminal_ == 'i' || SI.terminal_ == 'd' ||
+	              SI.terminal_ == 'x' || SI.terminal_ == 'X' || 
+		          SI.terminal_ == 'o' || SI.terminal_ == 'u' || 
+		          SI.terminal_ == 'p') {
 
 		uintmax_t ujval;
+		 
+		if constexpr (SI.terminal_ == 'p' && std::is_convertible_v<T, const void*>) {
+			uintmax_t ujval =
+				static_cast<uintmax_t>(reinterpret_cast<uintptr_t>(arg));
+			sign = '\0';
+			P = 16;
+			// NOTE: GNU printf prints "(nil)" for nullptr pointers, we print 0000000000000000
+			std::tie(cp, size) = formatHex<'X'>(buf, ujval);
+		}
 
-		if constexpr (std::is_integral_v<std::remove_reference_t<T>>) {
-			if constexpr (SI.terminal_ == 'i' || SI.terminal_ == 'd'
-				|| SI.terminal_ == 'u') {
+		//else if constexpr (SI.terminal_ != 'p' && std::is_integral_v<std::remove_reference_t<T>>) {
 
-				if constexpr (SI.terminal_ == 'i' || SI.terminal_ == 'd') {
-					ujval = SARG<SI.flags_>(std::forward<T>(arg));
-					if (static_cast<intmax_t/*std::make_signed<uintmax_t>::type*/>(ujval) < 0) {
-						ujval = 0 - ujval;
-						sign = '-';
-					}
+	    else if constexpr ((SI.terminal_ == 'i' || SI.terminal_ == 'd' || SI.terminal_ == 'u') && 
+			               std::is_integral_v<std::remove_reference_t<T>>) {
+
+			if constexpr (SI.terminal_ == 'i' || SI.terminal_ == 'd') {
+				ujval = SARG<SI.flags_>(std::forward<T>(arg));
+				if (static_cast<intmax_t/*std::make_signed<uintmax_t>::type*/>(ujval) < 0) {
+					ujval = 0 - ujval;
+					sign = '-';
 				}
-				else if constexpr (SI.terminal_ == 'u') {
-					ujval = UARG<SI.flags_>(std::forward<T>(arg));
-					sign = '\0';
-				}
+			}
+			else if constexpr (SI.terminal_ == 'u') {
+				ujval = UARG<SI.flags_>(std::forward<T>(arg));
+				sign = '\0';
+			}
 
-				if constexpr ((SI.flags_ & __FLAG_CHARINT) == __FLAG_CHARINT) {
+			if constexpr ((SI.flags_ & __FLAG_CHARINT) == __FLAG_CHARINT) {
+				cp = digit_3[ujval];
+				size = ujval < 10 ? 1 : (ujval < 100 ? 2 : 3);
+			}
+			else {
+				if (ujval < 100) {
 					cp = digit_3[ujval];
-					size = ujval < 10 ? 1 : (ujval < 100 ? 2 : 3);
-				}
-				else {
-					if (ujval < 100) {
-						cp = digit_3[ujval];
-						size = ujval < 10 ? 1 : 2;
-					}
-					else
-						std::tie(cp, size) = formatDec(buf, ujval);
-				}
-			}
-
-			else if constexpr (SI.terminal_ == 'o') {
-				ujval = UARG<SI.flags_>(std::forward<T>(arg));
-				sign = '\0';
-
-				if constexpr ((SI.flags_ & __FLAG_CHARINT) == __FLAG_CHARINT) {
-					cp = odigit_3[ujval];
-					size = ujval < 8 ? 1 : (ujval < 64 ? 2 : 3);
-				}
-				else {
-					if (ujval < 64) {
-						cp = odigit_3[ujval];
-						size = ujval < 8 ? 1 : 2;
-					}
-					else
-						std::tie(cp, size) = formatOct(buf, ujval);
-				}
-			}
-			else if constexpr (SI.terminal_ == 'x' || SI.terminal_ == 'X') {
-				ujval = UARG<SI.flags_>(std::forward<T>(arg));
-				sign = '\0';
-
-				constexpr const char* const* digit_2 = (SI.terminal_ == 'X') ? Xdigit_2 : xdigit_2;
-
-				if (ujval < 256) {
-					cp = digit_2[ujval];
-					size = ujval < 16 ? 1 : 2;
+					size = ujval < 10 ? 1 : 2;
 				}
 				else
-					std::tie(cp, size) = formatHex<SI.terminal_>(buf, ujval);
-
+					std::tie(cp, size) = formatDec(buf, ujval);
 			}
-
-			/*-
-			 * ``... diouXx conversions ... if a precision is
-			 * specified (P >= 0), the 0 flag will be ignored.''
-			 *	-- ANSI X3J11 */
-			if ((dprec = P) >= 0)
-				flags &= ~__FLAG_ZEROPAD;
 		}
+
+		else if constexpr (SI.terminal_ == 'o' &&
+			std::is_integral_v<std::remove_reference_t<T>>) {
+			ujval = UARG<SI.flags_>(std::forward<T>(arg));
+			sign = '\0';
+
+			if constexpr ((SI.flags_ & __FLAG_CHARINT) == __FLAG_CHARINT) {
+				cp = odigit_3[ujval];
+				size = ujval < 8 ? 1 : (ujval < 64 ? 2 : 3);
+			}
+			else {
+				if (ujval < 64) {
+					cp = odigit_3[ujval];
+					size = ujval < 8 ? 1 : 2;
+				}
+				else
+					std::tie(cp, size) = formatOct(buf, ujval);
+			}
+		}
+
+		else if constexpr ((SI.terminal_ == 'x' || SI.terminal_ == 'X') &&
+			std::is_integral_v<std::remove_reference_t<T>>) {
+			ujval = UARG<SI.flags_>(std::forward<T>(arg));
+			sign = '\0';
+
+			constexpr const char* const* digit_2 = (SI.terminal_ == 'X') ? Xdigit_2 : xdigit_2;
+
+			if (ujval < 256) {
+				cp = digit_2[ujval];
+				size = ujval < 16 ? 1 : 2;
+			}
+			else
+				std::tie(cp, size) = formatHex<SI.terminal_>(buf, ujval);
+		}
+
 		else {
 			//cp = buf;
 			//size = sizeof("(ER)") - 1;
 			//memcpy((void*)cp, "(ER)", size + 1);
 			outbuf.write("(ER)", sizeof("(ER)") - 1);
 			return;
-
 		}
-	}
 
+		/*-
+		 * ``... diouXx conversions ... if a precision is
+		 * specified (P >= 0), the 0 flag will be ignored.''
+		 *	-- ANSI X3J11 */
+		if ((dprec = P) >= 0)
+			flags &= ~__FLAG_ZEROPAD;
+	}
 
 	if constexpr (SI.end_ - SI.begin_ > 0) {
 		outbuf.write(*fmt + SI.begin_, static_cast<size_t>(SI.end_ - SI.begin_));
@@ -1422,7 +1433,7 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 		// handle octal leading 0
 		if constexpr (SI.terminal_ == 'o'
 			&& (SI.flags_ & __FLAG_ALT) == __FLAG_ALT) {
-			if (/*isPre*/*cp != '0') {
+			if (*cp != '0') {
 				fieldsz++;
 			}
 		}
@@ -1460,10 +1471,11 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 		//}
 		if constexpr ((SI.terminal_ == 'x' || SI.terminal_ == 'X') 
 			&& (SI.flags_ & __FLAG_ALT) == __FLAG_ALT) {
-			outbuf.write('0');
-			outbuf.write(SI.terminal_);
+			if (*cp != '0') {
+				outbuf.write('0');
+				outbuf.write(SI.terminal_);
+			}
 		}
-
 
 		///////////////////////////// Right Adjust ////////////////////////////
 		/* right-adjusting zero padding */
@@ -1482,7 +1494,7 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 		// print the prefix of the octal if '#' is emitted 
 		if constexpr (SI.terminal_ == 'o'
 			&& (SI.flags_ & __FLAG_ALT) == __FLAG_ALT) {
-			if (/*isPre*/*cp != '0') {
+			if (*cp != '0') {
 				outbuf.write('0');
 			}
 		}
