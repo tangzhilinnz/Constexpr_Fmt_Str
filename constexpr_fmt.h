@@ -1220,7 +1220,7 @@ inline /*intmax_t*/ uintmax_t SARG(T&& arg) {
 		return static_cast<intmax_t>(static_cast<long long int>(arg));
 	}
 	else if constexpr ((flag & __FLAG_SIZET) != 0) {
-		return static_cast<intmax_t>(static_cast<std::make_signed<size_t>::type>(arg));
+		return static_cast<intmax_t>(static_cast<std::make_signed_t<size_t>>(arg));
 	}
 	else if constexpr ((flag & __FLAG_PTRDIFFT) != 0) {
 		return static_cast<intmax_t>(static_cast<ptrdiff_t>(arg));
@@ -1251,7 +1251,7 @@ inline uintmax_t UARG(T&& arg) {
 		return static_cast<uintmax_t>(static_cast<size_t>(arg));
 	}
 	else if constexpr ((flag & __FLAG_PTRDIFFT) != 0) {
-		return static_cast<uintmax_t>(static_cast<std::make_unsigned<ptrdiff_t>::type>(arg));
+		return static_cast<uintmax_t>(static_cast<std::make_unsigned_t<ptrdiff_t>>(arg));
 	}
 	else if constexpr ((flag & __FLAG_INTMAXT) != 0) {
 		return static_cast<uintmax_t>(arg);
@@ -1324,9 +1324,12 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 			uintmax_t ujval =
 				static_cast<uintmax_t>(reinterpret_cast<uintptr_t>(arg));
 			sign = '\0';
-			P = 16;
+			P = 0;
 			// NOTE: GNU printf prints "(nil)" for nullptr pointers, we print 0000000000000000
-			std::tie(cp, size) = formatHex<'X'>(buf, ujval);
+			cp = buf + 84;
+			size = 16;
+			std::memcpy(buf + 84, ZEROS, 16);
+			/*std::tie(cp, size) = */formatHex<'X'>(buf, ujval);
 		}
 
 		//else if constexpr (SI.terminal_ != 'p' && std::is_integral_v<std::remove_reference_t<T>>) {
@@ -1395,9 +1398,6 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 		}
 
 		else {
-			//cp = buf;
-			//size = sizeof("(ER)") - 1;
-			//memcpy((void*)cp, "(ER)", size + 1);
 			outbuf.write("(ER)", sizeof("(ER)") - 1);
 			return;
 		}
@@ -1409,6 +1409,34 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 		if ((dprec = P) >= 0)
 			flags &= ~__FLAG_ZEROPAD;
 	}
+
+	if constexpr (SI.terminal_ == 'n') {
+		if constexpr (std::is_convertible_v<T, const void*>) {
+			if constexpr ((SI.flags_ & __FLAG_LONGINT) != 0)
+				*reinterpret_cast<long int*>(arg) = outbuf.getWrittenNum();
+			else if constexpr ((SI.flags_ & __FLAG_SHORTINT) != 0)
+				*reinterpret_cast<short int*>(arg) = outbuf.getWrittenNum();
+			else if constexpr ((SI.flags_ & __FLAG_CHARINT) != 0)
+				*reinterpret_cast<signed char*>(arg) = outbuf.getWrittenNum();
+			else if constexpr ((SI.flags_ & __FLAG_LLONGINT) != 0)
+				*reinterpret_cast<long long int*>(arg) = outbuf.getWrittenNum();
+			else if constexpr ((SI.flags_ & __FLAG_INTMAXT) != 0)
+				*reinterpret_cast<intmax_t*>(arg) = outbuf.getWrittenNum();
+			else if constexpr ((SI.flags_ & __FLAG_SIZET) != 0)
+				*reinterpret_cast<std::make_signed_t<size_t>*>(arg) = outbuf.getWrittenNum();
+			else if constexpr ((SI.flags_ & __FLAG_PTRDIFFT) != 0)
+				*reinterpret_cast<ptrdiff_t*>(arg) = outbuf.getWrittenNum();
+			else
+				*reinterpret_cast<int*>(arg) = outbuf.getWrittenNum();
+
+			return;
+		}
+		else {
+			outbuf.write("(ER)", sizeof("(ER)") - 1);
+			return;
+		}
+	}
+
 
 	if constexpr (SI.end_ - SI.begin_ > 0) {
 		outbuf.write(*fmt + SI.begin_, static_cast<size_t>(SI.end_ - SI.begin_));
