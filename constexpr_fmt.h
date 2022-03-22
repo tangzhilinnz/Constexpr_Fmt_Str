@@ -1264,10 +1264,10 @@ inline uintmax_t UARG(T&& arg) {
 //#define	INTMAX_SIZE	(__FLAG_INTMAXT|__FLAG_SIZET|__FLAG_PTRDIFFT|__FLAG_LLONGINT)
 
 /* template converter_impl declaration */
-template<const char* const* fmt, const SpecInfo&... SIs, typename... Ts>
+template<const char* const* fmt, SpecInfo... SIs, typename... Ts>
 inline void converter_impl(OutbufArg& outbuf, Ts&&...args);
 
-template<const char* const* fmt, const SpecInfo& SI, typename T>
+template<const char* const* fmt, SpecInfo SI, typename T>
 inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0, 
     precision_t P = -1) {
 
@@ -1562,14 +1562,14 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 }
 
 
-template<const char* const* fmt, const SpecInfo& SI, const SpecInfo&... SIs, typename T, typename... Ts>
+template<const char* const* fmt, SpecInfo SI, SpecInfo... SIs, typename T, typename... Ts>
 inline void converter_args(OutbufArg& outbuf, T&& arg, Ts&&... rest) {
 	converter_single<fmt, SI>(outbuf, std::forward<T>(arg));
 	converter_impl<fmt, SIs...>(outbuf, std::forward<Ts>(rest)...);
 }
 
 
-template<const char* const* fmt, const SpecInfo& SI, const SpecInfo&... SIs, typename D, typename T, typename... Ts>
+template<const char* const* fmt, SpecInfo SI, SpecInfo... SIs, typename D, typename T, typename... Ts>
 inline void converter_D_args(OutbufArg& outbuf, D&& d, T&& arg, Ts&&... rest) {
 	if constexpr (SI.width_ == DYNAMIC_WIDTH) {
 		// test 
@@ -1595,7 +1595,7 @@ inline void converter_D_args(OutbufArg& outbuf, D&& d, T&& arg, Ts&&... rest) {
 	converter_impl<fmt, SIs...>(outbuf, std::forward<Ts>(rest)...);
 }
 
-template<const char* const* fmt, const SpecInfo& SI, const SpecInfo&... SIs, typename D1, typename D2, typename T, typename... Ts>
+template<const char* const* fmt, SpecInfo SI, SpecInfo... SIs, typename D1, typename D2, typename T, typename... Ts>
 inline void converter_D_D_args(OutbufArg& outbuf, D1&& d1, D2&& d2, T&& arg, Ts&&... rest) {
 	if constexpr (SI.wFirst_) {
 		// test 
@@ -1623,7 +1623,7 @@ inline void converter_D_D_args(OutbufArg& outbuf, D1&& d1, D2&& d2, T&& arg, Ts&
 	converter_impl<fmt, SIs...>(outbuf, /*fmt,*/ std::forward<Ts>(rest)...);
 }
 
-template<const char* const* fmt, const SpecInfo&... SIs, typename... Ts>
+template<const char* const* fmt, SpecInfo... SIs, typename... Ts>
 inline void converter_impl(OutbufArg& outbuf, Ts&&...args) {
 	// According to CFMT_STR implementation, at least one argument exists in the
 	// template parameter pack SpecInfo... SIs.
