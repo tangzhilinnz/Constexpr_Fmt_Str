@@ -1274,7 +1274,7 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 	char buf[100];	// space for %c, %[diouxX], %[eEfgG]
 	//int stridx[8];
 	const char* cp = nullptr;
-	int dprec = 0;	// a copy of prec if [diouxX], 0 otherwise
+	//int dprec = 0;	// a copy of prec if [diouxX], 0 otherwise
 	int	fpprec = 0;	    // `extra' floating precision in [eEfgG]
 	int	realsz = 0;	    // field size expanded by dprec
 	size_t size = 0;
@@ -1317,7 +1317,6 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 	              SI.terminal_ == 'x' || SI.terminal_ == 'X' || 
 		          SI.terminal_ == 'o' || SI.terminal_ == 'u' || 
 		          SI.terminal_ == 'p') {
-
 		uintmax_t ujval;
 		 
 		if constexpr (SI.terminal_ == 'p' && std::is_convertible_v<T, const void*>) {
@@ -1349,18 +1348,20 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 				sign = '\0';
 			}
 
-			if constexpr ((SI.flags_ & __FLAG_CHARINT) == __FLAG_CHARINT) {
-				cp = digit_3[ujval];
-				size = ujval < 10 ? 1 : (ujval < 100 ? 2 : 3);
-			}
-			else {
-				if (ujval < 100) {
-					cp = digit_3[ujval];
-					size = ujval < 10 ? 1 : 2;
-				}
-				else
-					std::tie(cp, size) = formatDec(buf, ujval);
-			}
+			//if constexpr ((SI.flags_ & __FLAG_CHARINT) == __FLAG_CHARINT) {
+			//	cp = digit_3[ujval];
+			//	size = ujval < 10 ? 1 : (ujval < 100 ? 2 : 3);
+			//}
+			//else {
+			//	if (ujval < 100) {
+			//		cp = digit_3[ujval];
+			//		size = ujval < 10 ? 1 : 2;
+			//	}
+			//	else
+			//		std::tie(cp, size) = formatDec(buf, ujval);
+			//}
+
+			std::tie(cp, size) = formatDec(buf, ujval);
 		}
 
 		else if constexpr (SI.terminal_ == 'o' &&
@@ -1368,17 +1369,27 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 			ujval = UARG<SI.flags_>(std::forward<T>(arg));
 			sign = '\0';
 
-			if constexpr ((SI.flags_ & __FLAG_CHARINT) == __FLAG_CHARINT) {
-				cp = odigit_3[ujval];
-				size = ujval < 8 ? 1 : (ujval < 64 ? 2 : 3);
-			}
-			else {
-				if (ujval < 64) {
-					cp = odigit_3[ujval];
-					size = ujval < 8 ? 1 : 2;
+			//if constexpr ((SI.flags_ & __FLAG_CHARINT) == __FLAG_CHARINT) {
+			//	cp = odigit_3[ujval];
+			//	size = ujval < 8 ? 1 : (ujval < 64 ? 2 : 3);
+			//}
+			//else {
+			//	if (ujval < 64) {
+			//		cp = odigit_3[ujval];
+			//		size = ujval < 8 ? 1 : 2;
+			//	}
+			//	else
+			//		std::tie(cp, size) = formatOct(buf, ujval);
+			//}
+
+			std::tie(cp, size) = formatOct(buf, ujval);
+
+			// handle octal leading 0
+			if constexpr ((SI.flags_ & __FLAG_ALT) == __FLAG_ALT) {
+				if (*cp != '0') {
+					*const_cast<char*>(--cp) = '0';
+					size++;
 				}
-				else
-					std::tie(cp, size) = formatOct(buf, ujval);
 			}
 		}
 
@@ -1387,14 +1398,23 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 			ujval = UARG<SI.flags_>(std::forward<T>(arg));
 			sign = '\0';
 
-			constexpr const char* const* digit_2 = (SI.terminal_ == 'X') ? Xdigit_2 : xdigit_2;
+			//constexpr const char* const* digit_2 = (SI.terminal_ == 'X') ? Xdigit_2 : xdigit_2;
 
-			if (ujval < 256) {
-				cp = digit_2[ujval];
-				size = ujval < 16 ? 1 : 2;
+			//if (ujval < 256) {
+			//	cp = digit_2[ujval];
+			//	size = ujval < 16 ? 1 : 2;
+			//}
+			//else
+			std::tie(cp, size) = formatHex<SI.terminal_>(buf, ujval);
+
+			// handle octal leading prefix 0x or 0X
+			if constexpr ((SI.flags_ & __FLAG_ALT) == __FLAG_ALT) {
+				if (*cp != '0') {
+					*const_cast<char*>(--cp) = SI.terminal_;
+					*const_cast<char*>(--cp) = '0';
+					size += 2;
+				}
 			}
-			else
-				std::tie(cp, size) = formatHex<SI.terminal_>(buf, ujval);
 		}
 
 		else {
@@ -1406,7 +1426,7 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 		 * ``... diouXx conversions ... if a precision is
 		 * specified (P >= 0), the 0 flag will be ignored.''
 		 *	-- ANSI X3J11 */
-		if ((dprec = P) >= 0)
+		if /*((dprec = P) >= 0)*/ (P >= 0)
 			flags &= ~__FLAG_ZEROPAD;
 	}
 
@@ -1428,13 +1448,12 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 				*reinterpret_cast<ptrdiff_t*>(arg) = outbuf.getWrittenNum();
 			else
 				*reinterpret_cast<int*>(arg) = outbuf.getWrittenNum();
-
-			return;
 		}
 		else {
 			outbuf.write("(ER)", sizeof("(ER)") - 1);
-			return;
 		}
+
+		return;
 	}
 
 
@@ -1459,26 +1478,26 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 		fieldsz = static_cast<int>(size + fpprec); // normally fpprec is 0
 
 		// handle octal leading 0
-		if constexpr (SI.terminal_ == 'o'
-			&& (SI.flags_ & __FLAG_ALT) == __FLAG_ALT) {
-			if (*cp != '0') {
-				fieldsz++;
-			}
-		}
+		//if constexpr (SI.terminal_ == 'o'
+		//	&& (SI.flags_ & __FLAG_ALT) == __FLAG_ALT) {
+		//	if (*cp != '0') {
+		//		fieldsz++;
+		//	}
+		//}
 
-		realsz = (dprec > fieldsz) ? dprec : fieldsz;
+		realsz = (/*dprec*/P > fieldsz) ? /*dprec*/P : fieldsz;
 		if (sign)
 			realsz++;
 		//if (ox[1])
 		//	realsz += 2;
 
 		// handle hex prefix 0x or 0X
-		if constexpr ((SI.terminal_ == 'x' || SI.terminal_ == 'X')
-			&& (SI.flags_ & __FLAG_ALT) == __FLAG_ALT) {
-			if (*cp != '0') {
-				realsz += 2;
-			}
-		}
+		//if constexpr ((SI.terminal_ == 'x' || SI.terminal_ == 'X')
+		//	&& (SI.flags_ & __FLAG_ALT) == __FLAG_ALT) {
+		//	if (*cp != '0') {
+		//		realsz += 2;
+		//	}
+		//}
 
 		///////////////////////////// Right Adjust ////////////////////////////
 		/* right-adjusting blank padding */
@@ -1497,13 +1516,13 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 		//if constexpr (SI.terminal_ == 'X' && (SI.flags_ & __FLAG_ALT) == __FLAG_ALT) {
 		//	if (*cp != '0') outbuf.write("0X", 2);
 		//}
-		if constexpr ((SI.terminal_ == 'x' || SI.terminal_ == 'X') 
-			&& (SI.flags_ & __FLAG_ALT) == __FLAG_ALT) {
-			if (*cp != '0') {
-				outbuf.write('0');
-				outbuf.write(SI.terminal_);
-			}
-		}
+		//if constexpr ((SI.terminal_ == 'x' || SI.terminal_ == 'X') 
+		//	&& (SI.flags_ & __FLAG_ALT) == __FLAG_ALT) {
+		//	if (*cp != '0') {
+		//		outbuf.write('0');
+		//		outbuf.write(SI.terminal_);
+		//	}
+		//}
 
 		///////////////////////////// Right Adjust ////////////////////////////
 		/* right-adjusting zero padding */
@@ -1514,18 +1533,18 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 		///////////////////////////// Right Adjust ////////////////////////////
 
 		// [diouXx] leading zeroes from decimal precision
-		// when dprec > fieldsz, realsz == dprec and zero padding size is dprec - fieldsz;
-		// when dprec =< fieldsz, realsz == fieldsz and zero padding is skipped.
-		//PAD(dprec - fieldsz, ZEROS/*, outbuf*/);
-		outbuf.writePaddings</*'0'*/&ZEROS>(dprec - fieldsz);
+		// when P > fieldsz, realsz == P and zero padding size is P - fieldsz;
+		// when P =< fieldsz, realsz == fieldsz and zero padding is skipped.
+		//PAD(P - fieldsz, ZEROS/*, outbuf*/);
+		outbuf.writePaddings</*'0'*/&ZEROS>(/*dprec*/P - fieldsz);
 
-		// print the prefix of the octal if '#' is emitted 
-		if constexpr (SI.terminal_ == 'o'
-			&& (SI.flags_ & __FLAG_ALT) == __FLAG_ALT) {
-			if (*cp != '0') {
-				outbuf.write('0');
-			}
-		}
+		//// print the prefix of the octal if '#' is emitted 
+		//if constexpr (SI.terminal_ == 'o'
+		//	&& (SI.flags_ & __FLAG_ALT) == __FLAG_ALT) {
+		//	if (*cp != '0') {
+		//		outbuf.write('0');
+		//	}
+		//}
 
 		// the string or number proper
 		outbuf.write(cp, size);

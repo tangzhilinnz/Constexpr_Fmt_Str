@@ -376,7 +376,7 @@ int main() {
 		CFMT_STR(result, buf, 800, "%ho", i);
 		CFMT_STR(result, buf, 800, "%ho", i);*/
 		
-        /* %llo x 160 */
+        /* %llo x 80 */
 		/*CFMT_STR(result, buf, 800, "%llo", i);
 		CFMT_STR(result, buf, 800, "%llo", i);
 		CFMT_STR(result, buf, 800, "%llo", i);
@@ -456,87 +456,8 @@ int main() {
 		CFMT_STR(result, buf, 800, "%llo", i);
 		CFMT_STR(result, buf, 800, "%llo", i);
 		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
-		CFMT_STR(result, buf, 800, "%llo", i);
 		CFMT_STR(result, buf, 800, "%llo", i);*/
+
 
         /* %ld x 80 */
         /*CFMT_STR(result, buf, 800, "%ld", i);
@@ -703,7 +624,6 @@ int main() {
 		CFMT_STR(result, buf, 800, "%d", i);*/
 
 		/* %llu x 80 */
-		/*CFMT_STR(result, buf, 800, "%llu", i);
 		CFMT_STR(result, buf, 800, "%llu", i);
 		CFMT_STR(result, buf, 800, "%llu", i);
 		CFMT_STR(result, buf, 800, "%llu", i);
@@ -782,7 +702,8 @@ int main() {
 		CFMT_STR(result, buf, 800, "%llu", i);
 		CFMT_STR(result, buf, 800, "%llu", i);
 		CFMT_STR(result, buf, 800, "%llu", i);
-		CFMT_STR(result, buf, 800, "%llu", i);*/
+		CFMT_STR(result, buf, 800, "%llu", i);
+		CFMT_STR(result, buf, 800, "%llu", i);
         
         /* %hho x 80 -> snprintf */
 		//result = snprintf(buf, 800, "%hho", i);
@@ -1029,79 +950,6 @@ int main() {
 		CFMT_STR(result, buf, 800, "%hhu", i);
 		CFMT_STR(result, buf, 800, "%hhu", i);
 		CFMT_STR(result, buf, 800, "%hhu", i);*/
-
-		/* %hu x 80 */
-		/*CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);
-		CFMT_STR(result, buf, 800, "%hu", i);*/
-
 
 		/* %hd x 80 */
 		/*CFMT_STR(result, buf, 800, "%hd", i);
@@ -2004,7 +1852,7 @@ int main() {
 		CFMT_STR(result, buf, 800, "%#hhx", i);
 		CFMT_STR(result, buf, 800, "%#hhx", i);
 		CFMT_STR(result, buf, 800, "%#hhx", i);
-		CFMT_STR(result, buf, 800, "%#+-08.8hhx|", i);*/
+		CFMT_STR(result, buf, 800, "%#hhx", i);*/
 
 		/* %#hx x 160 */
 		/*CFMT_STR(result, buf, 800, "%#hx", i);
@@ -2168,7 +2016,6 @@ int main() {
 		CFMT_STR(result, buf, 800, "%#hx", i);
 		CFMT_STR(result, buf, 800, "%#hx", i);
 		CFMT_STR(result, buf, 800, "%#hx", i);*/
-
 
 		/* %#llx x 160 */
         /*CFMT_STR(result, buf, 800, "%#llx", i);
@@ -2334,6 +2181,7 @@ int main() {
 		CFMT_STR(result, buf, 800, "%#llx", i);*/
 
 		/* %#jzthlhhllp x 80 */
+		/*CFMT_STR(result, buf, 800, "%#jzthlhhllp", &i);
 		CFMT_STR(result, buf, 800, "%#jzthlhhllp", &i);
 		CFMT_STR(result, buf, 800, "%#jzthlhhllp", &i);
 		CFMT_STR(result, buf, 800, "%#jzthlhhllp", &i);
@@ -2412,8 +2260,8 @@ int main() {
 		CFMT_STR(result, buf, 800, "%#jzthlhhllp", &i);
 		CFMT_STR(result, buf, 800, "%#jzthlhhllp", &i);
 		CFMT_STR(result, buf, 800, "%#jzthlhhllp", &i);
-		CFMT_STR(result, buf, 800, "%#jzthlhhllp", &i);
-		CFMT_STR(result, buf, 800, "%+0 *.5#jzthlhhllp%lln|", -30, &i, &ran);
+		CFMT_STR(result, buf, 800, "%#jzthlhhllp", &i);*/
+		///*result = tz_snprintf*/CFMT_STR(result, buf, 800, "%+0 *.5#jzthlhhllp%lln|", -30, &i, &ran);
 
 
 		/* %#jzthlhhllp x 80 -> tz_snprintf*/
@@ -2498,11 +2346,9 @@ int main() {
 		result = tz_snprintf(buf, 800, "%#jzthlhhllp", &i);
 		result = tz_snprintf(buf, 800, "%#jzthlhhllp", &i);*/
 
-
-
         //result = snprintf(buf, 800, "%#10.4o", 012345);
 
-		//CFMT_STR(result, buf, 800, "%#-10.8o|", 012345);
+///*result = tz_snprintf*/CFMT_STR(result, buf, 800, "%+ 0- #+30.010*.**X%lln|", 9, 30, i, &ran);
 		//result = snprintf(buf, 800, "%#-10.8o|", 012345);
 
 //result = tz_snprintf(/*result,*/ buf, 800, "%u", pdata[i]);
@@ -2516,20 +2362,20 @@ int main() {
 //result = tz_snprintf(/*result,*/ buf, 800, "%+0*.*u", 20, 10, i);
 //result = tz_snprintf(/*result,*/ buf, 800, "%+0*.*u", 20, 10, i);
 
-		//result = tz_snprintf/*CFMT_STR*/(/*result,*/ buf, 2000,
+		///*result = tz_snprintf*/CFMT_STR(result, buf, 2000,
 		//	//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd"
 		//	//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd"
 		//	//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd"
-		//	//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd",
+		//	"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd",
 		//	//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld"
 		//	//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld"
 		//	//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld"
-		//	//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lln%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld",
+		//	//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld",
 		//	//"%llu", i,
 		//	//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld",
 		//	//"%+030hhd%+030hhd%+030.10hhd%+030.10hhd%+030.10hhd",
 		//	//"%0*.*u|", -20, 10, i,
-		//	"%#+0 30.2p", &pdata[i]/*nullptr*//*nullptr*//*&i*/,
+		//	//"%#x", pdata[i]/*nullptr*//*nullptr*//*&i*/,
 		//	//"%#p", "ss"
 		//	//"%lld",
 		//	//"test%dtest%dtest%dtest%dtest%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", pdata[i], pdata[(i+1)% 10000000], pdata[(i + 2) % 10000000], pdata[(i + 3) % 10000000]
@@ -2549,7 +2395,7 @@ int main() {
 		//	//92237, 92233726854771, 92237, 92233785477123, 9337203, 9223, 92237, 9, 92233720368, 92237,
 		//	//922337685477, 92233720771, 9223372037712, 92233785477123, 92233203, 9223, 92237, 92, 92233720368, 92237,
 		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, &ran,
+		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
 		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
 		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
 		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
@@ -2674,5 +2520,5 @@ int main() {
 	//}
 
 	//int i = -1;
-	//printf("%30.20p", i);
+	//printf("%#30x", i);
 }
