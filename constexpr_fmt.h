@@ -192,7 +192,7 @@ using u_short = unsigned short;
 //}
 
 template <size_t N>
-std::tuple<const char*, size_t> formatDec(char(&buf)[N], uintmax_t d) {
+std::tuple</*const*/ char*, size_t> formatDec(char(&buf)[N]/*char* &it*/, uintmax_t d) {
 
 	static constexpr const u_short digit_pairs[100] = {
 	    0x3030, 0x3130, 0x3230, 0x3330, 0x3430, 0x3530, 0x3630, 0x3730, 0x3830, 0x3930,
@@ -230,7 +230,7 @@ std::tuple<const char*, size_t> formatDec(char(&buf)[N], uintmax_t d) {
 }
 
 template<size_t N>
-std::tuple<const char*, size_t> formatOct(char(&buf)[N], uintmax_t d) {
+std::tuple</*const */char*, size_t> formatOct(char(&buf)[N], uintmax_t d) {
 
 	static constexpr const u_short digit_pairs[64] = {
 		0x3030, 0x3130, 0x3230, 0x3330, 0x3430, 0x3530, 0x3630, 0x3730,
@@ -269,7 +269,7 @@ std::tuple<const char*, size_t> formatOct(char(&buf)[N], uintmax_t d) {
 
 
 template <char T, size_t N>
-std::tuple<const char*, size_t> formatHex(char(&buf)[N], uintmax_t d) {
+std::tuple</*const */char*, size_t> formatHex(char(&buf)[N], uintmax_t d) {
 
 	static constexpr const u_short Xdigit_pairs[256] = {
 		0x3030, 0x3130, 0x3230, 0x3330, 0x3430, 0x3530, 0x3630, 0x3730, 0x3830, 0x3930, 0x4130, 0x4230, 0x4330, 0x4430, 0x4530, 0x4630,
@@ -1179,17 +1179,9 @@ squeezeSoundSize(const char(&fmt)[N]) {
 
 // ============================================================================
 // ============================================================================
-//template <class R, class T>
-//inline constexpr std::tuple<R, bool> formattedInteger([[maybe_unused]] T&& n) {
-//	if constexpr (std::is_integral_v<std::remove_reference_t<T>>)
-//		return { static_cast<R>(n), true };
-//	else
-//		return { static_cast<R>(0), false };
-//}
-
 
 template <class T>
-inline constexpr int formattedPrec([[maybe_unused]] T&& n) {
+inline constexpr int formattedPrec([[maybe_unused]] T/*&&*/ n) {
 	if constexpr (std::is_integral_v<std::remove_reference_t<T>>)
 		return static_cast<int>(n);
 	else
@@ -1198,7 +1190,7 @@ inline constexpr int formattedPrec([[maybe_unused]] T&& n) {
 
 
 template <class T>
-inline constexpr int formattedWidth([[maybe_unused]] T&& n) {
+inline constexpr int formattedWidth([[maybe_unused]] T/*&&*/ n) {
 	if constexpr (std::is_integral_v<std::remove_reference_t<T>>)
 		return static_cast<int>(n);
 	else
@@ -1206,7 +1198,7 @@ inline constexpr int formattedWidth([[maybe_unused]] T&& n) {
 }
 
 template<flags_t flag, typename T>
-inline /*intmax_t*/ uintmax_t SARG(T&& arg) {
+inline /*intmax_t*/ uintmax_t SARG(T/*&&*/ arg) {
 	if constexpr ((flag & __FLAG_LONGINT) != 0) {
 		return static_cast<intmax_t>(static_cast<long int>(arg));
 	}
@@ -1234,7 +1226,7 @@ inline /*intmax_t*/ uintmax_t SARG(T&& arg) {
 }
 
 template<flags_t flag, typename T>
-inline uintmax_t UARG(T&& arg) {
+inline uintmax_t UARG(T/*&&*/ arg) {
 	if constexpr ((flag & __FLAG_LONGINT) != 0) {
 		return static_cast<uintmax_t>(static_cast<unsigned long int>(arg));
 	}
@@ -1265,15 +1257,15 @@ inline uintmax_t UARG(T&& arg) {
 
 /* template converter_impl declaration */
 template<const char* const* fmt, SpecInfo... SIs, typename... Ts>
-inline void converter_impl(OutbufArg& outbuf, Ts&&...args);
+inline void converter_impl(OutbufArg& outbuf, Ts/*&&*/...args);
 
 template<const char* const* fmt, SpecInfo SI, typename T>
-inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0, 
+inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0, 
     precision_t P = -1) {
 
 	char buf[100];	// space for %c, %[diouxX], %[eEfgG]
 	//int stridx[8];
-	const char* cp = nullptr;
+	/*const */char* cp = nullptr;
 	//int dprec = 0;	// a copy of prec if [diouxX], 0 otherwise
 	int	fpprec = 0;	    // `extra' floating precision in [eEfgG]
 	int	realsz = 0;	    // field size expanded by dprec
@@ -1337,14 +1329,14 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 			               std::is_integral_v<std::remove_reference_t<T>>) {
 
 			if constexpr (SI.terminal_ == 'i' || SI.terminal_ == 'd') {
-				ujval = SARG<SI.flags_>(std::forward<T>(arg));
+				ujval = SARG<SI.flags_>(/*std::forward<T>*/(arg));
 				if (static_cast<intmax_t/*std::make_signed<uintmax_t>::type*/>(ujval) < 0) {
 					ujval = 0 - ujval;
 					sign = '-';
 				}
 			}
 			else if constexpr (SI.terminal_ == 'u') {
-				ujval = UARG<SI.flags_>(std::forward<T>(arg));
+				ujval = UARG<SI.flags_>(/*std::forward<T>*/(arg));
 				sign = '\0';
 			}
 
@@ -1360,13 +1352,14 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 			//	else
 			//		std::tie(cp, size) = formatDec(buf, ujval);
 			//}
-
-			std::tie(cp, size) = formatDec(buf, ujval);
+			//cp = buf + 100;
+			std::tie(cp, size) = formatDec(buf/*cp*/, ujval);
+			/*size = static_cast<size_t>(buf + 100 - cp);*/
 		}
 
 		else if constexpr (SI.terminal_ == 'o' &&
 			std::is_integral_v<std::remove_reference_t<T>>) {
-			ujval = UARG<SI.flags_>(std::forward<T>(arg));
+			ujval = UARG<SI.flags_>(/*std::forward<T>*/(arg));
 			sign = '\0';
 
 			//if constexpr ((SI.flags_ & __FLAG_CHARINT) == __FLAG_CHARINT) {
@@ -1395,7 +1388,7 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 
 		else if constexpr ((SI.terminal_ == 'x' || SI.terminal_ == 'X') &&
 			std::is_integral_v<std::remove_reference_t<T>>) {
-			ujval = UARG<SI.flags_>(std::forward<T>(arg));
+			ujval = UARG<SI.flags_>(/*std::forward<T>*/(arg));
 			sign = '\0';
 
 			//constexpr const char* const* digit_2 = (SI.terminal_ == 'X') ? Xdigit_2 : xdigit_2;
@@ -1563,22 +1556,22 @@ inline void converter_single(OutbufArg& outbuf, T&& arg, width_t W = 0,
 
 
 template<const char* const* fmt, SpecInfo SI, SpecInfo... SIs, typename T, typename... Ts>
-inline void converter_args(OutbufArg& outbuf, T&& arg, Ts&&... rest) {
-	converter_single<fmt, SI>(outbuf, std::forward<T>(arg));
-	converter_impl<fmt, SIs...>(outbuf, std::forward<Ts>(rest)...);
+inline void converter_args(OutbufArg& outbuf, T/*&&*/ arg, Ts/*&&*/... rest) {
+	converter_single<fmt, SI>(outbuf, /*std::forward<T>*/(arg));
+	converter_impl<fmt, SIs...>(outbuf, /*std::forward<Ts>*/(rest)...);
 }
 
 
 template<const char* const* fmt, SpecInfo SI, SpecInfo... SIs, typename D, typename T, typename... Ts>
-inline void converter_D_args(OutbufArg& outbuf, D&& d, T&& arg, Ts&&... rest) {
+inline void converter_D_args(OutbufArg& outbuf, D/*&&*/ d, T/*&&*/ arg, Ts/*&&*/... rest) {
 	if constexpr (SI.width_ == DYNAMIC_WIDTH) {
 		// test 
 		//std::cout << "\nwidth: " << d << std::endl;
 		//std::cout << "arg: " << arg << std::endl;
 		//std::cout << std::endl;
 
-		converter_single<fmt, SI>(outbuf, std::forward<T>(arg),
-			formattedWidth(std::forward<D>(d)), -1);
+		converter_single<fmt, SI>(outbuf, /*std::forward<T>*/(arg),
+			formattedWidth(/*std::forward<D>*/(d)), -1);
 	}
 	else if constexpr (SI.prec_ == DYNAMIC_PRECISION) {
 		// test 
@@ -1586,17 +1579,17 @@ inline void converter_D_args(OutbufArg& outbuf, D&& d, T&& arg, Ts&&... rest) {
 		//std::cout << "arg: " << arg << std::endl;
 		//std::cout << std::endl;
 
-		converter_single<fmt, SI>(outbuf, std::forward<T>(arg), 0,
-			formattedPrec(std::forward<D>(d)));
+		converter_single<fmt, SI>(outbuf, /*std::forward<T>*/(arg), 0,
+			formattedPrec(/*std::forward<D>*/(d)));
 	}
 	else { /* should never happen */
 		abort();
 	}
-	converter_impl<fmt, SIs...>(outbuf, std::forward<Ts>(rest)...);
+	converter_impl<fmt, SIs...>(outbuf, /*std::forward<Ts>*/(rest)...);
 }
 
 template<const char* const* fmt, SpecInfo SI, SpecInfo... SIs, typename D1, typename D2, typename T, typename... Ts>
-inline void converter_D_D_args(OutbufArg& outbuf, D1&& d1, D2&& d2, T&& arg, Ts&&... rest) {
+inline void converter_D_D_args(OutbufArg& outbuf, D1/*&&*/ d1, D2/*&&*/ d2, T/*&&*/ arg, Ts/*&&*/... rest) {
 	if constexpr (SI.wFirst_) {
 		// test 
 		//std::cout << "\nwidth: " << d1 << std::endl;
@@ -1604,9 +1597,9 @@ inline void converter_D_D_args(OutbufArg& outbuf, D1&& d1, D2&& d2, T&& arg, Ts&
 		//std::cout << "arg: " << arg << std::endl;
 		//std::cout << std::endl;
 
-		converter_single<fmt, SI>(outbuf, std::forward<T>(arg),
-			formattedWidth(std::forward<D1>(d1)),
-			formattedPrec(std::forward<D2>(d2)));
+		converter_single<fmt, SI>(outbuf, /*std::forward<T>*/(arg),
+			formattedWidth(/*std::forward<D1>*/(d1)),
+			formattedPrec(/*std::forward<D2>*/(d2)));
 	}
 	else {
 		// test 
@@ -1615,16 +1608,16 @@ inline void converter_D_D_args(OutbufArg& outbuf, D1&& d1, D2&& d2, T&& arg, Ts&
 		//std::cout << "arg: " << arg << std::endl;
 		//std::cout << std::endl;
 
-		converter_single<fmt, SI>(outbuf, std::forward<T>(arg),
-			formattedWidth(std::forward<D2>(d2)),
-			formattedPrec(std::forward<D1>(d1)));
+		converter_single<fmt, SI>(outbuf, /*std::forward<T>*/(arg),
+			formattedWidth(/*std::forward<D2>*/(d2)),
+			formattedPrec(/*std::forward<D1>*/(d1)));
 	}
 
-	converter_impl<fmt, SIs...>(outbuf, /*fmt,*/ std::forward<Ts>(rest)...);
+	converter_impl<fmt, SIs...>(outbuf, /*fmt,*/ /*std::forward<Ts>*/(rest)...);
 }
 
 template<const char* const* fmt, SpecInfo... SIs, typename... Ts>
-inline void converter_impl(OutbufArg& outbuf, Ts&&...args) {
+inline void converter_impl(OutbufArg& outbuf, Ts/*&&*/...args) {
 	// According to CFMT_STR implementation, at least one argument exists in the
 	// template parameter pack SpecInfo... SIs.
 	constexpr auto& SI = std::get<0>(std::forward_as_tuple(SIs...));
@@ -1632,14 +1625,14 @@ inline void converter_impl(OutbufArg& outbuf, Ts&&...args) {
 	if constexpr (sizeof ...(SIs) > 1) {
 		if constexpr (SI.width_ == DYNAMIC_WIDTH
 			&& SI.prec_ == DYNAMIC_PRECISION) {
-			converter_D_D_args<fmt, SIs...>(outbuf,  std::forward<Ts>(args)...);
+			converter_D_D_args<fmt, SIs...>(outbuf, /* std::forward<Ts>*/(args)...);
 		}
 		else if constexpr (SI.width_ == DYNAMIC_WIDTH
 			|| SI.prec_ == DYNAMIC_PRECISION) {
-			converter_D_args<fmt, SIs...>(outbuf, std::forward<Ts>(args)...);
+			converter_D_args<fmt, SIs...>(outbuf, /*std::forward<Ts>*/(args)...);
 		}
 		else {
-			converter_args<fmt, SIs...>(outbuf, std::forward<Ts>(args)...);
+			converter_args<fmt, SIs...>(outbuf, /*std::forward<Ts>*/(args)...);
 		}
 	}
 	else {
@@ -1653,7 +1646,7 @@ struct Converter {
 	constexpr Converter() {}
 
 	template <const char* const* fmt, typename... Ts>
-	void /*operator()*/convert(OutbufArg& outbuf, Ts&&... args) const {
+	void /*operator()*/convert(OutbufArg& outbuf, Ts/*&&*/... args) const {
 		constexpr auto numArgsReuqired = countArgsRequired<SIs...>();
 		if constexpr (static_cast<uint32_t>(numArgsReuqired) > 
 			static_cast<uint32_t>(sizeof...(Ts))) {
@@ -1664,7 +1657,7 @@ struct Converter {
 			abort();
 		}
 		else {
-			converter_impl<fmt, SIs...>(outbuf, std::forward<Ts>(args)...);
+			converter_impl<fmt, SIs...>(outbuf, /*std::forward<Ts>*/(args)...);
 		}
 	}
 
@@ -1733,16 +1726,16 @@ static constexpr auto fmtRawStr = format; \
  * change their extent, but it does change its visibility with respect to
  * other translation units; the name is not exported to the linker, so it
  * cannot be accessed by name from another translation unit. */ \
-/*static constexpr std::array<SpecInfo, kNVSIs + 1> kSIs*/ \
-	/*= analyzeFormatString<kNVSIs + 1>(format);*/ \
+static constexpr std::array<SpecInfo, kNVSIs + 1> kSIs \
+	= analyzeFormatString<kNVSIs + 1>(format); \
 static constexpr auto kfmtArr = preprocessInvalidSpecs<kSS>(format); \
 static constexpr auto kRTStr /*= getRTFmtStr(format, kfmtArr);*/ \
-   = [&](){ return (kSS < sizeof(format)? kfmtArr.data() : format); }(); \
+   = kSS < sizeof(format)? kfmtArr.data() : format; \
 /** 
  * use the address of the pointer to a string literal (&kRTStr) with static
  * storage duration and internal linkage instead of a raw string literal to
  * comply with c++ standard 14.3.2/1 */ \
-static /*constexpr*/ auto kConverter = unpack<kNVSIs + 1, Converter, &fmtRawStr>(); \
+static constexpr auto kConverter = unpack<kNVSIs + 1, Converter, &fmtRawStr>(); \
 /*static constexpr auto kConverter = unpack<kSIs, Converter>();*/ \
 OutbufArg outbuf(buffer, count); \
 kConverter.convert<&kRTStr>(outbuf, ##__VA_ARGS__); \
