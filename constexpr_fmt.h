@@ -7,10 +7,12 @@
 #include <cstring>
 #include <cassert>
 #include <charconv>
+#include <cwchar>
 #include <tuple>
 
 #include "Portability.h"
 
+#define BUF      100
 #define	PADSIZE	 16
 
 static constexpr const char* BLANKS = "                ";
@@ -395,7 +397,7 @@ std::tuple</*const */char*, size_t> formatHex(char(&buf)[N], uintmax_t d) {
 #define DYNAMIC_WIDTH      0x80000000
 #define DYNAMIC_PRECISION  0x80000000
 
-#define BUF 400
+//#define BUF 400
 
 // A macro to disallow the copy constructor and operator= functions
 #define DISALLOW_COPY_AND_ASSIGN(TypeName) \
@@ -807,6 +809,8 @@ getOneSepc(/*const char(&fmt)[N]*/const char* fmt, int num = 0) {
 			/*-
 			 * ``If the space and + flags both appear, the space
 			 * flag will be ignored.''
+			 * If the printed number is positive and "+" flag is not set, 
+			 * print space in place of sign.
 			 *	-- ANSI X3J11
 			 */
 			if (!sign)
@@ -1198,7 +1202,7 @@ inline constexpr int formattedWidth([[maybe_unused]] T/*&&*/ n) {
 }
 
 template<flags_t flag, typename T>
-inline /*intmax_t*/ uintmax_t SARG(T/*&&*/ arg) {
+inline uintmax_t SARG(T/*&&*/ arg) {
 	if constexpr ((flag & __FLAG_LONGINT) != 0) {
 		return static_cast<intmax_t>(static_cast<long int>(arg));
 	}
@@ -1253,7 +1257,6 @@ inline uintmax_t UARG(T/*&&*/ arg) {
 	}
 }
 
-//#define	INTMAX_SIZE	(__FLAG_INTMAXT|__FLAG_SIZET|__FLAG_PTRDIFFT|__FLAG_LLONGINT)
 
 /* template converter_impl declaration */
 template<const char* const* fmt, SpecInfo... SIs, typename... Ts>
@@ -1263,7 +1266,7 @@ template<const char* const* fmt, SpecInfo SI, typename T>
 inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0, 
     precision_t P = -1) {
 
-	char buf[100];	// space for %c, %[diouxX], %[eEfgG]
+	char buf[BUF];	// space for %c, %[diouxX], %[eEfgG]
 	//int stridx[8];
 	/*const */char* cp = nullptr;
 	//int dprec = 0;	// a copy of prec if [diouxX], 0 otherwise
@@ -1305,6 +1308,42 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 		}
 	}
 
+	if constexpr (SI.terminal_ == 'c') {
+		if constexpr (std::is_integral_v<std::remove_reference_t<T>>) {
+			if constexpr ((SI.flags_ & __FLAG_LONGINT) == __FLAG_LONGINT) {
+				static const std::mbstate_t initial{};
+				std::mbstate_t mbs{ initial };
+				size_t mbseqlen;
+
+				// On success, std::wcrtomb returns the number of bytes 
+				// (including any shift sequences) written to the character
+				// array whose first element is pointed to by s.
+				// On failure (if wc is not a valid wide character), 
+				// std::wcrtomb returns static_cast<std::size_t>(-1), stores
+				// EILSEQ in errno, and leaves *ps in unspecified state.
+				// mbs = initial;
+				mbseqlen = std::wcrtomb(cp = buf,
+					static_cast<wchar_t>(static_cast<wint_t>(arg)), &mbs);
+				if (mbseqlen == static_cast<size_t>(-1)) {
+					outbuf.write("(ER)", sizeof("(ER)") - 1);
+					return;
+				}
+				size = mbseqlen;
+			}
+			else {
+				*(cp = buf) = static_cast<char>(static_cast<int>(arg));
+				size = 1;
+			}
+
+			P = -1;
+			sign = '\0';
+		}
+		else {
+			outbuf.write("(ER)", sizeof("(ER)") - 1);
+			return;
+		}
+	}
+
     if constexpr (SI.terminal_ == 'i' || SI.terminal_ == 'd' ||
 	              SI.terminal_ == 'x' || SI.terminal_ == 'X' || 
 		          SI.terminal_ == 'o' || SI.terminal_ == 'u' || 
@@ -1317,9 +1356,9 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 			sign = '\0';
 			P = 0;
 			// NOTE: GNU printf prints "(nil)" for nullptr pointers, we print 0000000000000000
-			cp = buf + 84;
+			cp = buf + BUF - 16;
 			size = 16;
-			std::memcpy(buf + 84, ZEROS, 16);
+			std::memcpy(cp, ZEROS, 16);
 			/*std::tie(cp, size) = */formatHex<'X'>(buf, ujval);
 		}
 
@@ -1449,7 +1488,6 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 		return;
 	}
 
-
 	if constexpr (SI.end_ - SI.begin_ > 0) {
 		outbuf.write(*fmt + SI.begin_, static_cast<size_t>(SI.end_ - SI.begin_));
 	}
@@ -1470,14 +1508,6 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 
 		fieldsz = static_cast<int>(size + fpprec); // normally fpprec is 0
 
-		// handle octal leading 0
-		//if constexpr (SI.terminal_ == 'o'
-		//	&& (SI.flags_ & __FLAG_ALT) == __FLAG_ALT) {
-		//	if (*cp != '0') {
-		//		fieldsz++;
-		//	}
-		//}
-
 		realsz = (/*dprec*/P > fieldsz) ? /*dprec*/P : fieldsz;
 		if (sign)
 			realsz++;
@@ -1495,8 +1525,7 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 		///////////////////////////// Right Adjust ////////////////////////////
 		/* right-adjusting blank padding */
 		if ((flags & (__FLAG_ZEROPAD | __FLAG_LADJUST)) == 0) {
-			//if ((flags & __FLAG_ZEROPAD) == 0)
-				outbuf.writePaddings</*' '*/&BLANKS>(W - realsz);
+		    outbuf.writePaddings</*' '*/&BLANKS>(W - realsz);
 		}
 		///////////////////////////// Right Adjust ////////////////////////////
 
@@ -1520,30 +1549,19 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 		///////////////////////////// Right Adjust ////////////////////////////
 		/* right-adjusting zero padding */
 		if ((flags & (__FLAG_ZEROPAD |__FLAG_LADJUST)) == __FLAG_ZEROPAD) {
-			//if ((flags & __FLAG_ZEROPAD) == __FLAG_ZEROPAD)
-				outbuf.writePaddings</*'0'*/&ZEROS>(W - realsz);
+		    outbuf.writePaddings</*'0'*/&ZEROS>(W - realsz);
 		}
 		///////////////////////////// Right Adjust ////////////////////////////
 
 		// [diouXx] leading zeroes from decimal precision
 		// when P > fieldsz, realsz == P and zero padding size is P - fieldsz;
 		// when P =< fieldsz, realsz == fieldsz and zero padding is skipped.
-		//PAD(P - fieldsz, ZEROS/*, outbuf*/);
-		outbuf.writePaddings</*'0'*/&ZEROS>(/*dprec*/P - fieldsz);
-
-		//// print the prefix of the octal if '#' is emitted 
-		//if constexpr (SI.terminal_ == 'o'
-		//	&& (SI.flags_ & __FLAG_ALT) == __FLAG_ALT) {
-		//	if (*cp != '0') {
-		//		outbuf.write('0');
-		//	}
-		//}
+		outbuf.writePaddings</*'0'*/&ZEROS>(P - fieldsz);
 
 		// the string or number proper
 		outbuf.write(cp, size);
 
 		// trailing floating point zeroes
-		//PAD(fpprec, ZEROS/*, outbuf*/);
 		outbuf.writePaddings</*'0'*/&ZEROS>(fpprec);
 
 		////////////////////////////// Left Adjust ////////////////////////////
