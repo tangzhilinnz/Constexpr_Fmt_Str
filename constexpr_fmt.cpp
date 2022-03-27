@@ -85,14 +85,17 @@ int main() {
 		pdata[i] = distr(eng);
 	}
 
-	auto start = system_clock::now();
-
 	//std::cout << "11-ll-11-ll" << std::endl;
 
 	int& rpdata = pdata[100];
 
 	std::setlocale(LC_ALL, "en_US.utf8");
 	//setlocale(LC_ALL, "");
+
+	char pc[5] = "asdf";
+
+
+	auto start = system_clock::now();
 
 	for (int i = 0; i < 10000000; i++) {
 
@@ -2395,9 +2398,9 @@ int main() {
 		//	//"%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx",
 		//	//"%llu", i,
 		//	//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld",
-		//	"%+030hhd%+030hhd%+030.10hhd%+030.10hhd%+030.10hhd",
+		//	//"%+030hhd%+030hhd%+030.10hhd%+030.10hhd%+030.10hhd",
 		//	//"%0*.*u|", -20, 10, i,
-		//	//"%#X", pdata[i]/*nullptr*//*nullptr*//*&i*/,
+		//	"%u", pdata[i]/*nullptr*//*nullptr*//*&i*/,
 		//	//"%#p", "ss"
 		//	//"%lld",
 		//	//"test%dtest%dtest%dtest%dtest%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", pdata[i], pdata[(i+1)% 10000000], pdata[(i + 2) % 10000000], pdata[(i + 3) % 10000000],
@@ -2452,24 +2455,28 @@ int main() {
         //CFMT_STR(result, buf, 2000, "%- 020.10c||", 'a');
         //result = snprintf(buf, 2000, "%- 020.10c||", 'a');
 		//result = snprintf(buf, 2000, "%- +020.10lc||", L'\u6c34');
-result = snprintf/*CFMT_STR*/(/*result,*/ buf, 2000, "%-10lc%-10lc,%-10lc%-10lc%-10lc", /*L'\u6c34'*//*L'a'*//*U'\U0001f34c'*/L'你', L'好', L'世', L'界', 459999321);
+///*result = snprintf*/CFMT_STR(result, buf, 2000, "%-10lc%-10lc,%-10lc%-10lc", /*L'\u6c34'*//*L'a'*/U'\U0001f34c', L'你', L'好', L'世', L'界');
 		//result = snprintf(buf, 2000, "%lc", L'\u00df');
 		//result = snprintf(buf, 2000, "%c%c%c\n", '\xE2', '\x99', '\xA5');
         //CFMT_STR(result, buf, 2000, "%c%c%c\n", '\xE2', '\x99', '\xA5');
-        
+
+        //result = tz_snprintf(buf, 2000, "%+ 0100.16s||", /*"tangzhilin"*/"ss");
+		CFMT_STR(result, buf, 2000, "%+ 100.20s||", /*"tangzhilin"*/"tangzhilin");
 	}
+
+	auto end = system_clock::now();
+	auto duration = duration_cast<microseconds>(end - start);
+
+
 
 	printf("%s\n", buf);
 	std::cout << "result: " << result << std::endl;
 	std::cout << "ran: " << ran << std::endl;
 
-	auto end = system_clock::now();
-	auto duration = duration_cast<microseconds>(end - start);
-
 	std::cout << "cost: "
 		<< double(duration.count()) * microseconds::period::num / microseconds::period::den << "seconds" << std::endl;
 
-	//printf("%- 020.10c", 'a');
+	printf("%+ 100.20s||", /*"tangzhilin"*/"tangzhilin");
 
 	//wint_t c = L'd';
 	////Foo(2, 3, 4u, (int64_t)9, 'a', "s", 2.3, L'A', L"tangzhilin", c);

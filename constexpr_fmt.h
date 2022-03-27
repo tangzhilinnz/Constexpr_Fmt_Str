@@ -9,6 +9,7 @@
 #include <charconv>
 #include <cwchar>
 #include <tuple>
+#include <climits>
 
 #include "Portability.h"
 
@@ -194,7 +195,7 @@ using u_short = unsigned short;
 //}
 
 template <size_t N>
-std::tuple</*const*/ char*, size_t> formatDec(char(&buf)[N]/*char* &it*/, uintmax_t d) {
+std::tuple<const char*, size_t> formatDec(char(&buf)[N]/*char* &it*/, uintmax_t d) {
 
 	static constexpr const u_short digit_pairs[100] = {
 	    0x3030, 0x3130, 0x3230, 0x3330, 0x3430, 0x3530, 0x3630, 0x3730, 0x3830, 0x3930,
@@ -232,7 +233,7 @@ std::tuple</*const*/ char*, size_t> formatDec(char(&buf)[N]/*char* &it*/, uintma
 }
 
 template<size_t N>
-std::tuple</*const */char*, size_t> formatOct(char(&buf)[N], uintmax_t d) {
+std::tuple<const char*, size_t> formatOct(char(&buf)[N], uintmax_t d) {
 
 	static constexpr const u_short digit_pairs[64] = {
 		0x3030, 0x3130, 0x3230, 0x3330, 0x3430, 0x3530, 0x3630, 0x3730,
@@ -271,7 +272,7 @@ std::tuple</*const */char*, size_t> formatOct(char(&buf)[N], uintmax_t d) {
 
 
 template <char T, size_t N>
-std::tuple</*const */char*, size_t> formatHex(char(&buf)[N], uintmax_t d) {
+std::tuple<const char*, size_t> formatHex(char(&buf)[N], uintmax_t d) {
 
 	static constexpr const u_short Xdigit_pairs[256] = {
 		0x3030, 0x3130, 0x3230, 0x3330, 0x3430, 0x3530, 0x3630, 0x3730, 0x3830, 0x3930, 0x4130, 0x4230, 0x4330, 0x4430, 0x4530, 0x4630,
@@ -1258,6 +1259,66 @@ inline uintmax_t UARG(T/*&&*/ arg) {
 }
 
 
+/*
+ * Convert a wide character string argument for the %ls format to a multibyte
+ * string representation. If not -1, prec specifies the maximum number of
+ * bytes to output, and also means that we can't assume that the wide char.
+ * string ends is null-terminated.
+ */
+//static char*
+//__wcsconv(wchar_t* wcsarg, int prec) {
+//	static const mbstate_t initial;
+//	mbstate_t mbs;
+//	char buf[MB_LEN_MAX];
+//	wchar_t* p;
+//	char* convbuf;
+//	size_t clen, nbytes;
+//
+//	/* Allocate space for the maximum number of bytes we could output. */
+//	if (prec < 0) {
+//		p = wcsarg;
+//		mbs = initial;
+//		nbytes = wcsrtombs(NULL, (const wchar_t**)&p, 0, &mbs);
+//		if (nbytes == (size_t)-1)
+//			return (NULL);
+//	}
+//	else {
+//		/*
+//		 * Optimisation: if the output precision is small enough,
+//		 * just allocate enough memory for the maximum instead of
+//		 * scanning the string.
+//		 */
+//		if (prec < 128)
+//			nbytes = prec;
+//		else {
+//			nbytes = 0;
+//			p = wcsarg;
+//			mbs = initial;
+//			for (;;) {
+//				clen = wcrtomb(buf, *p++, &mbs);
+//				if (clen == 0 || clen == (size_t)-1 ||
+//					nbytes + clen > prec)
+//					break;
+//				nbytes += clen;
+//			}
+//		}
+//	}
+//	if ((convbuf = malloc(nbytes + 1)) == NULL)
+//		return (NULL);
+//
+//	/* Fill the output buffer. */
+//	p = wcsarg;
+//	mbs = initial;
+//	if ((nbytes = wcsrtombs(convbuf, (const wchar_t**)&p,
+//		nbytes, &mbs)) == (size_t)-1) {
+//		free(convbuf);
+//		return (NULL);
+//	}
+//	convbuf[nbytes] = '\0';
+//	return (convbuf);
+//}
+
+
 /* template converter_impl declaration */
 template<const char* const* fmt, SpecInfo... SIs, typename... Ts>
 inline void converter_impl(OutbufArg& outbuf, Ts/*&&*/...args);
@@ -1268,7 +1329,7 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 
 	char buf[BUF];	// space for %c, %[diouxX], %[eEfgG]
 	//int stridx[8];
-	/*const */char* cp = nullptr;
+	const char* cp = nullptr;
 	//int dprec = 0;	// a copy of prec if [diouxX], 0 otherwise
 	int	fpprec = 0;	    // `extra' floating precision in [eEfgG]
 	int	realsz = 0;	    // field size expanded by dprec
@@ -1322,26 +1383,76 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 				// std::wcrtomb returns static_cast<std::size_t>(-1), stores
 				// EILSEQ in errno, and leaves *ps in unspecified state.
 				// mbs = initial;
-				mbseqlen = std::wcrtomb(cp = buf,
+				mbseqlen = std::wcrtomb(/*cp = */buf,
 					static_cast<wchar_t>(static_cast<wint_t>(arg)), &mbs);
 				if (mbseqlen == static_cast<size_t>(-1)) {
 					outbuf.write("(ER)", sizeof("(ER)") - 1);
 					return;
 				}
+				cp = buf;
 				size = mbseqlen;
 			}
 			else {
-				*(cp = buf) = static_cast<char>(static_cast<int>(arg));
+				/**(cp = buf)*/buf[0] = static_cast<char>(static_cast<int>(arg));
+				cp = buf;
 				size = 1;
 			}
-
-			P = -1;
+			P = 0;
 			sign = '\0';
 		}
 		else {
 			outbuf.write("(ER)", sizeof("(ER)") - 1);
 			return;
 		}
+	}
+
+	if constexpr (SI.terminal_ == 's') {
+		if constexpr ((SI.flags_ & __FLAG_LONGINT) == __FLAG_LONGINT) {
+			if constexpr (std::is_convertible<T, const wchar_t*>::value) {
+			}
+			else {
+				outbuf.write("(ER)", sizeof("(ER)") - 1);
+				return;
+			}
+		}
+		else {
+			if constexpr (std::is_convertible<T, const char*>::value) {
+				cp = static_cast<const char*>(arg);
+
+				if (nullptr == cp) cp = "(null)";
+
+				// get string size(<=P) excluding the tail '\0'
+				if (P >= 0) {
+					// can't use strlen; can only look for the
+					// NULL in the first `prec' characters, and
+					// strlen() will go further.
+					// The C library function
+					// void* memchr(const void* str, int c, size_t n) 
+					// searches for the first occurrence of the character 
+					// c(an unsigned char) in the first n bytes of the string 
+					// pointed to by the argument str.
+					// This function returns a pointer to the matching byte or NULL 
+					// if the character does not occur in the given memory area.
+					char* it = (char*)memchr(cp, 0, static_cast<size_t>(P));
+
+					if (it != NULL) {
+						size = static_cast<size_t>(it - cp);
+						//if (size > static_cast<size_t>(P))
+						//	size = static_cast<size_t>(P);
+					}
+					else
+						size = static_cast<size_t>(P);
+				}
+				else
+					size = strlen(cp);
+			}
+			else {
+				outbuf.write("(ER)", sizeof("(ER)") - 1);
+				return;
+			}
+		}
+		P = 0;
+		sign = '\0';
 	}
 
     if constexpr (SI.terminal_ == 'i' || SI.terminal_ == 'd' ||
@@ -1351,14 +1462,14 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 		uintmax_t ujval;
 		 
 		if constexpr (SI.terminal_ == 'p' && std::is_convertible_v<T, const void*>) {
-			uintmax_t ujval =
-				static_cast<uintmax_t>(reinterpret_cast<uintptr_t>(arg));
+			ujval = static_cast<uintmax_t>(reinterpret_cast<uintptr_t>(arg));
 			sign = '\0';
 			P = 0;
-			// NOTE: GNU printf prints "(nil)" for nullptr pointers, we print 0000000000000000
+			// NOTE: GNU printf prints "(nil)" for nullptr pointers, 
+			// we print 0000000000000000
 			cp = buf + BUF - 16;
 			size = 16;
-			std::memcpy(cp, ZEROS, 16);
+			std::memcpy(buf + BUF - 16, ZEROS, 16);
 			/*std::tie(cp, size) = */formatHex<'X'>(buf, ujval);
 		}
 
@@ -1379,40 +1490,28 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 				sign = '\0';
 			}
 
-			//if constexpr ((SI.flags_ & __FLAG_CHARINT) == __FLAG_CHARINT) {
-			//	cp = digit_3[ujval];
-			//	size = ujval < 10 ? 1 : (ujval < 100 ? 2 : 3);
-			//}
-			//else {
-			//	if (ujval < 100) {
-			//		cp = digit_3[ujval];
-			//		size = ujval < 10 ? 1 : 2;
-			//	}
-			//	else
-			//		std::tie(cp, size) = formatDec(buf, ujval);
-			//}
-			//cp = buf + 100;
-			std::tie(cp, size) = formatDec(buf/*cp*/, ujval);
-			/*size = static_cast<size_t>(buf + 100 - cp);*/
+#if (defined(WIN32) || defined(_WIN32) || defined(__WIN32__))
+			if constexpr ((SI.flags_ & __FLAG_CHARINT) == __FLAG_CHARINT) {
+				cp = const_cast<char*>(digit_3[ujval]);
+				size = ujval < 10 ? 1 : (ujval < 100 ? 2 : 3);
+			}
+			else {
+				if (ujval < 100) {
+					cp = const_cast<char*>(digit_3[ujval]);
+					size = ujval < 10 ? 1 : 2;
+				}
+				else
+					std::tie(cp, size) = formatDec(buf, ujval);
+			}
+#else
+			std::tie(cp, size) = formatDec(buf, ujval);
+#endif
 		}
 
 		else if constexpr (SI.terminal_ == 'o' &&
 			std::is_integral_v<std::remove_reference_t<T>>) {
 			ujval = UARG<SI.flags_>(/*std::forward<T>*/(arg));
 			sign = '\0';
-
-			//if constexpr ((SI.flags_ & __FLAG_CHARINT) == __FLAG_CHARINT) {
-			//	cp = odigit_3[ujval];
-			//	size = ujval < 8 ? 1 : (ujval < 64 ? 2 : 3);
-			//}
-			//else {
-			//	if (ujval < 64) {
-			//		cp = odigit_3[ujval];
-			//		size = ujval < 8 ? 1 : 2;
-			//	}
-			//	else
-			//		std::tie(cp, size) = formatOct(buf, ujval);
-			//}
 
 			std::tie(cp, size) = formatOct(buf, ujval);
 
@@ -1430,13 +1529,6 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 			ujval = UARG<SI.flags_>(/*std::forward<T>*/(arg));
 			sign = '\0';
 
-			//constexpr const char* const* digit_2 = (SI.terminal_ == 'X') ? Xdigit_2 : xdigit_2;
-
-			//if (ujval < 256) {
-			//	cp = digit_2[ujval];
-			//	size = ujval < 16 ? 1 : 2;
-			//}
-			//else
 			std::tie(cp, size) = formatHex<SI.terminal_>(buf, ujval);
 
 			// handle octal leading prefix 0x or 0X
