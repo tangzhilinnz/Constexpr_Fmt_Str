@@ -1265,58 +1265,31 @@ inline uintmax_t UARG(T/*&&*/ arg) {
  * bytes to output, and also means that we can't assume that the wide char.
  * string ends is null-terminated.
  */
-//static char*
-//__wcsconv(wchar_t* wcsarg, int prec) {
-//	static const mbstate_t initial;
-//	mbstate_t mbs;
-//	char buf[MB_LEN_MAX];
-//	wchar_t* p;
-//	char* convbuf;
-//	size_t clen, nbytes;
-//
-//	/* Allocate space for the maximum number of bytes we could output. */
-//	if (prec < 0) {
-//		p = wcsarg;
-//		mbs = initial;
-//		nbytes = wcsrtombs(NULL, (const wchar_t**)&p, 0, &mbs);
-//		if (nbytes == (size_t)-1)
-//			return (NULL);
-//	}
-//	else {
-//		/*
-//		 * Optimisation: if the output precision is small enough,
-//		 * just allocate enough memory for the maximum instead of
-//		 * scanning the string.
-//		 */
-//		if (prec < 128)
-//			nbytes = prec;
-//		else {
-//			nbytes = 0;
-//			p = wcsarg;
-//			mbs = initial;
-//			for (;;) {
-//				clen = wcrtomb(buf, *p++, &mbs);
-//				if (clen == 0 || clen == (size_t)-1 ||
-//					nbytes + clen > prec)
-//					break;
-//				nbytes += clen;
-//			}
-//		}
-//	}
-//	if ((convbuf = malloc(nbytes + 1)) == NULL)
-//		return (NULL);
-//
-//	/* Fill the output buffer. */
-//	p = wcsarg;
-//	mbs = initial;
-//	if ((nbytes = wcsrtombs(convbuf, (const wchar_t**)&p,
-//		nbytes, &mbs)) == (size_t)-1) {
-//		free(convbuf);
-//		return (NULL);
-//	}
-//	convbuf[nbytes] = '\0';
-//	return (convbuf);
-//}
+/*static char**/ 
+inline size_t __wcsconvNBytes(const wchar_t* wcsarg, const int prec) {
+	static const mbstate_t initial{};
+	mbstate_t mbs{ initial };
+	char buf[MB_LEN_MAX];
+	const wchar_t* p = wcsarg;
+	size_t clen, nbytes;
+
+	/* Allocate space for the maximum number of bytes we could output. */
+	if (prec < 0) {
+		nbytes = wcsrtombs(NULL, (const wchar_t**)&p, 0, &mbs);
+	}
+	else {
+		nbytes = 0;
+		for (;;) {
+			clen = wcrtomb(buf, *p++, &mbs);
+			if (clen == 0 || clen == static_cast<size_t>(-1) ||
+				nbytes + clen > prec)
+				break;
+			nbytes += clen;
+		}
+	}
+
+	return nbytes;
+}
 
 
 /* template converter_impl declaration */
@@ -1409,7 +1382,7 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 	if constexpr (SI.terminal_ == 's') {
 		if constexpr ((SI.flags_ & __FLAG_LONGINT) == __FLAG_LONGINT) {
 			if constexpr (std::is_convertible<T, const wchar_t*>::value) {
-				wchar_t* wcp = static_cast<const wchar_t*>(arg);
+				const wchar_t* wcp = static_cast<const wchar_t*>(arg);
 
 				if (nullptr == wcp) {
 					cp = "(null)";
@@ -1417,6 +1390,12 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 				}
 				else {
 					cp = nullptr;
+					size = __wcsconvNBytes(wcp, P);
+
+					if (size == static_cast<size_t>(-1)) {
+						outbuf.write("(ER)", sizeof("(ER)") - 1);
+						return;
+					}
 				}
 			}
 			else {
@@ -1503,12 +1482,12 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 #if (defined(WIN32) || defined(_WIN32) || defined(__WIN32__))
 			if constexpr ((SI.flags_ & __FLAG_CHARINT) == __FLAG_CHARINT) {
 				cp = const_cast<char*>(digit_3[ujval]);
-				size = ujval < 10 ? 1 : (ujval < 100 ? 2 : 3)/*strlen(cp)*/;
+				size = ujval < 10 ? 1 : (ujval < 100 ? 2 : 3);
 			}
 			else {
 				if (ujval < 100) {
 					cp = const_cast<char*>(digit_3[ujval]);
-					size = ujval < 10 ? 1 : 2/*strlen(cp)*/;
+					size = ujval < 10 ? 1 : 2;
 				}
 				else
 					std::tie(cp, size) = formatDec(buf, ujval);
