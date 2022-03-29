@@ -1409,6 +1409,15 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 	if constexpr (SI.terminal_ == 's') {
 		if constexpr ((SI.flags_ & __FLAG_LONGINT) == __FLAG_LONGINT) {
 			if constexpr (std::is_convertible<T, const wchar_t*>::value) {
+				wchar_t* wcp = static_cast<const wchar_t*>(arg);
+
+				if (nullptr == wcp) {
+					cp = "(null)";
+					size = (P >= 6 || P < 0) ? 6 : P;
+				}
+				else {
+					cp = nullptr;
+				}
 			}
 			else {
 				outbuf.write("(ER)", sizeof("(ER)") - 1);
@@ -1419,7 +1428,8 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 			if constexpr (std::is_convertible<T, const char*>::value) {
 				cp = static_cast<const char*>(arg);
 
-				if (nullptr == cp) cp = "(null)";
+				if (nullptr == cp) 
+					cp = "(null)";
 
 				// get string size(<=P) excluding the tail '\0'
 				if (P >= 0) {
@@ -1493,12 +1503,12 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 #if (defined(WIN32) || defined(_WIN32) || defined(__WIN32__))
 			if constexpr ((SI.flags_ & __FLAG_CHARINT) == __FLAG_CHARINT) {
 				cp = const_cast<char*>(digit_3[ujval]);
-				size = ujval < 10 ? 1 : (ujval < 100 ? 2 : 3);
+				size = ujval < 10 ? 1 : (ujval < 100 ? 2 : 3)/*strlen(cp)*/;
 			}
 			else {
 				if (ujval < 100) {
 					cp = const_cast<char*>(digit_3[ujval]);
-					size = ujval < 10 ? 1 : 2;
+					size = ujval < 10 ? 1 : 2/*strlen(cp)*/;
 				}
 				else
 					std::tie(cp, size) = formatDec(buf, ujval);
