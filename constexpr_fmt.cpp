@@ -2463,7 +2463,9 @@ int main() {
         //result = tz_snprintf(buf, 2000, "%+ 0100.16s||", /*"tangzhilin"*/"ss");
 ///*result = tz_snprintf*/CFMT_STR(result, buf, 2000, "%+ 100.20s||", /*"tangzhilin"*/"tangzhilin");
 
-        /*result = snprintf*/CFMT_STR(result, buf, 2000, "%10.100ls", /*L"你好世界"*/nullptr);
+        //result = snprintf/*CFMT_STR*/(/*result,*/ buf, 2000, "% +010.4ls||", L"你好世界"/*nullptr*//*(const wchar_t*)NULL*/);
+result = snprintf/*CFMT_STR*/(/*result, */buf, 2000, "% +020.18ls||%- ##050ls||", L"你好世界"/*nullptr*//*(const wchar_t*)NULL*/,/*L"zß水🍌"*/L"爆ぜろリアル！弾けろシナプス！パニッシュメントディス、ワールド！");
+		//result = snprintf(buf, 2000, "%- +020.13ls||", /*L"你好世界"*//*nullptr*//*(const wchar_t*)NULL*/L"zß水🍌");
 	}
 
 	auto end = system_clock::now();
@@ -2478,7 +2480,22 @@ int main() {
 	std::cout << "cost: "
 		<< double(duration.count()) * microseconds::period::num / microseconds::period::den << "seconds" << std::endl;
 
-	printf("%+ 100.20s||", /*"tangzhilin"*/"tangzhilin");
+	//printf("%- +020ls||", L"你好世界");
+
+	//size_t sizeW = 9;
+	//const wchar_t* wcp = L"你好世界";
+
+
+
+	//static const std::mbstate_t initial{};
+	//std::mbstate_t mbs{ initial };
+
+	//char bufForWCS[10] = {0};
+
+	//sizeW = wcsrtombs(bufForWCS, &wcp, sizeW, &mbs);
+
+	//std::cout << "sizeW: " << sizeW << std::endl;
+	//std::cout << bufForWCS << std::endl;
 
 	//wint_t c = L'd';
 	////Foo(2, 3, 4u, (int64_t)9, 'a', "s", 2.3, L'A', L"tangzhilin", c);
