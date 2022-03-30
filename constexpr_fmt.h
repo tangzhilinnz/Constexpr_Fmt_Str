@@ -1252,28 +1252,72 @@ inline uintmax_t UARG(T/*&&*/ arg) {
 }
 
 
+/*static char**/ 
+//inline size_t __wcsconvNBytes(const wchar_t* wcsarg, const int prec) {
+//	static const mbstate_t initial{};
+//	mbstate_t mbs{ initial };
+//	char buf[MB_LEN_MAX];
+//	const wchar_t* p = wcsarg;
+//	size_t clen, nbytes;
+//
+//	/* Allocate space for the maximum number of bytes we could output. */
+//	if (prec < 0) {
+//		nbytes = std::wcsrtombs(NULL, (const wchar_t**)&p, 0, &mbs);
+//	}
+//	else {
+//		nbytes = 0;
+//		for (;;) {
+//			clen = wcrtomb(buf, *p++, &mbs);
+//			if (clen == 0 || clen == static_cast<size_t>(-1) ||
+//				nbytes + clen > prec)
+//				break;
+//			nbytes += clen;
+//		}
+//		//nbytes = std::wcsrtombs(NULL, (const wchar_t**)&p, prec, &mbs);
+//	}
+//	//std::cout << nbytes << std::endl;
+//	return nbytes;
+//}
+
 /*
  * Convert a wide character string argument for the %ls format to a multibyte
  * string representation. If not -1, prec specifies the maximum number of
  * bytes to output, and also means that we can't assume that the wide char.
  * string ends is null-terminated.
  */
-/*static char**/ 
-inline size_t __wcsconvNBytes(const wchar_t* wcsarg, const int prec) {
+inline static char*
+__wcsconv(const wchar_t* wcsarg, const int prec) {
 	static const mbstate_t initial{};
-	mbstate_t mbs{ initial };
-	const wchar_t* p = wcsarg;
-	size_t nbytes;
+	mbstate_t mbs;
+	char buf[MB_LEN_MAX];
+	char* convbuf;
+	const wchar_t* p;
+	size_t clen, nbytes;
 
 	/* Allocate space for the maximum number of bytes we could output. */
 	if (prec < 0) {
-		nbytes = wcsrtombs(NULL, (const wchar_t**)&p, 0, &mbs);
+		p = wcsarg;
+		mbs = initial;
+		nbytes = wcsrtombs(nullptr, &p, 0, &mbs);
+		if (nbytes == static_cast<size_t>(-1))
+			return (nullptr);
 	}
-	else {
-		nbytes = wcsrtombs(NULL, (const wchar_t**)&p, prec, &mbs);
+	else
+		nbytes = prec;
+
+	if ((convbuf = new char[nbytes + 1]) == nullptr)
+		return (nullptr);
+
+	/* Fill the output buffer. */
+	p = wcsarg;
+	mbs = initial;
+	if ((nbytes = wcsrtombs(convbuf, &p, nbytes, &mbs)) 
+		== static_cast<size_t>(-1)) {
+		delete convbuf;
+		return (nullptr);
 	}
-	//std::cout << nbytes << std::endl;
-	return nbytes;
+	convbuf[nbytes] = '\0';
+	return (convbuf);
 }
 
 
@@ -1288,6 +1332,7 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 	char buf[BUF];	// space for %c, %[diouxX], %[eEfgG]
 	//int stridx[8];
 	const char* cp = nullptr;
+	char* convbuf = nullptr; // wide to multibyte conversion result
 	//int dprec = 0;	// a copy of prec if [diouxX], 0 otherwise
 	int	fpprec = 0;	    // `extra' floating precision in [eEfgG]
 	int	realsz = 0;	    // field size expanded by dprec
@@ -1366,20 +1411,26 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 
 	if constexpr (SI.terminal_ == 's') {
 		if constexpr ((SI.flags_ & __FLAG_LONGINT) == __FLAG_LONGINT) {
-			if constexpr (std::is_convertible<T, const wchar_t*>::value) {
+			if constexpr (std::is_convertible_v<T, const wchar_t*>) {
 				const wchar_t* wcp = static_cast<const wchar_t*>(arg);
 
 				if (nullptr == wcp) {
 					cp = "(null)";
-					size = (P >= 6 || P < 0) ? 6 : P;
+					//size = (P >= 6 || P < 0) ? 6 : P;
 				}
 				else {
-					cp = nullptr;
-					size = __wcsconvNBytes(wcp, P);
-					if (size == static_cast<size_t>(-1)) {
+					//cp = nullptr;
+					//size = __wcsconvNBytes(wcp, P);
+					//if (size == static_cast<size_t>(-1)) {
+					//	outbuf.write("(ER)", sizeof("(ER)") - 1);
+					//	return;
+					//}
+					convbuf = __wcsconv(wcp, P);
+					if (nullptr == convbuf) {
 						outbuf.write("(ER)", sizeof("(ER)") - 1);
 						return;
 					}
+					cp = convbuf;
 				}
 			}
 			else {
@@ -1388,42 +1439,67 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 			}
 		}
 		else {
-			if constexpr (std::is_convertible<T, const char*>::value) {
+			if constexpr (std::is_convertible_v<T, const char*>) {
 				cp = static_cast<const char*>(arg);
 
 				if (nullptr == cp) 
 					cp = "(null)";
 
-				// get string size(<=P) excluding the tail '\0'
-				if (P >= 0) {
-					// can't use strlen; can only look for the
-					// NULL in the first `prec' characters, and
-					// strlen() will go further.
-					// The C library function
-					// void* memchr(const void* str, int c, size_t n) 
-					// searches for the first occurrence of the character 
-					// c(an unsigned char) in the first n bytes of the string 
-					// pointed to by the argument str.
-					// This function returns a pointer to the matching byte or NULL 
-					// if the character does not occur in the given memory area.
-					char* it = (char*)memchr(cp, 0, static_cast<size_t>(P));
+				//// get string size(<=P) excluding the tail '\0'
+				//if (P >= 0) {
+				//	// can't use strlen; can only look for the
+				//	// NULL in the first `prec' characters, and
+				//	// strlen() will go further.
+				//	// The C library function
+				//	// void* memchr(const void* str, int c, size_t n) 
+				//	// searches for the first occurrence of the character 
+				//	// c(an unsigned char) in the first n bytes of the string 
+				//	// pointed to by the argument str.
+				//	// This function returns a pointer to the matching byte or NULL 
+				//	// if the character does not occur in the given memory area.
+				//	char* it = (char*)memchr(cp, 0, static_cast<size_t>(P));
 
-					if (it != NULL) {
-						size = static_cast<size_t>(it - cp);
-						//if (size > static_cast<size_t>(P))
-						//	size = static_cast<size_t>(P);
-					}
-					else
-						size = static_cast<size_t>(P);
-				}
-				else
-					size = strlen(cp);
+				//	if (it != NULL) {
+				//		size = static_cast<size_t>(it - cp);
+				//		//if (size > static_cast<size_t>(P))
+				//		//	size = static_cast<size_t>(P);
+				//	}
+				//	else
+				//		size = static_cast<size_t>(P);
+				//}
+				//else
+				//	size = strlen(cp);
 			}
 			else {
 				outbuf.write("(ER)", sizeof("(ER)") - 1);
 				return;
 			}
 		}
+		// get string size(<=P) excluding the tail '\0'
+		if (P >= 0) {
+			// can't use strlen; can only look for the
+			// NULL in the first `prec' characters, and
+			// strlen() will go further.
+			// The C library function
+			// void* memchr(const void* str, int c, size_t n) 
+			// searches for the first occurrence of the character 
+			// c(an unsigned char) in the first n bytes of the string 
+			// pointed to by the argument str.
+			// This function returns a pointer to the matching byte or NULL 
+			// if the character does not occur in the given memory area.
+			char* it = (char*)memchr(cp, 0, static_cast<size_t>(P));
+
+			if (it != NULL) {
+				size = static_cast<size_t>(it - cp);
+				//if (size > static_cast<size_t>(P))
+				//	size = static_cast<size_t>(P);
+			}
+			else
+				size = static_cast<size_t>(P);
+		}
+		else
+			size = strlen(cp);
+
 		P = 0;
 		sign = '\0';
 	}
@@ -1624,30 +1700,35 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 		outbuf.writePaddings</*'0'*/&ZEROS>(P - fieldsz);
 
 		// the string or number proper
-		if constexpr (SI.terminal_ == 's' &&
-			(SI.flags_ & __FLAG_LONGINT) == __FLAG_LONGINT) {
-			if (nullptr == cp) {
-				const wchar_t* wcp = static_cast<const wchar_t*>(arg);
-				//static const std::mbstate_t initial{};
-				//std::mbstate_t mbs{ initial };
-				std::mbstate_t mbs = std::mbstate_t();
-				outbuf.setWrittenNum(size);
-				size_t remaining = outbuf.getAvailableSize();
-				if (size > remaining)
-					size = remaining;
-				if ((size = wcsrtombs(outbuf.getBufPtr(), &wcp, size, &mbs)) 
-					== static_cast<size_t>(-1)) {
-					// abort(); // Almost impossible to happen
-				}
-				else
-					outbuf.setBufPtr(size);
-				//std::cout << size << std::endl;
-			}
-			else
-				outbuf.write(cp, size);
-		}
-		else
+		//if constexpr (SI.terminal_ == 's' &&
+		//	(SI.flags_ & __FLAG_LONGINT) == __FLAG_LONGINT) {
+		//	if (nullptr == cp) {
+		//		const wchar_t* wcp = static_cast<const wchar_t*>(arg);
+		//		//static const std::mbstate_t initial{};
+		//		//std::mbstate_t mbs{ initial };
+		//		std::mbstate_t mbs = std::mbstate_t();
+		//		outbuf.setWrittenNum(size);
+		//		size_t remaining = outbuf.getAvailableSize();
+		//		if (size > remaining)
+		//			size = remaining;
+		//		if ((size = wcsrtombs(outbuf.getBufPtr(), &wcp, size, &mbs)) 
+		//			== static_cast<size_t>(-1)) {
+		//			// abort(); // Almost impossible to happen
+		//		}
+		//		else
+		//			outbuf.setBufPtr(size);
+		//		//std::cout << size << std::endl;
+		//	}
+		//	else
+		//		outbuf.write(cp, size);
+		//}
+		//else
 			outbuf.write(cp, size);
+
+			if constexpr (SI.terminal_ == 's' &&
+				(SI.flags_ & __FLAG_LONGINT) == __FLAG_LONGINT) {
+				delete convbuf;
+			}
 
 		// trailing floating point zeroes
 		outbuf.writePaddings</*'0'*/&ZEROS>(fpprec);

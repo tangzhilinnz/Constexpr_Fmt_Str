@@ -2464,7 +2464,7 @@ int main() {
 ///*result = tz_snprintf*/CFMT_STR(result, buf, 2000, "%+ 100.20s||", /*"tangzhilin"*/"tangzhilin");
 
         //result = snprintf/*CFMT_STR*/(/*result,*/ buf, 2000, "% +010.4ls||", L"你好世界"/*nullptr*//*(const wchar_t*)NULL*/);
-result = snprintf/*CFMT_STR*/(/*result, */buf, 2000, "% +020.18ls||%- ##050ls||", L"你好世界"/*nullptr*//*(const wchar_t*)NULL*/,/*L"zß水🍌"*/L"爆ぜろリアル！弾けろシナプス！パニッシュメントディス、ワールド！");
+result = snprintf/*CFMT_STR*/(/*result,*/ buf, 2000, "% +0100ls||" , L"hello, world"/*L"你好世界"*//*nullptr*//*(const wchar_t*)NULL*/L"zß水🍌" L"爆ぜろリアル！弾けろシナプス！パニッシュメントディス、ワールド！");
 		//result = snprintf(buf, 2000, "%- +020.13ls||", /*L"你好世界"*//*nullptr*//*(const wchar_t*)NULL*/L"zß水🍌");
 	}
 
