@@ -1251,8 +1251,6 @@ inline uintmax_t UARG(T/*&&*/ arg) {
 	}
 }
 
-
-/*static char**/ 
 //inline size_t __wcsconvNBytes(const wchar_t* wcsarg, const int prec) {
 //	static const mbstate_t initial{};
 //	mbstate_t mbs{ initial };
@@ -1278,48 +1276,6 @@ inline uintmax_t UARG(T/*&&*/ arg) {
 //	//std::cout << nbytes << std::endl;
 //	return nbytes;
 //}
-
-/*
- * Convert a wide character string argument for the %ls format to a multibyte
- * string representation. If not -1, prec specifies the maximum number of
- * bytes to output, and also means that we can't assume that the wide char.
- * string ends is null-terminated.
- */
-inline static char*
-__wcsconv(const wchar_t* wcsarg, const int prec) {
-	static const mbstate_t initial{};
-	mbstate_t mbs;
-	char buf[MB_LEN_MAX];
-	char* convbuf;
-	const wchar_t* p;
-	size_t clen, nbytes;
-
-	/* Allocate space for the maximum number of bytes we could output. */
-	if (prec < 0) {
-		p = wcsarg;
-		mbs = initial;
-		nbytes = wcsrtombs(nullptr, &p, 0, &mbs);
-		if (nbytes == static_cast<size_t>(-1))
-			return (nullptr);
-	}
-	else
-		nbytes = prec;
-
-	if ((convbuf = new char[nbytes + 1]) == nullptr)
-		return (nullptr);
-
-	/* Fill the output buffer. */
-	p = wcsarg;
-	mbs = initial;
-	if ((nbytes = wcsrtombs(convbuf, &p, nbytes, &mbs)) 
-		== static_cast<size_t>(-1)) {
-		delete convbuf;
-		return (nullptr);
-	}
-	convbuf[nbytes] = '\0';
-	return (convbuf);
-}
-
 
 /* template converter_impl declaration */
 template<const char* const* fmt, SpecInfo... SIs, typename... Ts>
@@ -1425,11 +1381,37 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 					//	outbuf.write("(ER)", sizeof("(ER)") - 1);
 					//	return;
 					//}
-					convbuf = __wcsconv(wcp, P);
-					if (nullptr == convbuf) {
+					//convbuf = __wcsconv(wcp, P);
+					//if (nullptr == convbuf) {
+					//	outbuf.write("(ER)", sizeof("(ER)") - 1);
+					//	return;
+					//}
+					//cp = convbuf;
+
+					static const mbstate_t initial{};
+					std::mbstate_t mbs{ initial };
+
+					/* Allocate space for the maximum number of bytes we could output. */
+					if (P < 0)
+						size = wcslen(wcp) * sizeof(char32_t);
+					else
+						size = P;
+
+					convbuf = (char*)malloc(size + 1);
+
+					if (convbuf == nullptr) {
 						outbuf.write("(ER)", sizeof("(ER)") - 1);
 						return;
 					}
+
+					/* Fill the output buffer. */
+					if ((size = wcsrtombs(convbuf, &wcp, size, &mbs))
+						== static_cast<size_t>(-1)) {
+						free(convbuf);
+						outbuf.write("(ER)", sizeof("(ER)") - 1);
+						return;
+					}
+					convbuf[size] = '\0';
 					cp = convbuf;
 				}
 			}
@@ -1444,31 +1426,6 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 
 				if (nullptr == cp) 
 					cp = "(null)";
-
-				//// get string size(<=P) excluding the tail '\0'
-				//if (P >= 0) {
-				//	// can't use strlen; can only look for the
-				//	// NULL in the first `prec' characters, and
-				//	// strlen() will go further.
-				//	// The C library function
-				//	// void* memchr(const void* str, int c, size_t n) 
-				//	// searches for the first occurrence of the character 
-				//	// c(an unsigned char) in the first n bytes of the string 
-				//	// pointed to by the argument str.
-				//	// This function returns a pointer to the matching byte or NULL 
-				//	// if the character does not occur in the given memory area.
-				//	char* it = (char*)memchr(cp, 0, static_cast<size_t>(P));
-
-				//	if (it != NULL) {
-				//		size = static_cast<size_t>(it - cp);
-				//		//if (size > static_cast<size_t>(P))
-				//		//	size = static_cast<size_t>(P);
-				//	}
-				//	else
-				//		size = static_cast<size_t>(P);
-				//}
-				//else
-				//	size = strlen(cp);
 			}
 			else {
 				outbuf.write("(ER)", sizeof("(ER)") - 1);
@@ -1723,12 +1680,12 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 		//		outbuf.write(cp, size);
 		//}
 		//else
-			outbuf.write(cp, size);
+		outbuf.write(cp, size);
 
-			if constexpr (SI.terminal_ == 's' &&
-				(SI.flags_ & __FLAG_LONGINT) == __FLAG_LONGINT) {
-				delete convbuf;
-			}
+		if constexpr (SI.terminal_ == 's' &&
+			(SI.flags_ & __FLAG_LONGINT) == __FLAG_LONGINT)
+			/*delete*/
+			free(convbuf);
 
 		// trailing floating point zeroes
 		outbuf.writePaddings</*'0'*/&ZEROS>(fpprec);
@@ -1736,7 +1693,7 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 		////////////////////////////// Left Adjust ////////////////////////////
 		/* left-adjusting padding (always blank) */
 		if ((flags & __FLAG_LADJUST) == __FLAG_LADJUST)
-		    outbuf.writePaddings</*' '*/&BLANKS>(W - realsz);
+			outbuf.writePaddings</*' '*/&BLANKS>(W - realsz);
 		////////////////////////////// Left Adjust ////////////////////////////
 	}
 }
