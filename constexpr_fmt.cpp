@@ -5,9 +5,9 @@
 #include <cstring>
 #include <cassert>
 #include <charconv>
-#include <cwchar>
 #include <tuple>
 #include <random>
+#include <cuchar>
 
 #include <clocale>
 #include <string>
@@ -2387,11 +2387,11 @@ int main() {
 		///*result = tz_snprintf*/CFMT_STR(result, buf, 2000,
 		//	//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd"
 		//	//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd"
-		//	"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd"
-		//	"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd",
+		//	//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd"
+		//	//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd",
 		//	//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld"
-		//	//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld"
-		//	//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld",
+		//	"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld"
+		//	"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld",
 		//	//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld %lld |||||%lld%lld%lld%"
 		//	//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld",
 		//	//"%lld%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx"
@@ -2400,7 +2400,7 @@ int main() {
 		//	//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld",
 		//	//"%+030hhd%+030hhd%+030.10hhd%+030.10hhd%+030.10hhd",
 		//	//"%0*.*u|", -20, 10, i,
-		//	//"%p", &pdata[i]/*nullptr*//*nullptr*//*&i*/,
+		//	//"%d", pdata[i]/*nullptr*//*nullptr*//*&i*/,
 		//	//"%#p", "ss"
 		//	//"%lld",
 		//	//"test%dtest%dtest%dtest%dtest%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", pdata[i], pdata[(i+1)% 10000000], pdata[(i + 2) % 10000000], pdata[(i + 3) % 10000000],
@@ -2452,8 +2452,24 @@ int main() {
 				// "%hu%hu%hu%hu%hu%hu%hu%hu%hu%hu%hu%hu%hu%hu%hu%hu%hu%hu%hu%hu%hu%hu%hu%hu%hu%hu%hu%hu%hu%hu%hu%hu%hu%hu%hu%hu%hu%hu%hu%hu"
 				//result = tz_snprintf(buf, 400, "%hhd%", i)
 
-        //CFMT_STR(result, buf, 2000, "%- 020.10c||", 'a');
-        //result = snprintf(buf, 2000, "%- 020.10c||", 'a');
+        //CFMT_STR(result, buf, 2000, "%c", u8'a');
+		//CFMT_STR(result, buf, 2000, "%c", u'ß');
+		//CFMT_STR(result, buf, 2000, "%c", U'水');
+		//CFMT_STR(result, buf, 2000, "%c", U'🍌');
+
+		//CFMT_STR(result, buf, 2000, "%lc", L'a');
+		//result = snprintf(buf, 2000, "%lc", U'水');
+        //char8_t w = u8'b';
+		//char16_t w = u'水';
+		//char w = 'c';
+        //wchar_t w = L'水';
+		//char32_t w = U'🍌';
+		//CFMT_STR(result, buf, 2000, "%lc", /*w*/0x0001f34c);
+		//CFMT_STR(result, buf, 2000, "%lc", U'水');
+		//CFMT_STR(result, buf, 2000, "%lc", U'🍌');
+
+
+        //result = snprintf(buf, 2000, "%lc", U'🍌');
 		//result = snprintf(buf, 2000, "%- +020.10lc||", L'\u6c34');
 ///*result = snprintf*/CFMT_STR(result, buf, 2000, "%-10lc%-10lc,%-10lc%-10lc", /*L'\u6c34'*//*L'a'*/U'\U0001f34c', L'你', L'好', L'世', L'界');
 		//result = snprintf(buf, 2000, "%lc", L'\u00df');
@@ -2464,16 +2480,51 @@ int main() {
 //result = snprintf/*CFMT_STR*/(/*result,*/ buf, 2000, "%+ 100.20s||", /*"tangzhilin"*/"tangzhilin");
 
         //result = snprintf/*CFMT_STR*/(/*result,*/ buf, 2000, "% +010.4ls||", L"你好世界"/*nullptr*//*(const wchar_t*)NULL*/);
-/*result = snprintf*/CFMT_STR(result, buf, 2000, "%+030  #ls||" , /*L"hello, world"*/ /*L"你好世界",*//*nullptr*//*(const wchar_t*)NULL*/L"zß水🍌", L"爆ぜろリアル！弾けろシナプス！パニッシュメントディス、ワールド！");
+/*result = snprintf*/CFMT_STR(result, buf, 2000, "%ls||" , /*L"hello, world"*/ /*u8"你好世界",*//*nullptr*//*(const wchar_t*)NULL*//*L"水水水水水水",*/ L"zß水🍌", L"爆ぜろリアル！弾けろシナプス！パニッシュメントディス、ワールド！");
 		//result = snprintf(buf, 2000, "%- +020.13ls||", /*L"你好世界"*//*nullptr*//*(const wchar_t*)NULL*/L"zß水🍌");
+
+//result = /*tz_*/snprintf/*CFMT_STR*/(/*result,*/ buf, 2000, "LLONG_MAX = %lld\n", LLONG_MAX);
+//result = /*tz_*/snprintf/*CFMT_STR*/(/*result,*/ buf, 2000, "LLONG_MAX = %lld\n", LLONG_MIN);
+//result = /*tz_*/snprintf/*CFMT_STR*/(/*result,*/ buf, 2000, "ULLONG_MAX = %llu\n", ULLONG_MAX);
 	}
 
 	auto end = system_clock::now();
 	auto duration = duration_cast<microseconds>(end - start);
 
 
+	//static const std::mbstate_t initial{};
+	//std::mbstate_t mbs{ initial };
+
+	//size_t len = std::c32rtomb(buf, u'中', &mbs);
+
+	//if (len == static_cast<size_t>(-1)) {
+	//	std::cout << "convert fault" << std::endl;
+	//}
+
+	//std::setlocale(LC_ALL, "en_US.utf8");
+	//std::u16string_view strv = u"zß水🍌"; // or z\u00df\u6c34\U0001F34C
+	//std::cout << "Processing " << strv.size() << " UTF-16 code units: [ ";
+	//for (char16_t c : strv)
+	//	std::cout << std::showbase << std::hex << static_cast<int>(c) << ' ';
+	//std::cout << "]\n";
+
+	//std::mbstate_t state{};
+	//char out[MB_LEN_MAX]{};
+	//for (char16_t c : strv)
+	//{
+	//	std::size_t rc = std::c16rtomb(out, c, &state);
+	//	std::cout << static_cast<int>(c) << " converted to [ ";
+	//	if (rc != (std::size_t)-1)
+	//		for (unsigned char c8 : std::string_view{ out, rc })
+	//			std::cout << +c8 << ' ';
+	//	std::cout << "]\n";
+	//}
+
+
 
 	printf("%s\n", buf);
+	//std::cout << "len: " << len << std::endl;
+
 	std::cout << "result: " << result << std::endl;
 	std::cout << "ran: " << ran << std::endl;
 
@@ -2583,4 +2634,20 @@ int main() {
 	//std::setlocale(LC_ALL, "en_US.utf8");
 	//std::wstring wstr = L"z\u00df\u6c34\U0001f34c"; // or L"zß水🍌"
 	//print_wide(wstr);
+
+
+//char32_t wi = 3;
+//wint_t wi2 = 4;
+//
+//const char8_t wi3 = 5;
+//
+//std::cout << std::is_convertible_v<char32_t, wint_t> << std::endl;
+//std::cout << std::is_convertible_v<const wint_t, char32_t> << std::endl;
+//std::cout << std::is_convertible_v<char16_t, char32_t> << std::endl;
+//std::cout << std::is_convertible_v<char8_t, char32_t> << std::endl;
+//std::cout << std::is_convertible_v<const unsigned char, char32_t> << std::endl;
+//std::cout << std::is_convertible_v<wchar_t, char32_t> << std::endl;
+
+//std::cout << static_cast<char32_t>(static_cast<wint_t>(wi)) << std::endl;
+
 }
