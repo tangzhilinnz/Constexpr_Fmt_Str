@@ -1270,35 +1270,23 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 	if constexpr (SI.terminal_ == 's') {
 		if constexpr ((SI.flags_ & __FLAG_LONGINT) == __FLAG_LONGINT) {
 			if constexpr (std::is_convertible_v<T, const wchar_t*>) {
+				// wchar_t string is 2 bytes UTF-16 on Windows, 
+				// 4 bytes UTF-32 (gcc/g++ and XCode) on Linux and OS,
+				// and 2 bytes UTF-16 on Cygwin (cygwin uses Windows APIs)
 				const wchar_t* wcp = static_cast<const wchar_t*>(arg);
 
-				if (nullptr == wcp) {
+				if (nullptr == wcp)
 					cp = "(null)";
-					//size = (P >= 6 || P < 0) ? 6 : P;
-				}
 				else {
-					//cp = nullptr;
-					//size = __wcsconvNBytes(wcp, P);
-					//if (size == static_cast<size_t>(-1)) {
-					//	outbuf.write("(ER)", sizeof("(ER)") - 1);
-					//	return;
-					//}
-					//convbuf = __wcsconv(wcp, P);
-					//if (nullptr == convbuf) {
-					//	outbuf.write("(ER)", sizeof("(ER)") - 1);
-					//	return;
-					//}
-					//cp = convbuf;
-
 					static const mbstate_t initial{};
 					std::mbstate_t mbs{ initial };
 
 					/* Allocate space for the maximum number of bytes we could output. */
 					if (P < 0)
-						size = wcslen(wcp) * sizeof(char32_t);
+						size = wcslen(wcp) * /*4*/ MB_CUR_MAX/*MB_LEN_MAX*/;
 					else
 						size = P;
-
+					//std::cout << size << std::endl;
 					convbuf = (char*)malloc(size + 1);
 
 					if (convbuf == nullptr) {

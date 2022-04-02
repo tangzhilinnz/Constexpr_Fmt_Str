@@ -89,7 +89,7 @@ int main() {
 
 	int& rpdata = pdata[100];
 
-	std::setlocale(LC_ALL, "en_US.utf8");
+	std::setlocale(LC_ALL, /*"en_US.utf8"*/"ja_JP.UTF-8");
 	//setlocale(LC_ALL, "");
 
 	char pc[5] = "asdf";
@@ -2480,7 +2480,7 @@ int main() {
 //result = snprintf/*CFMT_STR*/(/*result,*/ buf, 2000, "%+ 100.20s||", /*"tangzhilin"*/"tangzhilin");
 
         //result = snprintf/*CFMT_STR*/(/*result,*/ buf, 2000, "% +010.4ls||", L"你好世界"/*nullptr*//*(const wchar_t*)NULL*/);
-/*result = snprintf*/CFMT_STR(result, buf, 2000, "%ls||" , /*L"hello, world"*/ /*u8"你好世界",*//*nullptr*//*(const wchar_t*)NULL*//*L"水水水水水水",*/ L"zß水🍌", L"爆ぜろリアル！弾けろシナプス！パニッシュメントディス、ワールド！");
+/*result = snprintf*/CFMT_STR(result, buf, 2000, "%ls||" , /*L"hello, world"*/ /*u8"你好世界",*//*nullptr*//*(const wchar_t*)NULL*//*L"水水水水水水",*/ L"zß水🍌" L"爆ぜろリアル！弾けろシナプス！パニッシュメントディス、ワールド！");
 		//result = snprintf(buf, 2000, "%- +020.13ls||", /*L"你好世界"*//*nullptr*//*(const wchar_t*)NULL*/L"zß水🍌");
 
 //result = /*tz_*/snprintf/*CFMT_STR*/(/*result,*/ buf, 2000, "LLONG_MAX = %lld\n", LLONG_MAX);
