@@ -63,9 +63,9 @@ typedef SSIZE_T ssize_t;
 #define abs(a)  ((a) < 0 ?  -(a) :(a))
 // #define is_digit(c) ((c) >= '0' && (c) <= '9')
 
-#define FLT_MAX_10_EXP     38
-#define DBL_MAX_10_EXP     308
-#define LDBL_MAX_10_EXP    308
+//#define FLT_MAX_10_EXP     38
+//#define DBL_MAX_10_EXP     308
+//#define LDBL_MAX_10_EXP    308
 
 #define	PADSIZE		16		// pad chunk size
 
@@ -1158,7 +1158,7 @@ fioFormat(const char* fmt, va_list vaList, OUTBUF_ARG* outarg) {
             dbl = (double)va_arg(vaList, double);
             doSign = false;  // assume no sign needed
 
-            if (/*ISINF*/isinf(dbl)) {  // infinite?+
+            if (isinf(dbl)) {  // infinite?+
                 // fill in the string
                 if (ch == 'E' || ch == 'G' || ch == 'F')
                     strcpy(cp, "INF");

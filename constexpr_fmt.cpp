@@ -2468,6 +2468,16 @@ int main() {
 		//CFMT_STR(result, buf, 2000, "%lc", U'水');
 		//CFMT_STR(result, buf, 2000, "%lc", U'🍌');
 
+        //result = snprintf(buf, 2000, "%E", 0. / -0);
+        //CFMT_STR(result, buf, 2000, "%f", 0.02);
+
+///*result = tz_snprintf*/CFMT_STR(result, buf, 2000, "%#32LG", (long double)(-2 / 0.));
+
+/*result = tz_snprintf*/CFMT_STR(result, buf, 2000, "%.Lf", (long double)i);
+
+		//result = snprintf(buf, 2000, "%A", 23.8);
+
+        ///*result = snprintf*/CFMT_STR(result, buf, 2000, "%023p", buf);
 
         //result = snprintf(buf, 2000, "%lc", U'🍌');
 		//result = snprintf(buf, 2000, "%- +020.10lc||", L'\u6c34');
@@ -2477,10 +2487,10 @@ int main() {
         //CFMT_STR(result, buf, 2000, "%c%c%c\n", '\xE2', '\x99', '\xA5');
 
         //result = tz_snprintf(buf, 2000, "%+ 0100.16s||", /*"tangzhilin"*/"ss");
-//result = snprintf/*CFMT_STR*/(/*result,*/ buf, 2000, "%+ 100.20s||", /*"tangzhilin"*/"tangzhilin");
+///*result = tz_snprintf*/CFMT_STR(result, buf, 2000, "%+ 100.20s||", /*"tangzhilin"*/"tangzhilin");
 
         //result = snprintf/*CFMT_STR*/(/*result,*/ buf, 2000, "% +010.4ls||", L"你好世界"/*nullptr*//*(const wchar_t*)NULL*/);
-/*result = snprintf*/CFMT_STR(result, buf, 2000, "%ls||" , /*L"hello, world"*/ /*u8"你好世界",*//*nullptr*//*(const wchar_t*)NULL*//*L"水水水水水水",*/ L"zß水🍌" L"爆ぜろリアル！弾けろシナプス！パニッシュメントディス、ワールド！");
+///*result = snprintf*/CFMT_STR(result, buf, 2000, "%ls||" , /*L"hello, world" L"你好世界"*//*nullptr*//*(const wchar_t*)NULL*//*L"水水水水水水",*/ L"zß水🍌" L"爆ぜろリアル！弾けろシナプス！パニッシュメントディス、ワールド！");
 		//result = snprintf(buf, 2000, "%- +020.13ls||", /*L"你好世界"*//*nullptr*//*(const wchar_t*)NULL*/L"zß水🍌");
 
 //result = /*tz_*/snprintf/*CFMT_STR*/(/*result,*/ buf, 2000, "LLONG_MAX = %lld\n", LLONG_MAX);
@@ -2649,5 +2659,14 @@ int main() {
 //std::cout << std::is_convertible_v<wchar_t, char32_t> << std::endl;
 
 //std::cout << static_cast<char32_t>(static_cast<wint_t>(wi)) << std::endl;
+
+//std::cout << std::is_convertible_v<double, long double> << std::endl;
+//std::cout << std::is_convertible_v<float, double> << std::endl;
+//std::cout << std::is_convertible_v<float, long double> << std::endl;
+//
+//
+//std::cout << std::is_convertible_v<double, float> << std::endl;
+//std::cout << std::is_convertible_v<long double, double> << std::endl;
+//std::cout << std::is_convertible_v<long double, float> << std::endl;
 
 }
