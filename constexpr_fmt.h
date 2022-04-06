@@ -12,6 +12,7 @@
 #include <climits>
 #include <cuchar>
 #include <cmath>
+#include <system_error>
 
 #include "Portability.h"
 
@@ -19,14 +20,186 @@
 #define	DEFPREC		6
 #define MAXFRACT    60
 #define BUF         32/*4933*//*309 + MAXFRACT + 1*/
-#define SIZE        309 + MAXFRACT + 1
+#define SIZE        309 + MAXFRACT + 4
 #if (defined(WIN32) || defined(_WIN32) || defined(__WIN32__))
-#define SIZELD      309 + MAXFRACT + 1
+#define SIZELD      309 + MAXFRACT + 4
 #else
-#define SIZELD      4933 + MAXFRACT + 1
+#define SIZELD      4933 + MAXFRACT + 4
 #endif
 
-//static char buf[BUF];
+/*
+ * Flags used during conversion.
+ */
+
+#define	__FLAG_ALT         0x008  /* show prefixes 0x or 0 and show the decimal point even if no fractional digits present */
+#define __FLAG_ZEROPAD     0x002  /* zero (as opposed to blank) pad */
+#define	__FLAG_LADJUST     0x004  /* left adjustment */
+
+#define	__FLAG_LONGDBL     0x010  /* long double */
+#define	__FLAG_LONGINT     0x020  /* long integer */
+#define	__FLAG_LLONGINT    0x040  /* long long integer */
+#define	__FLAG_SHORTINT    0x080  /* short integer */
+ /* C99 additional size modifiers: */
+#define	__FLAG_SIZET       0x100  /* size_t */
+#define	__FLAG_PTRDIFFT	   0x200  /* ptrdiff_t */
+#define	__FLAG_INTMAXT     0x400  /* intmax_t */
+#define	__FLAG_CHARINT     0x800  /* print char using int format */
+
+//#define	__FLAG_INTEGER_SIZE (__FLAG_LONGINT|__FLAG_LLONGINT|__FLAG_SHORTINT|__FLAG_SIZET|__FLAG_PTRDIFFT|__FLAG_INTMAXT|__FLAG_CHARINT)
+
+ // #define	FPT		    0x100     /* Floating point number */
+ // #define	GROUPING	0x200     /* use grouping ("'" flag) */
+
+#define DYNAMIC_WIDTH      0x80000000
+#define DYNAMIC_PRECISION  0x80000000
+
+// A macro to disallow the copy constructor and operator= functions
+#define DISALLOW_COPY_AND_ASSIGN(TypeName) \
+    TypeName(const TypeName&) = delete; \
+    TypeName& operator=(const TypeName&) = delete;
+
+
+/** used by CFMT_STR */
+struct OutbufArg {
+
+	//static const char* BLANKS;
+	//static const char* ZEROS;
+
+	template <size_t N>
+	OutbufArg(char(&buffer)[N])
+		: pBuf_(buffer), pBufEnd_(buffer + N), written_(0) {
+	}
+
+	OutbufArg(char* buffer, size_t size)
+		: pBuf_(buffer), pBufEnd_(buffer + size), written_(0) {
+	}
+
+	size_t getWrittenNum() {
+		return written_;
+	}
+
+	void setWrittenNum(size_t n) {
+		written_ += n;
+	}
+
+	size_t getAvailableSize() {
+		size_t remaining = static_cast<size_t>(pBufEnd_ - pBuf_ - 1);
+
+		// fail if at the end of buffer, recall need a single byte for null
+		if (static_cast<std::make_signed<size_t>::type>(remaining) <= 0)
+			return 0;
+		else
+			return remaining;
+	}
+
+	char* getBufPtr() {
+		return pBuf_;
+	}
+
+	void setBufPtr(size_t n) {
+		// check if sufficient free space remains in the buffer
+		// the last byte position is reserved for the terminating '\0' 
+		size_t remaining = static_cast<size_t>(pBufEnd_ - (pBuf_ + n) - 1);
+
+		// fail if at the end of buffer, recall need a single byte for null
+		if (static_cast<std::make_signed<size_t>::type>(remaining) >= 0)
+			pBuf_ += n;
+	}
+
+	void write(char ch) noexcept {
+		++written_;
+
+		// check if sufficient free space remains in the buffer
+		// the last byte position is reserved for the terminating '\0' 
+		size_t remaining = static_cast<size_t>(pBufEnd_ - pBuf_ - 1);
+
+		// fail if at the end of buffer, recall need a single byte for null
+		if (static_cast<std::make_signed<size_t>::type>(remaining) <= 0)
+			return;
+		else
+			*pBuf_++ = ch;
+	}
+
+	/**
+	 * Copies [n] bytes from source p to destination pBuf_, leaving pBuf_
+	 * pointing at byte following block copied.
+	 * If [n] exceeds the number of bytes available in pBuf_, only the number
+	 * of bytes that fit within the buffer are copied. In this case [n] is
+	 * still added to written_ (although no further copying will be performed)
+	 * so that written_ can record the number of characters that would have
+	 * been copied if the supplied buffer was of sufficient size.
+	 */
+	void write(const char* p, size_t n) {
+		written_ += n;
+
+		// check if sufficient free space remains in the buffer
+		// the last byte position is reserved for the terminating '\0' 
+		size_t remaining = static_cast<size_t>(pBufEnd_ - pBuf_ - 1);
+
+		// fail if at the end of buffer, recall need a single byte for null
+		if (static_cast<std::make_signed<size_t>::type>(remaining) <= 0)
+			return;
+		else if (n > remaining)
+			n = remaining;
+
+		std::memcpy(pBuf_, p, n);
+		pBuf_ += n;
+	}
+
+	template <const char* const* padding/*char padding*/>
+	void writePaddings(int n/*, const char padding = ' '*/) {
+		if (n <= 0) return;
+
+		written_ += static_cast<size_t>(n);
+
+		// check if sufficient free space remains in the buffer
+		// the last byte position is reserved for the terminating '\0' 
+		size_t remaining = static_cast<size_t>(pBufEnd_ - pBuf_ - 1);
+
+		// fail if at the end of buffer, recall need a single byte for null
+		if (static_cast<std::make_signed<size_t>::type>(remaining) <= 0)
+			return;
+		else if (n > remaining)
+			n = static_cast<int>(remaining);
+
+		while (n > PADSIZE) {
+			std::memcpy(pBuf_, *padding, PADSIZE);
+			n -= PADSIZE;
+			pBuf_ += PADSIZE;
+		}
+		std::memcpy(pBuf_, *padding, n);
+		pBuf_ += n;
+
+		//while (n-- > 0) {
+		//	*pBuf_++ = padding;
+		//}
+	}
+
+	void done() noexcept {
+		//if (static_cast<size_t>(pBufEnd_ - pBuf_) > 0) 
+		*pBuf_ = '\0';
+	}
+
+private:
+
+	// running pointer to the next char
+	char* pBuf_/*{ nullptr }*/;
+	// const pointer to buffer end
+	char* const pBufEnd_;
+
+	// pointer to buffer end
+	// char* pBufEnd_{ nullptr };
+
+	// writing buffer size
+	// size_t size_/*{ 0 }*/;
+
+	// record the number of characters that would have been written if writing
+	// buffer had been sufficiently large, not counting the terminating null 
+	// character. 
+	size_t written_/*{ 0 }*/;
+
+	DISALLOW_COPY_AND_ASSIGN(OutbufArg);
+};
 
 static constexpr const char* BLANKS = "                ";
 static constexpr const char* ZEROS = "0000000000000000";
@@ -244,32 +417,95 @@ std::tuple<const char*, size_t> formatHex(char(&buf)[N], uintmax_t d) {
 }
 
 
-template <char Terminal, bool ALT>
-std::tuple<const char*, size_t> formatLDuble(long double g, int prec) {
+template <char Terminal, int FLAGS, typename T>
+void formatDuble(
+	OutbufArg& outbuf, T arg, int flags, int width, int prec, char sign) {
+
 	std::to_chars_result ret;
 	char buf[SIZELD];
+	size_t size = 0;
+	int fpprec = 0;
+	int realsz = 0;
+
+	if (prec > MAXFRACT) { // do realistic precision
+		if constexpr ((Terminal != 'g' && Terminal != 'G') || 
+			(FLAGS & __FLAG_ALT) == __FLAG_ALT)
+			fpprec = prec - MAXFRACT;
+		prec = MAXFRACT;	// they asked for it!
+	}
+	if (prec == -1)
+		prec = DEFPREC;		// ANSI default precision
 
 	if constexpr (Terminal == 'f' || Terminal == 'F') {
-		ret = std::to_chars(buf, buf + SIZE, g, std::chars_format::fixed, prec);
-		return std::make_tuple(nullptr, 0);
+		if constexpr ((FLAGS & __FLAG_LONGDBL) == __FLAG_LONGDBL) {
+			long double ldbl = static_cast<long double>(arg);
+			if (ldbl < 0.0) {
+				ldbl = std::fabsl(ldbl);
+				sign = '-';
+			}
+			ret = std::to_chars(
+				buf, buf + SIZELD, ldbl, std::chars_format::fixed, prec);
+		}
+		else {
+			double dbl = static_cast<double>(arg);
+			if (dbl < 0.0) {
+				dbl = std::fabs(dbl);
+				sign = '-';
+			}
+			ret = std::to_chars(
+				buf, buf + SIZELD, dbl, std::chars_format::fixed, prec);
+		}
+
+		size = static_cast<size_t>(ret.ptr - buf);
+		
+		if constexpr ((FLAGS & __FLAG_ALT) == __FLAG_ALT) {
+			//char* it = (char*)std::memchr(buf, '.', size);
+			if (/*it == nullptr*/0 == prec) {
+				*ret.ptr = '.';
+				size++;
+			}
+		}
 	}
-	else // invalid termnial specifier
-		return std::make_tuple(nullptr, 0);
-}
-
-template <char Terminal, bool ALT>
-std::tuple<const char*, size_t> formatDuble(double g, int prec) {
-	std::to_chars_result ret;
-    char buf[SIZE];
-
-	if constexpr (Terminal == 'f' || Terminal == 'F') {
-		ret = std::to_chars(buf, buf + SIZE, g, std::chars_format::fixed, prec);
-		return std::make_tuple(nullptr, 0);
+	else { // invalid termnial specifier
+		outbuf.write("(ER)", sizeof("(ER)") - 1);
+		return;
 	}
-	else // invalid termnial specifier
-		return std::make_tuple(nullptr, 0);
-}
 
+	//if (ret.ec == std::errc()) {
+		realsz = static_cast<int>(size + fpprec); // normally fpprec is 0
+
+		if (sign)
+			realsz++;
+
+		/* right-adjusting blank padding */
+		if ((flags & (__FLAG_ZEROPAD | __FLAG_LADJUST)) == 0) {
+			outbuf.writePaddings<&BLANKS>(width - realsz);
+		}
+
+		/* prefix */
+		if (sign)
+			outbuf.write(sign);
+
+		/* right-adjusting zero padding */
+		if ((flags & (__FLAG_ZEROPAD | __FLAG_LADJUST)) == __FLAG_ZEROPAD) {
+			outbuf.writePaddings<&ZEROS>(width - realsz);
+		}
+
+		// the string or number proper
+		outbuf.write(buf, size);
+
+		// trailing floating point zeroes
+		outbuf.writePaddings<&ZEROS>(fpprec);
+
+		/* left-adjusting padding (always blank) */
+		if ((flags & __FLAG_LADJUST) == __FLAG_LADJUST)
+			outbuf.writePaddings<&BLANKS>(width - realsz);
+	//}
+	//else {
+	//	std::cerr << std::make_error_code(ret.ec).message() << '\n';
+	//	outbuf.write("(ER)", sizeof("(ER)") - 1);
+	//}
+}
 
 // A non-type template - parameter shall have one of the following(optionally cv-qualified) types:
 // integral or enumeration type,
@@ -277,183 +513,6 @@ std::tuple<const char*, size_t> formatDuble(double g, int prec) {
 // lvalue reference to object or lvalue reference to function,
 // pointer to member,
 // std::nullptr_t
-
-/*
- * Flags used during conversion.
- */
-
-#define	__FLAG_ALT         0x008  /* show prefixes 0x or 0 and show the decimal point even if no fractional digits present */
-#define __FLAG_ZEROPAD     0x002  /* zero (as opposed to blank) pad */
-#define	__FLAG_LADJUST     0x004  /* left adjustment */
-
-#define	__FLAG_LONGDBL     0x010  /* long double */
-#define	__FLAG_LONGINT     0x020  /* long integer */
-#define	__FLAG_LLONGINT    0x040  /* long long integer */
-#define	__FLAG_SHORTINT    0x080  /* short integer */
- /* C99 additional size modifiers: */
-#define	__FLAG_SIZET       0x100  /* size_t */
-#define	__FLAG_PTRDIFFT	   0x200  /* ptrdiff_t */
-#define	__FLAG_INTMAXT     0x400  /* intmax_t */
-#define	__FLAG_CHARINT     0x800  /* print char using int format */
-
-//#define	__FLAG_INTEGER_SIZE (__FLAG_LONGINT|__FLAG_LLONGINT|__FLAG_SHORTINT|__FLAG_SIZET|__FLAG_PTRDIFFT|__FLAG_INTMAXT|__FLAG_CHARINT)
-
- // #define	FPT		    0x100     /* Floating point number */
- // #define	GROUPING	0x200     /* use grouping ("'" flag) */
-
-#define DYNAMIC_WIDTH      0x80000000
-#define DYNAMIC_PRECISION  0x80000000
-
-//#define BUF 400
-
-// A macro to disallow the copy constructor and operator= functions
-#define DISALLOW_COPY_AND_ASSIGN(TypeName) \
-    TypeName(const TypeName&) = delete; \
-    TypeName& operator=(const TypeName&) = delete;
-
-
-/** used by CFMT_STR */
-struct OutbufArg {
-
-	//static const char* BLANKS;
-	//static const char* ZEROS;
-
-	template <size_t N>
-	OutbufArg(char(&buffer)[N]) 
-		: pBuf_(buffer), pBufEnd_(buffer + N), written_(0) {
-	}
-
-	OutbufArg(char* buffer, size_t size) 
-		: pBuf_(buffer), pBufEnd_(buffer + size), written_(0) {
-	}
-
-	size_t getWrittenNum() {
-		return written_;
-	}
-
-	void setWrittenNum(size_t n) {
-		written_ += n;
-	}
-
-	size_t getAvailableSize() {
-		size_t remaining = static_cast<size_t>(pBufEnd_ - pBuf_ - 1);
-
-		// fail if at the end of buffer, recall need a single byte for null
-		if (static_cast<std::make_signed<size_t>::type>(remaining) <= 0)
-			return 0;
-		else
-			return remaining;
-	}
-
-	char* getBufPtr() {
-		return pBuf_;
-	}
-
-	void setBufPtr(size_t n) {
-		// check if sufficient free space remains in the buffer
-		// the last byte position is reserved for the terminating '\0' 
-		size_t remaining = static_cast<size_t>(pBufEnd_ - (pBuf_ + n) - 1);
-
-		// fail if at the end of buffer, recall need a single byte for null
-		if (static_cast<std::make_signed<size_t>::type>(remaining) >= 0)
-			pBuf_ += n;
-	}
-
-	void write(char ch) noexcept {
-		++written_;
-
-		// check if sufficient free space remains in the buffer
-		// the last byte position is reserved for the terminating '\0' 
-		size_t remaining = static_cast<size_t>(pBufEnd_ - pBuf_ - 1);
-
-		// fail if at the end of buffer, recall need a single byte for null
-		if (static_cast<std::make_signed<size_t>::type>(remaining) <= 0)
-			return;
-		else
-			*pBuf_++ = ch;
-	}
-
-	/**
-	 * Copies [n] bytes from source p to destination pBuf_, leaving pBuf_
-	 * pointing at byte following block copied.
-	 * If [n] exceeds the number of bytes available in pBuf_, only the number
-	 * of bytes that fit within the buffer are copied. In this case [n] is
-	 * still added to written_ (although no further copying will be performed)
-	 * so that written_ can record the number of characters that would have
-	 * been copied if the supplied buffer was of sufficient size.
-	 */
-	void write(const char* p, size_t n) {
-		written_ += n;
-
-		// check if sufficient free space remains in the buffer
-		// the last byte position is reserved for the terminating '\0' 
-		size_t remaining = static_cast<size_t>(pBufEnd_ - pBuf_ - 1);
-
-		// fail if at the end of buffer, recall need a single byte for null
-		if (static_cast<std::make_signed<size_t>::type>(remaining) <= 0)
-			return;
-		else if (n > remaining)
-			n = remaining;
-
-		std::memcpy(pBuf_, p, n);
-		pBuf_ += n;
-	}
-
-	template <const char* const* padding/*char padding*/>
-	void writePaddings(int n/*, const char padding = ' '*/) {
-		if (n <= 0) return;
-
-		written_ += static_cast<size_t>(n);
-
-		// check if sufficient free space remains in the buffer
-		// the last byte position is reserved for the terminating '\0' 
-		size_t remaining = static_cast<size_t>(pBufEnd_ - pBuf_ - 1);
-
-		// fail if at the end of buffer, recall need a single byte for null
-		if (static_cast<std::make_signed<size_t>::type>(remaining) <= 0)
-			return;
-		else if (n > remaining)
-			n = static_cast<int>(remaining);
-
-		while (n > PADSIZE) {
-			std::memcpy(pBuf_, *padding, PADSIZE);
-			n -= PADSIZE;
-			pBuf_ += PADSIZE;
-		}
-		std::memcpy(pBuf_, *padding, n);
-		pBuf_ += n;
-
-		//while (n-- > 0) {
-		//	*pBuf_++ = padding;
-		//}
-	}
-
-	void done() noexcept {
-		//if (static_cast<size_t>(pBufEnd_ - pBuf_) > 0) 
-			*pBuf_ = '\0';
-	}
-
-private:
-
-	// running pointer to the next char
-	char* pBuf_/*{ nullptr }*/;
-	// const pointer to buffer end
-	char* const pBufEnd_;
-
-	// pointer to buffer end
-	// char* pBufEnd_{ nullptr };
-
-	// writing buffer size
-	// size_t size_/*{ 0 }*/;
-
-	// record the number of characters that would have been written if writing
-	// buffer had been sufficiently large, not counting the terminating null 
-	// character. 
-	size_t written_/*{ 0 }*/;
-
-	DISALLOW_COPY_AND_ASSIGN(OutbufArg);
-};
-
 
 using flags_t = int;
 using width_t = int;
@@ -1477,34 +1536,8 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 			case FP_NORMAL:
 			case FP_SUBNORMAL:
 			case FP_ZERO:
-				cp = buf;
-				if (P > MAXFRACT) { // do realistic precision
-					if constexpr ((SI.terminal_ != 'g' && SI.terminal_ != 'G')
-						|| (SI.flags_ & __FLAG_ALT) == __FLAG_ALT)
-						fpprec = P - MAXFRACT;
-					P = MAXFRACT;	// they asked for it!
-				}
-				if (P == -1)
-					P = DEFPREC;		// ANSI default precision
-
-				if constexpr ((SI.flags_ & __FLAG_LONGDBL) == __FLAG_LONGDBL) {
-					// long double
-					long double ldbl = static_cast<long double>(arg);
-
-					if constexpr (SI.terminal_ == 'F' || SI.terminal_ == 'f') {
-						std::to_chars_result ret = std::to_chars(buf, buf + BUF, ldbl,
-							std::chars_format::fixed, P);
-						size = ret.ptr - buf;
-					}
-				}
-				else {
-					// double
-					//double dbl = static_cast<double>(arg);
-					std::tie(cp, size) =
-						formatDuble<SI.terminal_, ((SI.flags_& __FLAG_ALT) == __FLAG_ALT)>
-						(static_cast<double>(arg), P);
-				}
-				break;
+				formatDuble<SI.terminal_, SI.flags_, T>(outbuf, arg, flags, W, P, sign);
+				return;
 			case FP_INFINITE:
 				cp = buf;
 				// fill in the string
