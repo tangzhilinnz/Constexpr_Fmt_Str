@@ -15,10 +15,18 @@
 
 #include "Portability.h"
 
-#define BUF         100
 #define	PADSIZE	    16
 #define	DEFPREC		6
 #define MAXFRACT    60
+#define BUF         32/*4933*//*309 + MAXFRACT + 1*/
+#define SIZE        309 + MAXFRACT + 1
+#if (defined(WIN32) || defined(_WIN32) || defined(__WIN32__))
+#define SIZELD      309 + MAXFRACT + 1
+#else
+#define SIZELD      4933 + MAXFRACT + 1
+#endif
+
+//static char buf[BUF];
 
 static constexpr const char* BLANKS = "                ";
 static constexpr const char* ZEROS = "0000000000000000";
@@ -233,6 +241,33 @@ std::tuple<const char*, size_t> formatHex(char(&buf)[N], uintmax_t d) {
 	}
 
 	return std::make_tuple(it, &buf[N] - it);
+}
+
+
+template <char Terminal, bool ALT>
+std::tuple<const char*, size_t> formatLDuble(long double g, int prec) {
+	std::to_chars_result ret;
+	char buf[SIZELD];
+
+	if constexpr (Terminal == 'f' || Terminal == 'F') {
+		ret = std::to_chars(buf, buf + SIZE, g, std::chars_format::fixed, prec);
+		return std::make_tuple(nullptr, 0);
+	}
+	else // invalid termnial specifier
+		return std::make_tuple(nullptr, 0);
+}
+
+template <char Terminal, bool ALT>
+std::tuple<const char*, size_t> formatDuble(double g, int prec) {
+	std::to_chars_result ret;
+    char buf[SIZE];
+
+	if constexpr (Terminal == 'f' || Terminal == 'F') {
+		ret = std::to_chars(buf, buf + SIZE, g, std::chars_format::fixed, prec);
+		return std::make_tuple(nullptr, 0);
+	}
+	else // invalid termnial specifier
+		return std::make_tuple(nullptr, 0);
 }
 
 
@@ -1131,32 +1166,6 @@ inline uintmax_t UARG(T/*&&*/ arg) {
 	}
 }
 
-//inline size_t __wcsconvNBytes(const wchar_t* wcsarg, const int prec) {
-//	static const mbstate_t initial{};
-//	mbstate_t mbs{ initial };
-//	char buf[MB_LEN_MAX];
-//	const wchar_t* p = wcsarg;
-//	size_t clen, nbytes;
-//
-//	/* Allocate space for the maximum number of bytes we could output. */
-//	if (prec < 0) {
-//		nbytes = std::wcsrtombs(NULL, (const wchar_t**)&p, 0, &mbs);
-//	}
-//	else {
-//		nbytes = 0;
-//		for (;;) {
-//			clen = wcrtomb(buf, *p++, &mbs);
-//			if (clen == 0 || clen == static_cast<size_t>(-1) ||
-//				nbytes + clen > prec)
-//				break;
-//			nbytes += clen;
-//		}
-//		//nbytes = std::wcsrtombs(NULL, (const wchar_t**)&p, prec, &mbs);
-//	}
-//	//std::cout << nbytes << std::endl;
-//	return nbytes;
-//}
-
 /* template converter_impl declaration */
 template<const char* const* fmt, SpecInfo... SIs, typename... Ts>
 inline void converter_impl(OutbufArg& outbuf, Ts/*&&*/...args);
@@ -1464,11 +1473,11 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 		|| SI.terminal_ == 'g' || SI.terminal_ == 'G') {
 
 		if constexpr (std::is_floating_point_v<std::remove_reference_t<T>>) {
-			cp = buf;
 			switch (std::fpclassify(arg)) {
 			case FP_NORMAL:
 			case FP_SUBNORMAL:
 			case FP_ZERO:
+				cp = buf;
 				if (P > MAXFRACT) { // do realistic precision
 					if constexpr ((SI.terminal_ != 'g' && SI.terminal_ != 'G')
 						|| (SI.flags_ & __FLAG_ALT) == __FLAG_ALT)
@@ -1477,7 +1486,6 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 				}
 				if (P == -1)
 					P = DEFPREC;		// ANSI default precision
-				buf[0] = '\0';	 // EOS terminate just in case//////////////////
 
 				if constexpr ((SI.flags_ & __FLAG_LONGDBL) == __FLAG_LONGDBL) {
 					// long double
@@ -1491,16 +1499,14 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 				}
 				else {
 					// double
-					double dbl = static_cast<double>(arg);
-
-					if constexpr (SI.terminal_ == 'F' || SI.terminal_ == 'f') {
-						std::to_chars_result ret = std::to_chars(buf, buf + BUF, dbl,
-							std::chars_format::fixed, P);
-						size = ret.ptr - buf;
-					}
+					//double dbl = static_cast<double>(arg);
+					std::tie(cp, size) =
+						formatDuble<SI.terminal_, ((SI.flags_& __FLAG_ALT) == __FLAG_ALT)>
+						(static_cast<double>(arg), P);
 				}
 				break;
-			case FP_INFINITE:  
+			case FP_INFINITE:
+				cp = buf;
 				// fill in the string
 				if constexpr (SI.terminal_ == 'E' || SI.terminal_ == 'G'
 					|| SI.terminal_ == 'F' || SI.terminal_ == 'A')
@@ -1513,7 +1519,8 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 				size = 3;  // length will be three, excluding tail '\0'
 				flags &= ~__FLAG_ZEROPAD;
 				break;
-			case FP_NAN:       
+			case FP_NAN:
+				cp = buf;
 				// fill in the string
 				if constexpr (SI.terminal_ == 'E' || SI.terminal_ == 'G'
 					|| SI.terminal_ == 'F' || SI.terminal_ == 'A')
@@ -1528,54 +1535,11 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 				outbuf.write("(ER)", sizeof("(ER)") - 1);
 				return;
 			}
-
-			//if (std::isinf(arg)/*std::fpclassify(arg) == FP_INFINITE*/) {  // infinite?+
-			//	// fill in the string
-			//	if constexpr (SI.terminal_ == 'E' || SI.terminal_ == 'G'
-			//		|| SI.terminal_ == 'F' || SI.terminal_ == 'A')
-			//		std::memcpy(buf, "INF", 3);
-			//	else
-			//		std::memcpy(buf, "inf", 3);
-			//	if (arg < 0.0)	          // less than 0.0
-			//		sign = '-';           // need a sign
-			//	size = 3;  // length will be three, excluding tail '\0'
-			//}
-			//else if (std::isnan(arg)) { // not a number?
-			//	// fill in the string
-			//	if constexpr (SI.terminal_ == 'E' || SI.terminal_ == 'G'
-			//		|| SI.terminal_ == 'F' || SI.terminal_ == 'A')
-			//		std::memcpy(buf, "NAN", 3);
-			//	else
-			//		std::memcpy(buf, "nan", 3);
-			//	size = 3;  // length will be three
-			//}
-			//else {
-			//	if (P > MAXFRACT) { // do realistic precision
-			//		if constexpr ((SI.terminal_ != 'g' && SI.terminal_ != 'G')
-			//			|| (SI.flags_ & __FLAG_ALT) == __FLAG_ALT)
-			//			fpprec = P - MAXFRACT;
-			//		P = MAXFRACT;	// they asked for it!
-			//	}
-			//	if (P == -1)
-			//		P = DEFPREC;		// ANSI default precision
-			//	buf[0] = '\0';	 // EOS terminate just in case//////////////////
-			//	if constexpr ((SI.flags_ & __FLAG_LONGDBL) == __FLAG_LONGDBL) {
-			//		// long double
-			//		long double ldbl = static_cast<long double>(arg);
-			//	}
-			//	else {
-			//		// double
-			//		double dbl = static_cast<double>(arg);
-			//	}
-			//}
-
-			//P = 0;
 		}
 		else {
 			outbuf.write("(ER)", sizeof("(ER)") - 1);
 			return;
 		}
-
 	}
 
 	if constexpr (SI.end_ - SI.begin_ > 0) {
