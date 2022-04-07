@@ -19,13 +19,13 @@
 #define	PADSIZE	    16
 #define	DEFPREC		6
 #define MAXFRACT    60
-#define BUF         32/*4933*//*309 + MAXFRACT + 1*/
-#define SIZE        309 + MAXFRACT + 4
-#if (defined(WIN32) || defined(_WIN32) || defined(__WIN32__))
-#define SIZELD      309 + MAXFRACT + 4
-#else
-#define SIZELD      4933 + MAXFRACT + 4
-#endif
+//#define BUF         32
+//#define SIZE        309 + MAXFRACT + 4
+//#if (defined(WIN32) || defined(_WIN32) || defined(__WIN32__))
+//#define SIZELD      309 + MAXFRACT + 4
+//#else
+//#define SIZELD      4933 + MAXFRACT + 4
+//#endif
 
 /*
  * Flags used during conversion.
@@ -57,6 +57,15 @@
 #define DISALLOW_COPY_AND_ASSIGN(TypeName) \
     TypeName(const TypeName&) = delete; \
     TypeName& operator=(const TypeName&) = delete;
+
+using flags_t = int;
+using width_t = int;
+using precision_t = int;
+using sign_t = char;
+using terminal_t = char;
+using begin_t = unsigned;
+using end_t = unsigned;
+using width_first_t = bool;
 
 
 /** used by CFMT_STR */
@@ -417,34 +426,22 @@ std::tuple<const char*, size_t> formatHex(char(&buf)[N], uintmax_t d) {
 }
 
 
-template <char Terminal, int FLAGS, typename T>
-void formatDuble(
-	OutbufArg& outbuf, T arg, int flags, int width, int prec, char sign) {
+template <terminal_t TM, flags_t FGS, size_t N, typename T>
+std::tuple<const char*, size_t> formatDuble(char(&buf)[N], T arg, int prec,
+	char& sign) {
 
 	std::to_chars_result ret;
-	char buf[SIZELD];
 	size_t size = 0;
-	int fpprec = 0;
-	int realsz = 0;
 
-	if (prec > MAXFRACT) { // do realistic precision
-		if constexpr ((Terminal != 'g' && Terminal != 'G') || 
-			(FLAGS & __FLAG_ALT) == __FLAG_ALT)
-			fpprec = prec - MAXFRACT;
-		prec = MAXFRACT;	// they asked for it!
-	}
-	if (prec == -1)
-		prec = DEFPREC;		// ANSI default precision
-
-	if constexpr (Terminal == 'f' || Terminal == 'F') {
-		if constexpr ((FLAGS & __FLAG_LONGDBL) == __FLAG_LONGDBL) {
+	if constexpr (TM == 'f' || TM == 'F') {
+		if constexpr ((FGS & __FLAG_LONGDBL) == __FLAG_LONGDBL) {
 			long double ldbl = static_cast<long double>(arg);
 			if (ldbl < 0.0) {
 				ldbl = std::fabsl(ldbl);
 				sign = '-';
 			}
 			ret = std::to_chars(
-				buf, buf + SIZELD, ldbl, std::chars_format::fixed, prec);
+				buf, buf + N, ldbl, std::chars_format::fixed, prec);
 		}
 		else {
 			double dbl = static_cast<double>(arg);
@@ -453,59 +450,27 @@ void formatDuble(
 				sign = '-';
 			}
 			ret = std::to_chars(
-				buf, buf + SIZELD, dbl, std::chars_format::fixed, prec);
+				buf, buf + N, dbl, std::chars_format::fixed, prec);
 		}
 
 		size = static_cast<size_t>(ret.ptr - buf);
-		
-		if constexpr ((FLAGS & __FLAG_ALT) == __FLAG_ALT) {
+
+		if constexpr ((FGS & __FLAG_ALT) == __FLAG_ALT) {
 			//char* it = (char*)std::memchr(buf, '.', size);
 			if (/*it == nullptr*/0 == prec) {
 				*ret.ptr = '.';
 				size++;
 			}
 		}
+
+		return std::make_tuple(buf, size);
 	}
 	else { // invalid termnial specifier
-		outbuf.write("(ER)", sizeof("(ER)") - 1);
-		return;
+		return std::make_tuple(nullptr, 0);
 	}
-
-	//if (ret.ec == std::errc()) {
-		realsz = static_cast<int>(size + fpprec); // normally fpprec is 0
-
-		if (sign)
-			realsz++;
-
-		/* right-adjusting blank padding */
-		if ((flags & (__FLAG_ZEROPAD | __FLAG_LADJUST)) == 0) {
-			outbuf.writePaddings<&BLANKS>(width - realsz);
-		}
-
-		/* prefix */
-		if (sign)
-			outbuf.write(sign);
-
-		/* right-adjusting zero padding */
-		if ((flags & (__FLAG_ZEROPAD | __FLAG_LADJUST)) == __FLAG_ZEROPAD) {
-			outbuf.writePaddings<&ZEROS>(width - realsz);
-		}
-
-		// the string or number proper
-		outbuf.write(buf, size);
-
-		// trailing floating point zeroes
-		outbuf.writePaddings<&ZEROS>(fpprec);
-
-		/* left-adjusting padding (always blank) */
-		if ((flags & __FLAG_LADJUST) == __FLAG_LADJUST)
-			outbuf.writePaddings<&BLANKS>(width - realsz);
-	//}
-	//else {
-	//	std::cerr << std::make_error_code(ret.ec).message() << '\n';
-	//	outbuf.write("(ER)", sizeof("(ER)") - 1);
-	//}
 }
+
+
 
 // A non-type template - parameter shall have one of the following(optionally cv-qualified) types:
 // integral or enumeration type,
@@ -514,14 +479,6 @@ void formatDuble(
 // pointer to member,
 // std::nullptr_t
 
-using flags_t = int;
-using width_t = int;
-using precision_t = int;
-using sign_t = char;
-using terminal_t = char;
-using begin_t = unsigned;
-using end_t = unsigned;
-using width_first_t = bool;
 /**
  * Stores the static format information associated with a specifier in a format
  * string (i.e. %<flags><width>.<precision><length><terminal>).
@@ -1225,13 +1182,43 @@ inline uintmax_t UARG(T/*&&*/ arg) {
 	}
 }
 
+template<flags_t flags, terminal_t term>
+inline constexpr size_t getBufferSize() {
+#if (defined(WIN32) || defined(_WIN32) || defined(__WIN32__))
+	if (term == 'F' || term == 'f'
+		|| term == 'a' || term == 'A'
+		|| term == 'e' || term == 'E'
+		|| term == 'g' || term == 'G') {
+		return static_cast<size_t>(309 + MAXFRACT + 4);
+	}
+	else
+		return static_cast<size_t>(32);
+#else //todo put definiteness to linux sys
+	if (term == 'F' || term == 'f'
+		|| term == 'a' || term == 'A'
+		|| term == 'e' || term == 'E'
+		|| term == 'g' || term == 'G') {
+		if ((flags & __FLAG_LONGDBL) == __FLAG_LONGDBL)
+		    return static_cast<size_t>(4933 + MAXFRACT + 4);
+		else 
+			return static_cast<size_t>(309 + MAXFRACT + 4);
+	}
+	else
+		return static_cast<size_t>(32);
+#endif
+}
+
 /* template converter_impl declaration */
 template<const char* const* fmt, SpecInfo... SIs, typename... Ts>
 inline void converter_impl(OutbufArg& outbuf, Ts/*&&*/...args);
 
 template<const char* const* fmt, SpecInfo SI, typename T>
-inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0, 
-    precision_t P = -1) {
+inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
+	precision_t P = -1) {
+
+	constexpr size_t BUF = getBufferSize<SI.flags_, SI.terminal_>();
+
+	//std::cout << BUF << std::endl; // for test
 
 	char buf[BUF];	// space for %c, %[diouxX], %[eEfgG]
 	//int stridx[8];
@@ -1250,12 +1237,12 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 	flags_t flags = SI.flags_;
 	sign_t sign = SI.sign_;
 
-	if constexpr (SI.width_ != DYNAMIC_WIDTH 
+	if constexpr (SI.width_ != DYNAMIC_WIDTH
 		&& SI.prec_ == DYNAMIC_PRECISION) {
 		W = SI.width_;
 		P = P < 0 ? -1 : P;
 	}
-	else if constexpr (SI.width_ == DYNAMIC_WIDTH 
+	else if constexpr (SI.width_ == DYNAMIC_WIDTH
 		&& SI.prec_ != DYNAMIC_PRECISION) {
 		if (W < 0) {
 			W = -W;
@@ -1364,7 +1351,7 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 			if constexpr (std::is_convertible_v<T, const char*>) {
 				cp = static_cast<const char*>(arg);
 
-				if (nullptr == cp) 
+				if (nullptr == cp)
 					cp = "(null)";
 			}
 			else {
@@ -1401,12 +1388,12 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 		sign = '\0';
 	}
 
-    if constexpr (SI.terminal_ == 'i' || SI.terminal_ == 'd' ||
-	              SI.terminal_ == 'x' || SI.terminal_ == 'X' || 
-		          SI.terminal_ == 'o' || SI.terminal_ == 'u' || 
-		          SI.terminal_ == 'p') {
+	if constexpr (SI.terminal_ == 'i' || SI.terminal_ == 'd' ||
+		SI.terminal_ == 'x' || SI.terminal_ == 'X' ||
+		SI.terminal_ == 'o' || SI.terminal_ == 'u' ||
+		SI.terminal_ == 'p') {
 		uintmax_t ujval;
-		 
+
 		if constexpr (SI.terminal_ == 'p' && std::is_convertible_v<T, const void*>) {
 			ujval = static_cast<uintmax_t>(reinterpret_cast<uintptr_t>(arg));
 			sign = '\0';
@@ -1421,8 +1408,8 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 
 		//else if constexpr (SI.terminal_ != 'p' && std::is_integral_v<std::remove_reference_t<T>>) {
 
-	    else if constexpr ((SI.terminal_ == 'i' || SI.terminal_ == 'd' || SI.terminal_ == 'u') && 
-			               std::is_integral_v<std::remove_reference_t<T>>) {
+		else if constexpr ((SI.terminal_ == 'i' || SI.terminal_ == 'd' || SI.terminal_ == 'u') &&
+			std::is_integral_v<std::remove_reference_t<T>>) {
 
 			if constexpr (SI.terminal_ == 'i' || SI.terminal_ == 'd') {
 				ujval = SARG<SI.flags_>(/*std::forward<T>*/(arg));
@@ -1526,20 +1513,30 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 		return;
 	}
 
-	if constexpr (SI.terminal_ == 'F' || SI.terminal_ == 'f' 
+	if constexpr (SI.terminal_ == 'F' || SI.terminal_ == 'f'
 		|| SI.terminal_ == 'a' || SI.terminal_ == 'A'
 		|| SI.terminal_ == 'e' || SI.terminal_ == 'E'
 		|| SI.terminal_ == 'g' || SI.terminal_ == 'G') {
 
 		if constexpr (std::is_floating_point_v<std::remove_reference_t<T>>) {
+
 			switch (std::fpclassify(arg)) {
 			case FP_NORMAL:
 			case FP_SUBNORMAL:
 			case FP_ZERO:
-				formatDuble<SI.terminal_, SI.flags_, T>(outbuf, arg, flags, W, P, sign);
-				return;
+				if (P > MAXFRACT) { // do realistic precision
+					if constexpr ((SI.terminal_ != 'g' && SI.terminal_ != 'G') ||
+						(SI.flags_ & __FLAG_ALT) == __FLAG_ALT)
+						fpprec = P - MAXFRACT;
+					P = MAXFRACT;	// they asked for it!
+				}
+				if (P == -1)
+					P = DEFPREC;		// ANSI default precision
+				std::tie(cp, size) = 
+					formatDuble<SI.terminal_, SI.flags_>(buf, arg, P, sign);
+				break;
+
 			case FP_INFINITE:
-				cp = buf;
 				// fill in the string
 				if constexpr (SI.terminal_ == 'E' || SI.terminal_ == 'G'
 					|| SI.terminal_ == 'F' || SI.terminal_ == 'A')
@@ -1549,11 +1546,12 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 
 				if (arg < 0.0) // is negative ?
 					sign = '-';           // need a sign
+
+				cp = buf;
 				size = 3;  // length will be three, excluding tail '\0'
 				flags &= ~__FLAG_ZEROPAD;
 				break;
 			case FP_NAN:
-				cp = buf;
 				// fill in the string
 				if constexpr (SI.terminal_ == 'E' || SI.terminal_ == 'G'
 					|| SI.terminal_ == 'F' || SI.terminal_ == 'A')
@@ -1561,6 +1559,7 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 				else
 					std::memcpy(buf, "nan", 3);
 
+				cp = buf;
 				size = 3;  // length will be three
 				flags &= ~__FLAG_ZEROPAD;
 				break;
@@ -1580,6 +1579,7 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 	}
 
 	if constexpr (SI.terminal_ != 'n') {
+
 		// All reasonable formats wind up here. At this point, `cp' points to a
 		// string which (if not flags&__FLAG_LADJUST) should be padded out to
 		// `width' places. If flags&__FLAG_ZEROPAD, it should first be prefixed
@@ -1593,9 +1593,22 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 		// compute actual size, so we know how much to pad.
 		// fieldsz excludes decimal prec; realsz includes it
 
-		fieldsz = static_cast<int>(size + fpprec); // normally fpprec is 0
+		if constexpr (SI.terminal_ == 'i' || SI.terminal_ == 'd' ||
+			SI.terminal_ == 'x' || SI.terminal_ == 'X' ||
+			SI.terminal_ == 'o' || SI.terminal_ == 'u') {
 
-		realsz = (dprec/*P*/ > fieldsz) ? dprec/*P*/ : fieldsz;
+			fieldsz = static_cast<int>(size);
+			realsz = (dprec/*P*/ > fieldsz) ? dprec/*P*/ : fieldsz;
+		}
+		else if constexpr (SI.terminal_ == 'F' || SI.terminal_ == 'f'
+			|| SI.terminal_ == 'a' || SI.terminal_ == 'A'
+			|| SI.terminal_ == 'e' || SI.terminal_ == 'E'
+			|| SI.terminal_ == 'g' || SI.terminal_ == 'G') {
+			realsz = static_cast<int>(size + fpprec); // normally fpprec is 0
+		}
+		else
+			realsz = size;
+
 		if (sign)
 			realsz++;
 		//if (ox[1])
@@ -1612,7 +1625,7 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 		///////////////////////////// Right Adjust ////////////////////////////
 		/* right-adjusting blank padding */
 		if ((flags & (__FLAG_ZEROPAD | __FLAG_LADJUST)) == 0) {
-			outbuf.writePaddings</*' '*/&BLANKS>(W - realsz);
+			outbuf.writePaddings<&BLANKS>(W - realsz);
 		}
 		///////////////////////////// Right Adjust ////////////////////////////
 
@@ -1636,31 +1649,40 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 		///////////////////////////// Right Adjust ////////////////////////////
 		/* right-adjusting zero padding */
 		if ((flags & (__FLAG_ZEROPAD | __FLAG_LADJUST)) == __FLAG_ZEROPAD) {
-			outbuf.writePaddings</*'0'*/&ZEROS>(W - realsz);
+			outbuf.writePaddings<&ZEROS>(W - realsz);
 		}
 		///////////////////////////// Right Adjust ////////////////////////////
 
 		// [diouXx] leading zeroes from decimal precision
 		// when P > fieldsz, realsz == P and zero padding size is P - fieldsz;
 		// when P =< fieldsz, realsz == fieldsz and zero padding is skipped.
-		outbuf.writePaddings</*'0'*/&ZEROS>(/*P*/dprec - fieldsz);
+		if constexpr (SI.terminal_ == 'i' || SI.terminal_ == 'd' ||
+			SI.terminal_ == 'x' || SI.terminal_ == 'X' ||
+			SI.terminal_ == 'o' || SI.terminal_ == 'u') {
+			outbuf.writePaddings<&ZEROS>(dprec - fieldsz);
+		}
 
 		// the string or number proper
 		outbuf.write(cp, size);
+
+		// trailing floating point zeroes
+		if constexpr (SI.terminal_ == 'F' || SI.terminal_ == 'f'
+			|| SI.terminal_ == 'a' || SI.terminal_ == 'A'
+			|| SI.terminal_ == 'e' || SI.terminal_ == 'E'
+			|| SI.terminal_ == 'g' || SI.terminal_ == 'G') {
+			outbuf.writePaddings<&ZEROS>(fpprec);
+		}
+
+		////////////////////////////// Left Adjust ////////////////////////////
+		/* left-adjusting padding (always blank) */
+		if ((flags & __FLAG_LADJUST) == __FLAG_LADJUST)
+			outbuf.writePaddings<&BLANKS>(W - realsz);
+		////////////////////////////// Left Adjust ////////////////////////////
 
 		if constexpr (SI.terminal_ == 's' &&
 			(SI.flags_ & __FLAG_LONGINT) == __FLAG_LONGINT)
 			/*delete*/
 			free(convbuf);
-
-		// trailing floating point zeroes
-		outbuf.writePaddings</*'0'*/&ZEROS>(fpprec);
-
-		////////////////////////////// Left Adjust ////////////////////////////
-		/* left-adjusting padding (always blank) */
-		if ((flags & __FLAG_LADJUST) == __FLAG_LADJUST)
-			outbuf.writePaddings</*' '*/&BLANKS>(W - realsz);
-		////////////////////////////// Left Adjust ////////////////////////////
 	}
 }
 

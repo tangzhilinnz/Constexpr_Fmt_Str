@@ -2384,7 +2384,7 @@ int main() {
 //result = tz_snprintf(/*result,*/ buf, 800, "%+0*.*u", 20, 10, i);
 //result = tz_snprintf(/*result,*/ buf, 800, "%+0*.*u", 20, 10, i);
 
-		result = tz_snprintf/*CFMT_STR*/(/*result,*/ buf, 2000,
+		/*result = tz_snprintf*/CFMT_STR(result, buf, 2000,
 			//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd"
 			//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd"
 			//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd"
@@ -2400,7 +2400,7 @@ int main() {
 			//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld",
 			//"%+030hhd%+030hhd%+030.10hhd%+030.10hhd%+030.10hhd",
 			//"%0*.*u|", -20, 10, i,
-			"%f", (double)pdata[i]/*nullptr*//*nullptr*//*&i*/,
+			"%0*f", /*(double)i,*/ 30, (double)pdata[i]/*2.365*//*nullptr*//*nullptr*//*&i*/,
 			//"%#p", "ss"
 			//"%lld",
 			//"test%dtest%dtest%dtest%dtest%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", pdata[i], pdata[(i+1)% 10000000], pdata[(i + 2) % 10000000], pdata[(i + 3) % 10000000],
@@ -2477,7 +2477,10 @@ int main() {
 
 		//result = snprintf(buf, 2000, "%A", 23.8);
 
-        ///*result = snprintf*/CFMT_STR(result, buf, 2000, "%#F|", (double)i/*-2.365*/);
+        ///*result = tz_snprintf*/CFMT_STR(result, buf, 2000, "%.LF", /*0. / 0*/std::numeric_limits<double>::max()/*(double)i*//*-2.365*/);
+       //ret = std::to_chars(buf, buf + 500, std::numeric_limits<double>::max() / 9999999999.76/*(double)1 / 3*/, std::chars_format::fixed, 100);
+
+       //result = snprintf  /*CFMT_STR*/(/*result,*/ buf, 2000, "%.100F", (double)std::numeric_limits<double>::max() / 9999999.76/*(double)1/3*//*std::numeric_limits<double>::max()*//*(double)i*//*-2.365*/);
 
         //result = snprintf(buf, 2000, "%lc", U'🍌');
 		//result = snprintf(buf, 2000, "%- +020.10lc||", L'\u6c34');
@@ -2535,6 +2538,7 @@ int main() {
 	printf("%s\n", buf);
 	//std::cout << "len: " << len << std::endl;
 
+	std::cout << "ret: " << (ret.ptr - buf) << std::endl;
 	std::cout << "result: " << result << std::endl;
 	std::cout << "ran: " << ran << std::endl;
 
