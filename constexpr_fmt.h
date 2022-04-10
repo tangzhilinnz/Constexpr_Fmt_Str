@@ -1,6 +1,8 @@
 #ifndef CONSTEXPR_IF_H__
 #define CONSTEXPR_IF_H__
 
+#define STACK_MEMORY_FOR_WIDE_STRING_FORMAT
+
 #include <string>
 #include <iostream>
 #include <array>
@@ -19,13 +21,10 @@
 #define	PADSIZE	    16
 #define	DEFPREC		6
 #define MAXFRACT    60
-//#define BUF         32
-//#define SIZE        309 + MAXFRACT + 4
-//#if (defined(WIN32) || defined(_WIN32) || defined(__WIN32__))
-//#define SIZELD      309 + MAXFRACT + 4
-//#else
-//#define SIZELD      4933 + MAXFRACT + 4
-//#endif
+
+#if defined(STACK_MEMORY_FOR_WIDE_STRING_FORMAT)
+#define STACK_MEMORY_SIZE  1000
+#endif
 
 /*
  * Flags used during conversion.
@@ -213,6 +212,7 @@ private:
 static constexpr const char* BLANKS = "                ";
 static constexpr const char* ZEROS = "0000000000000000";
 
+#if (defined(WIN32) || defined(_WIN32) || defined(__WIN32__))
 static constexpr const char*  digit_3[256] = {
 	"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", 
 	"10", "11", "12", "13", "14", "15", "16", "17", "18", "19", 
@@ -241,6 +241,7 @@ static constexpr const char*  digit_3[256] = {
 	"240", "241", "242", "243", "244", "245", "246", "247", "248", "249", 
 	"250", "251", "252", "253", "254", "255"
 };
+#endif
 
 //static constexpr const char* odigit_3[256] = {
 //	"0", "1", "2", "3", "4", "5", "6", "7", "10", "11", "12", "13", "14", "15", "16", "17", "20", "21", "22", "23", "24", "25", "26", "27", "30", "31", "32", "33", "34", "35", "36", "37", "40", "41", "42", "43", "44", "45", "46", "47", "50", "51", "52", "53", "54", "55", "56", "57", "60", "61", "62", "63", "64", "65", "66", "67", "70", "71", "72", "73", "74", "75", "76", "77", "100", "101", "102", "103", "104", "105", "106", "107", "110", "111", "112", "113", "114", "115", "116", "117", "120", "121", "122", "123", "124", "125", "126", "127", "130", "131", "132", "133", "134", "135", "136", "137", "140", "141", "142", "143", "144", "145", "146", "147", "150", "151", "152", "153", "154", "155", "156", "157", "160", "161", "162", "163", "164", "165", "166", "167", "170", "171", "172", "173", "174", "175", "176", "177", "200", "201", "202", "203", "204", "205", "206", "207", "210", "211", "212", "213", "214", "215", "216", "217", "220", "221", "222", "223", "224", "225", "226", "227", "230", "231", "232", "233", "234", "235", "236", "237", "240", "241", "242", "243", "244", "245", "246", "247", "250", "251", "252", "253", "254", "255", "256", "257", "260", "261", "262", "263", "264", "265", "266", "267", "270", "271", "272", "273", "274", "275", "276", "277", "300", "301", "302", "303", "304", "305", "306", "307", "310", "311", "312", "313", "314", "315", "316", "317", "320", "321", "322", "323", "324", "325", "326", "327", "330", "331", "332", "333", "334", "335", "336", "337", "340", "341", "342", "343", "344", "345", "346", "347", "350", "351", "352", "353", "354", "355", "356", "357", "360", "361", "362", "363", "364", "365", "366", "367", "370", "371", "372", "373", "374", "375", "376", "377"
@@ -427,30 +428,35 @@ std::tuple<const char*, size_t> formatHex(char(&buf)[N], uintmax_t d) {
 
 
 template <terminal_t TM, flags_t FGS, size_t N, typename T>
-std::tuple<const char*, size_t> formatDuble(char(&buf)[N], T arg, int prec,
-	char& sign) {
+inline
+std::tuple<const char*, size_t> formatDuble(char(&buf)[N], T arg, int prec/*, char& sign*/) {
 
 	std::to_chars_result ret;
 	size_t size = 0;
 
 	if constexpr (TM == 'f' || TM == 'F') {
+		//if (arg < 0.0) {
+		//	arg = std::abs(arg);
+		//	sign = '-';
+		//}
+
 		if constexpr ((FGS & __FLAG_LONGDBL) == __FLAG_LONGDBL) {
 			long double ldbl = static_cast<long double>(arg);
-			if (ldbl < 0.0) {
-				ldbl = std::fabsl(ldbl);
-				sign = '-';
-			}
-			ret = std::to_chars(
-				buf, buf + N, ldbl, std::chars_format::fixed, prec);
+			//if (ldbl < 0.0) {
+			//	ldbl = std::fabsl(ldbl);
+			//	sign = '-';
+			//}
+			ret = std::to_chars(buf, buf + N, ldbl, std::chars_format::fixed, 
+				                prec);
 		}
 		else {
 			double dbl = static_cast<double>(arg);
-			if (dbl < 0.0) {
-				dbl = std::fabs(dbl);
-				sign = '-';
-			}
-			ret = std::to_chars(
-				buf, buf + N, dbl, std::chars_format::fixed, prec);
+			//if (dbl < 0.0) {
+			//	dbl = std::fabs(dbl);
+			//	sign = '-';
+			//}
+			ret = std::to_chars(buf, buf + N, dbl, std::chars_format::fixed, 
+				                prec);
 		}
 
 		size = static_cast<size_t>(ret.ptr - buf);
@@ -462,7 +468,6 @@ std::tuple<const char*, size_t> formatDuble(char(&buf)[N], T arg, int prec,
 				size++;
 			}
 		}
-
 		return std::make_tuple(buf, size);
 	}
 	else { // invalid termnial specifier
@@ -1184,24 +1189,40 @@ inline uintmax_t UARG(T/*&&*/ arg) {
 
 template<flags_t flags, terminal_t term>
 inline constexpr size_t getBufferSize() {
-#if (defined(WIN32) || defined(_WIN32) || defined(__WIN32__))
+#if (defined(_MSC_VER))
 	if (term == 'F' || term == 'f'
 		|| term == 'a' || term == 'A'
 		|| term == 'e' || term == 'E'
 		|| term == 'g' || term == 'G') {
 		return static_cast<size_t>(309 + MAXFRACT + 4);
 	}
+	else if (term == 's') {
+#if defined(STACK_MEMORY_FOR_WIDE_STRING_FORMAT)
+		if ((flags & __FLAG_LONGINT) == __FLAG_LONGINT)
+			return static_cast<size_t>(STACK_MEMORY_SIZE);
+		else
+#endif
+			return static_cast<size_t>(1);
+	}
 	else
 		return static_cast<size_t>(32);
-#else //todo put definiteness to linux sys
+#elif defined(__GNUC__) || defined(__GNUG__)
 	if (term == 'F' || term == 'f'
 		|| term == 'a' || term == 'A'
 		|| term == 'e' || term == 'E'
 		|| term == 'g' || term == 'G') {
 		if ((flags & __FLAG_LONGDBL) == __FLAG_LONGDBL)
-		    return static_cast<size_t>(4933 + MAXFRACT + 4);
-		else 
+			return static_cast<size_t>(4933 + MAXFRACT + 4);
+		else
 			return static_cast<size_t>(309 + MAXFRACT + 4);
+	}
+	else if (term == 's') {
+#if defined(STACK_MEMORY_FOR_WIDE_STRING_FORMAT)
+		if ((flags & __FLAG_LONGINT) == __FLAG_LONGINT)
+			return static_cast<size_t>(STACK_MEMORY_SIZE);
+		else
+#endif
+			return static_cast<size_t>(1);
 	}
 	else
 		return static_cast<size_t>(32);
@@ -1223,12 +1244,14 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 	char buf[BUF];	// space for %c, %[diouxX], %[eEfgG]
 	//int stridx[8];
 	const char* cp = nullptr;
+#ifndef STACK_MEMORY_FOR_WIDE_STRING_FORMAT
 	char* convbuf = nullptr; // wide to multibyte conversion result
-	int dprec = 0;	// a copy of prec if [diouxX], 0 otherwise
+#endif
+	//int dprec = 0;	// a copy of prec if [diouxX], 0 otherwise
 	int	fpprec = 0;	    // `extra' floating precision in [eEfgG]
 	int	realsz = 0;	    // field size expanded by dprec
 	size_t size = 0;
-	int fieldsz = 0;	// field size expanded by sign, etc
+	//int fieldsz = 0;	// field size expanded by sign, etc
 	//char ox[2] = { 0, 0 };	// space for 0x; ox[1] is either x, X, or \0
 	//bool isPre = false;  // prefix indicator for 0, 0x
 	//std::to_chars_result ret;
@@ -1301,7 +1324,7 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 		}
 
 		//P = 0;
-		sign = '\0';
+		//sign = '\0';
 	}
 
 	if constexpr (SI.terminal_ == 's') {
@@ -1318,11 +1341,29 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 					static const mbstate_t initial{};
 					std::mbstate_t mbs{ initial };
 
+#if defined(STACK_MEMORY_FOR_WIDE_STRING_FORMAT)
 					/* Allocate space for the maximum number of bytes we could output. */
 					if (P < 0)
-						size = wcslen(wcp) * /*4*/ MB_CUR_MAX/*MB_LEN_MAX*/;
+						size = static_cast<size_t>(STACK_MEMORY_SIZE);
+					else
+						size = P > static_cast<size_t>(STACK_MEMORY_SIZE) 
+						    ? static_cast<size_t>(STACK_MEMORY_SIZE) : P;
+
+					/* Fill the output buffer. */
+					if ((size = std::wcsrtombs(buf, &wcp, size, &mbs))
+						== static_cast<size_t>(-1)) {
+						outbuf.write("(ER)", sizeof("(ER)") - 1);
+						return;
+					}
+					buf[size] = '\0';
+					cp = buf;
+#else
+					/* Allocate space for the maximum number of bytes we could output. */
+					if (P < 0)
+						size = wcslen(wcp) * MB_CUR_MAX;
 					else
 						size = P;
+
 					//std::cout << size << std::endl;
 					convbuf = (char*)malloc(size + 1);
 
@@ -1340,6 +1381,7 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 					}
 					convbuf[size] = '\0';
 					cp = convbuf;
+#endif
 				}
 			}
 			else {
@@ -1359,6 +1401,7 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 				return;
 			}
 		}
+
 		// get string size(<=P) excluding the tail '\0'
 		if (P >= 0) {
 			// can't use strlen; can only look for the
@@ -1385,7 +1428,7 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 			size = strlen(cp);
 
 		//P = 0;
-		sign = '\0';
+		//sign = '\0';
 	}
 
 	if constexpr (SI.terminal_ == 'i' || SI.terminal_ == 'd' ||
@@ -1396,7 +1439,7 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 
 		if constexpr (SI.terminal_ == 'p' && std::is_convertible_v<T, const void*>) {
 			ujval = static_cast<uintmax_t>(reinterpret_cast<uintptr_t>(arg));
-			sign = '\0';
+			//sign = '\0';
 			P = 0;
 			// NOTE: GNU printf prints "(nil)" for nullptr pointers, 
 			// we print 0000000000000000
@@ -1420,7 +1463,7 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 			}
 			else if constexpr (SI.terminal_ == 'u') {
 				ujval = UARG<SI.flags_>(/*std::forward<T>*/(arg));
-				sign = '\0';
+				//sign = '\0';
 			}
 
 #if (defined(WIN32) || defined(_WIN32) || defined(__WIN32__))
@@ -1444,7 +1487,7 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 		else if constexpr (SI.terminal_ == 'o' &&
 			std::is_integral_v<std::remove_reference_t<T>>) {
 			ujval = UARG<SI.flags_>(/*std::forward<T>*/(arg));
-			sign = '\0';
+			//sign = '\0';
 
 			std::tie(cp, size) = formatOct(buf, ujval);
 
@@ -1460,7 +1503,7 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 		else if constexpr ((SI.terminal_ == 'x' || SI.terminal_ == 'X') &&
 			std::is_integral_v<std::remove_reference_t<T>>) {
 			ujval = UARG<SI.flags_>(/*std::forward<T>*/(arg));
-			sign = '\0';
+			//sign = '\0';
 
 			std::tie(cp, size) = formatHex<SI.terminal_>(buf, ujval);
 
@@ -1483,7 +1526,7 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 		 * ``... diouXx conversions ... if a precision is
 		 * specified (P >= 0), the 0 flag will be ignored.''
 		 *	-- ANSI X3J11 */
-		if ((dprec = P) >= 0) /*(P >= 0)*/
+		if /*((dprec = P) >= 0)*/ (P >= 0)
 			flags &= ~__FLAG_ZEROPAD;
 	}
 
@@ -1532,8 +1575,14 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 				}
 				if (P == -1)
 					P = DEFPREC;		// ANSI default precision
+
+				if (arg < 0.0) {
+					arg = std::abs(arg);
+					sign = '-';
+				}
+
 				std::tie(cp, size) = 
-					formatDuble<SI.terminal_, SI.flags_>(buf, arg, P, sign);
+					formatDuble<SI.terminal_, SI.flags_>(buf, arg, P/*, sign*/);
 				break;
 
 			case FP_INFINITE:
@@ -1544,8 +1593,8 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 				else
 					std::memcpy(buf, "inf", 3);
 
-				if (arg < 0.0) // is negative ?
-					sign = '-';           // need a sign
+				if (arg < 0.0)  // is negative ?
+					sign = '-'; // need a sign
 
 				cp = buf;
 				size = 3;  // length will be three, excluding tail '\0'
@@ -1597,8 +1646,8 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 			SI.terminal_ == 'x' || SI.terminal_ == 'X' ||
 			SI.terminal_ == 'o' || SI.terminal_ == 'u') {
 
-			fieldsz = static_cast<int>(size);
-			realsz = (dprec/*P*/ > fieldsz) ? dprec/*P*/ : fieldsz;
+			//fieldsz = static_cast<int>(size);
+			realsz = (P > static_cast<int>(size)) ? P : static_cast<int>(size);
 		}
 		else if constexpr (SI.terminal_ == 'F' || SI.terminal_ == 'f'
 			|| SI.terminal_ == 'a' || SI.terminal_ == 'A'
@@ -1607,10 +1656,17 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 			realsz = static_cast<int>(size + fpprec); // normally fpprec is 0
 		}
 		else
-			realsz = size;
+			realsz = static_cast<int>(size);
 
-		if (sign)
-			realsz++;
+
+		if constexpr (SI.terminal_ == 'F' || SI.terminal_ == 'f'
+			|| SI.terminal_ == 'a' || SI.terminal_ == 'A'
+			|| SI.terminal_ == 'e' || SI.terminal_ == 'E'
+			|| SI.terminal_ == 'g' || SI.terminal_ == 'G'
+			|| SI.terminal_ == 'i' || SI.terminal_ == 'd') {
+			if (sign)
+				realsz++;
+		}
 		//if (ox[1])
 		//	realsz += 2;
 
@@ -1630,8 +1686,14 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 		///////////////////////////// Right Adjust ////////////////////////////
 
 		/* prefix */
-		if (sign)
-			outbuf.write(sign);
+		if constexpr (SI.terminal_ == 'F' || SI.terminal_ == 'f'
+			|| SI.terminal_ == 'a' || SI.terminal_ == 'A'
+			|| SI.terminal_ == 'e' || SI.terminal_ == 'E'
+			|| SI.terminal_ == 'g' || SI.terminal_ == 'G'
+			|| SI.terminal_ == 'i' || SI.terminal_ == 'd') {
+			if (sign)
+				outbuf.write(sign);
+		}
 		//if constexpr (SI.terminal_ == 'x' && (SI.flags_ & __FLAG_ALT) == __FLAG_ALT) {
 		//	if (*cp != '0') outbuf.write("0x", 2);
 		//}
@@ -1659,7 +1721,7 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 		if constexpr (SI.terminal_ == 'i' || SI.terminal_ == 'd' ||
 			SI.terminal_ == 'x' || SI.terminal_ == 'X' ||
 			SI.terminal_ == 'o' || SI.terminal_ == 'u') {
-			outbuf.writePaddings<&ZEROS>(dprec - fieldsz);
+			outbuf.writePaddings<&ZEROS>(/*dprec*/P - /*fieldsz*/size);
 		}
 
 		// the string or number proper
@@ -1679,10 +1741,12 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 			outbuf.writePaddings<&BLANKS>(W - realsz);
 		////////////////////////////// Left Adjust ////////////////////////////
 
+#ifndef STACK_MEMORY_FOR_WIDE_STRING_FORMAT
 		if constexpr (SI.terminal_ == 's' &&
 			(SI.flags_ & __FLAG_LONGINT) == __FLAG_LONGINT)
 			/*delete*/
 			free(convbuf);
+#endif 
 	}
 }
 
