@@ -20,7 +20,7 @@
 
 #define	PADSIZE	    16
 #define	DEFPREC		6
-#define MAXFRACT    60
+//#define MAXFRACT    60
 
 #if defined(STACK_MEMORY_FOR_WIDE_STRING_FORMAT)
 #define STACK_MEMORY_SIZE  1000
@@ -1188,34 +1188,54 @@ inline uintmax_t UARG(T/*&&*/ arg) {
 }
 
 template<flags_t flags, terminal_t term>
+inline constexpr size_t getMaxFractSize() {
+#if (defined(_MSC_VER))
+	if (term == 'F' || term == 'f'
+		|| term == 'a' || term == 'A'
+		|| term == 'g' || term == 'G') {
+		return static_cast<size_t>(60);
+	}
+	else if (term == 'e' || term == 'E')
+		return static_cast<size_t>(309);
+#elif defined(__GNUC__) || defined(__GNUG__)
+	if (term == 'F' || term == 'f'
+		|| term == 'a' || term == 'A'
+		|| term == 'g' || term == 'G')
+		return static_cast<size_t>(60);
+	if (term == 'e' || term == 'E') {
+		if ((flags & __FLAG_LONGDBL) == __FLAG_LONGDBL)
+			return static_cast<size_t>(4933);
+		else
+			return static_cast<size_t>(309);
+	}
+#endif
+}
+
+
+template<flags_t flags, terminal_t term, size_t MAXFRACT>
 inline constexpr size_t getBufferSize() {
 #if (defined(_MSC_VER))
 	if (term == 'F' || term == 'f'
 		|| term == 'a' || term == 'A'
-		|| term == 'e' || term == 'E'
 		|| term == 'g' || term == 'G') {
 		return static_cast<size_t>(309 + MAXFRACT + 4);
 	}
-	else if (term == 's') {
-#if defined(STACK_MEMORY_FOR_WIDE_STRING_FORMAT)
-		if ((flags & __FLAG_LONGINT) == __FLAG_LONGINT)
-			return static_cast<size_t>(STACK_MEMORY_SIZE);
-		else
-#endif
-			return static_cast<size_t>(1);
+	else if (term == 'e' || term == 'E') {
+		return static_cast<size_t>(MAXFRACT + 16);
 	}
-	else
-		return static_cast<size_t>(32);
 #elif defined(__GNUC__) || defined(__GNUG__)
 	if (term == 'F' || term == 'f'
 		|| term == 'a' || term == 'A'
-		|| term == 'e' || term == 'E'
 		|| term == 'g' || term == 'G') {
 		if ((flags & __FLAG_LONGDBL) == __FLAG_LONGDBL)
 			return static_cast<size_t>(4933 + MAXFRACT + 4);
 		else
 			return static_cast<size_t>(309 + MAXFRACT + 4);
 	}
+	else if (term == 'e' || term == 'E') {
+		return static_cast<size_t>(MAXFRACT + 16);
+	}
+#endif
 	else if (term == 's') {
 #if defined(STACK_MEMORY_FOR_WIDE_STRING_FORMAT)
 		if ((flags & __FLAG_LONGINT) == __FLAG_LONGINT)
@@ -1226,8 +1246,7 @@ inline constexpr size_t getBufferSize() {
 	}
 	else
 		return static_cast<size_t>(32);
-#endif
-}
+	}
 
 /* template converter_impl declaration */
 template<const char* const* fmt, SpecInfo... SIs, typename... Ts>
@@ -1237,7 +1256,8 @@ template<const char* const* fmt, SpecInfo SI, typename T>
 inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 	precision_t P = -1) {
 
-	constexpr size_t BUF = getBufferSize<SI.flags_, SI.terminal_>();
+	constexpr size_t MAXFRACT = getMaxFractSize<SI.flags_, SI.terminal_>();
+	constexpr size_t BUF = getBufferSize<SI.flags_, SI.terminal_, MAXFRACT>();
 
 	//std::cout << BUF << std::endl; // for test
 
