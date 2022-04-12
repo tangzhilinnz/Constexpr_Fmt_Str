@@ -18,13 +18,44 @@
 
 #include "Portability.h"
 
-#define	PADSIZE	    16
-#define	DEFPREC		6
-//#define MAXFRACT    60
+//#undef _MSC_VER
+//#define __GNUC__
+
+#define	PADSIZE	     16
+#define	DEFPREC		 6
+#define MAXFRACT_F   60
+#define MAXFRACT_LF  60
+#define MAXFRACT_E   309
+
+#if (defined(_MSC_VER))
+    #define MAXFRACT_LE  309
+#elif defined(__GNUC__) || defined(__GNUG__)
+    #define MAXFRACT_LE  4933
+#endif
 
 #if defined(STACK_MEMORY_FOR_WIDE_STRING_FORMAT)
-#define STACK_MEMORY_SIZE  1000
+    #define STACK_MEMORY_SIZE  1000
 #endif
+
+#define BUFSIZE_INT  32 // [ll l h hh j t z]iduoxX p c lc
+#define BUFSIZE_S    1  // s
+
+#if defined(STACK_MEMORY_FOR_WIDE_STRING_FORMAT)
+    #define BUFSIZE_lS   STACK_MEMORY_SIZE // ls
+#else
+    #define BUFSIZE_lS   1 // ls
+#endif
+
+#define BUFSIZE_F    309 + MAXFRACT_F + 4 // f F a A g G
+
+#if (defined(_MSC_VER))
+    #define BUFSIZE_LF  309 + MAXFRACT_LF + 4 // Lf LF La LA Lg LG
+#elif defined(__GNUC__) || defined(__GNUG__)
+    #define BUFSIZE_LF  4933 + MAXFRACT_LF + 4
+#endif 
+
+#define BUFSIZE_E    MAXFRACT_E + 16 // e E
+#define BUFSIZE_LE    MAXFRACT_LE + 16 // Le LE
 
 /*
  * Flags used during conversion.
@@ -428,33 +459,21 @@ std::tuple<const char*, size_t> formatHex(char(&buf)[N], uintmax_t d) {
 
 
 template <terminal_t TM, flags_t FGS, size_t N, typename T>
-inline
-std::tuple<const char*, size_t> formatDuble(char(&buf)[N], T arg, int prec/*, char& sign*/) {
+//inline
+std::tuple<const char*, size_t> formatDuble(char(&buf)[N], T arg, int prec) {
 
 	std::to_chars_result ret;
 	size_t size = 0;
 
 	if constexpr (TM == 'f' || TM == 'F') {
-		//if (arg < 0.0) {
-		//	arg = std::abs(arg);
-		//	sign = '-';
-		//}
 
 		if constexpr ((FGS & __FLAG_LONGDBL) == __FLAG_LONGDBL) {
 			long double ldbl = static_cast<long double>(arg);
-			//if (ldbl < 0.0) {
-			//	ldbl = std::fabsl(ldbl);
-			//	sign = '-';
-			//}
-			ret = std::to_chars(buf, buf + N, ldbl, std::chars_format::fixed, 
+			ret = std::to_chars(buf, buf + N, ldbl, std::chars_format::fixed,
 				                prec);
 		}
 		else {
 			double dbl = static_cast<double>(arg);
-			//if (dbl < 0.0) {
-			//	dbl = std::fabs(dbl);
-			//	sign = '-';
-			//}
 			ret = std::to_chars(buf, buf + N, dbl, std::chars_format::fixed, 
 				                prec);
 		}
@@ -465,6 +484,32 @@ std::tuple<const char*, size_t> formatDuble(char(&buf)[N], T arg, int prec/*, ch
 			//char* it = (char*)std::memchr(buf, '.', size);
 			if (/*it == nullptr*/0 == prec) {
 				*ret.ptr = '.';
+				size++;
+			}
+		}
+		return std::make_tuple(buf, size);
+	}
+	else if constexpr (TM == 'e' || TM == 'E') {
+
+		if constexpr ((FGS & __FLAG_LONGDBL) == __FLAG_LONGDBL) {
+			long double ldbl = static_cast<long double>(arg);
+			ret = std::to_chars(buf, buf + N, ldbl, 
+				std::chars_format::scientific, prec);
+		}
+		else {
+			double dbl = static_cast<double>(arg);
+			ret = std::to_chars(buf, buf + N, dbl, 
+				std::chars_format::scientific, prec);
+		}
+
+		size = static_cast<size_t>(ret.ptr - buf);
+
+		if constexpr ((FGS & __FLAG_ALT) == __FLAG_ALT) {
+			if (0 == prec) {
+				char* p = ret.ptr - 2; // x.xxxxe+xx
+				while (*(--p) != 'e');
+				std::memmove(p + 1, p, static_cast<size_t>(ret.ptr - p));
+				*p = '.';
 				size++;
 			}
 		}
@@ -1188,65 +1233,48 @@ inline uintmax_t UARG(T/*&&*/ arg) {
 }
 
 template<flags_t flags, terminal_t term>
-inline constexpr size_t getMaxFractSize() {
-#if (defined(_MSC_VER))
+inline constexpr int maxFractSize() {
 	if (term == 'F' || term == 'f'
 		|| term == 'a' || term == 'A'
 		|| term == 'g' || term == 'G') {
-		return static_cast<size_t>(60);
+		if ((flags & __FLAG_LONGDBL) == __FLAG_LONGDBL) // L*
+			return MAXFRACT_LF;
+		else // f F a A g G
+			return MAXFRACT_F;
 	}
-	else if (term == 'e' || term == 'E')
-		return static_cast<size_t>(309);
-#elif defined(__GNUC__) || defined(__GNUG__)
-	if (term == 'F' || term == 'f'
-		|| term == 'a' || term == 'A'
-		|| term == 'g' || term == 'G')
-		return static_cast<size_t>(60);
-	if (term == 'e' || term == 'E') {
+	else if (term == 'e' || term == 'E') { // Le LE
 		if ((flags & __FLAG_LONGDBL) == __FLAG_LONGDBL)
-			return static_cast<size_t>(4933);
-		else
-			return static_cast<size_t>(309);
+			return MAXFRACT_LE;
+		else // e E
+			return MAXFRACT_E;
 	}
-#endif
 }
 
-
-template<flags_t flags, terminal_t term, size_t MAXFRACT>
-inline constexpr size_t getBufferSize() {
-#if (defined(_MSC_VER))
+template<flags_t flags, terminal_t term>
+inline constexpr size_t fitBufferSize() {
 	if (term == 'F' || term == 'f'
 		|| term == 'a' || term == 'A'
 		|| term == 'g' || term == 'G') {
-		return static_cast<size_t>(309 + MAXFRACT + 4);
+		if ((flags & __FLAG_LONGDBL) == __FLAG_LONGDBL) // L*
+			return static_cast<size_t>(BUFSIZE_LF);
+		else // f F a A g G
+			return static_cast<size_t>(BUFSIZE_F);
 	}
-	else if (term == 'e' || term == 'E') {
-		return static_cast<size_t>(MAXFRACT + 16);
-	}
-#elif defined(__GNUC__) || defined(__GNUG__)
-	if (term == 'F' || term == 'f'
-		|| term == 'a' || term == 'A'
-		|| term == 'g' || term == 'G') {
+	else if (term == 'e' || term == 'E') { // Le LE
 		if ((flags & __FLAG_LONGDBL) == __FLAG_LONGDBL)
-			return static_cast<size_t>(4933 + MAXFRACT + 4);
-		else
-			return static_cast<size_t>(309 + MAXFRACT + 4);
+			return static_cast<size_t>(BUFSIZE_LE);
+		else // e E
+			return static_cast<size_t>(BUFSIZE_E);
 	}
-	else if (term == 'e' || term == 'E') {
-		return static_cast<size_t>(MAXFRACT + 16);
-	}
-#endif
 	else if (term == 's') {
-#if defined(STACK_MEMORY_FOR_WIDE_STRING_FORMAT)
-		if ((flags & __FLAG_LONGINT) == __FLAG_LONGINT)
-			return static_cast<size_t>(STACK_MEMORY_SIZE);
-		else
-#endif
-			return static_cast<size_t>(1);
+		if ((flags & __FLAG_LONGINT) == __FLAG_LONGINT) //ls
+			return static_cast<size_t>(BUFSIZE_lS);
+		else // s
+			return static_cast<size_t>(BUFSIZE_S);
 	}
-	else
-		return static_cast<size_t>(32);
-	}
+	else // [ll l h hh j t z]iduoxX p c lc
+		return static_cast<size_t>(BUFSIZE_INT);
+}
 
 /* template converter_impl declaration */
 template<const char* const* fmt, SpecInfo... SIs, typename... Ts>
@@ -1256,21 +1284,24 @@ template<const char* const* fmt, SpecInfo SI, typename T>
 inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 	precision_t P = -1) {
 
-	constexpr size_t MAXFRACT = getMaxFractSize<SI.flags_, SI.terminal_>();
-	constexpr size_t BUF = getBufferSize<SI.flags_, SI.terminal_, MAXFRACT>();
+	constexpr size_t BUF = fitBufferSize<SI.flags_, SI.terminal_>();
 
 	//std::cout << BUF << std::endl; // for test
 
-	char buf[BUF];	// space for %c, %[diouxX], %[eEfgG]
-	//int stridx[8];
+	char buf[BUF];	// space for %ls, %c, %lc, %[pdiouxX], %[aAeEfgG]
 	const char* cp = nullptr;
+	const char* pExpstr = nullptr;	// char pointer to exponent string: e+ZZ
+
 #ifndef STACK_MEMORY_FOR_WIDE_STRING_FORMAT
 	char* convbuf = nullptr; // wide to multibyte conversion result
 #endif
+
 	//int dprec = 0;	// a copy of prec if [diouxX], 0 otherwise
 	int	fpprec = 0;	    // `extra' floating precision in [eEfgG]
 	int	realsz = 0;	    // field size expanded by dprec
 	size_t size = 0;
+	size_t expsize = 0; // character count for expstr
+
 	//int fieldsz = 0;	// field size expanded by sign, etc
 	//char ox[2] = { 0, 0 };	// space for 0x; ox[1] is either x, X, or \0
 	//bool isPre = false;  // prefix indicator for 0, 0x
@@ -1583,13 +1614,16 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 
 		if constexpr (std::is_floating_point_v<std::remove_reference_t<T>>) {
 
+			constexpr int MAXFRACT = maxFractSize<SI.flags_, SI.terminal_>();
+
 			switch (std::fpclassify(arg)) {
 			case FP_NORMAL:
 			case FP_SUBNORMAL:
 			case FP_ZERO:
+
 				if (P > MAXFRACT) { // do realistic precision
-					if constexpr ((SI.terminal_ != 'g' && SI.terminal_ != 'G') ||
-						(SI.flags_ & __FLAG_ALT) == __FLAG_ALT)
+					if constexpr ((SI.terminal_ != 'g' && SI.terminal_ != 'G')
+						|| (SI.flags_ & __FLAG_ALT) == __FLAG_ALT)
 						fpprec = P - MAXFRACT;
 					P = MAXFRACT;	// they asked for it!
 				}
@@ -1602,7 +1636,7 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 				}
 
 				std::tie(cp, size) = 
-					formatDuble<SI.terminal_, SI.flags_>(buf, arg, P/*, sign*/);
+					formatDuble<SI.terminal_, SI.flags_>(buf, arg, P);
 				break;
 
 			case FP_INFINITE:
@@ -1745,6 +1779,15 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 		}
 
 		// the string or number proper
+		if constexpr (SI.terminal_ == 'e' || SI.terminal_ == 'E') {
+			if (fpprec > 0) {
+				pExpstr = cp + size - 2; // x.xxxxe+xx
+				while (*(--pExpstr) != 'e');
+				expsize = static_cast<size_t>(cp + size - pExpstr);
+				size = static_cast<size_t>(pExpstr - cp);
+			}
+		} 
+		    
 		outbuf.write(cp, size);
 
 		// trailing floating point zeroes
@@ -1753,6 +1796,12 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 			|| SI.terminal_ == 'e' || SI.terminal_ == 'E'
 			|| SI.terminal_ == 'g' || SI.terminal_ == 'G') {
 			outbuf.writePaddings<&ZEROS>(fpprec);
+		}
+
+		if constexpr (SI.terminal_ == 'e' || SI.terminal_ == 'E') {
+			if (fpprec > 0) {
+				outbuf.write(pExpstr, expsize);
+			}
 		}
 
 		////////////////////////////// Left Adjust ////////////////////////////
