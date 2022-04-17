@@ -33,6 +33,8 @@
     #define MAXFRACT_LE  4933
 #endif
 
+#define MAXFRACT_A   20  // a A La LA
+
 #if defined(STACK_MEMORY_FOR_WIDE_STRING_FORMAT)
     #define STACK_MEMORY_SIZE  1000
 #endif
@@ -56,6 +58,8 @@
 
 #define BUFSIZE_E    MAXFRACT_E + 16 // e E
 #define BUFSIZE_LE    MAXFRACT_LE + 16 // Le LE
+
+#define BUFSIZE_A    MAXFRACT_A + 16 // a A La LA
 
 /*
  * Flags used during conversion.
@@ -487,7 +491,7 @@ std::tuple<const char*, size_t> formatDuble(char(&buf)[N], T arg, int prec) {
 				size++;
 			}
 		}
-		return std::make_tuple(buf, size);
+		//return std::make_tuple(buf, size);
 	}
 	else if constexpr (TM == 'e' || TM == 'E') {
 
@@ -513,11 +517,40 @@ std::tuple<const char*, size_t> formatDuble(char(&buf)[N], T arg, int prec) {
 				size++;
 			}
 		}
-		return std::make_tuple(buf, size);
+		//return std::make_tuple(buf, size);
+	}
+	else if constexpr (TM == 'a' || TM == 'A') {
+		buf[0] = '0';
+		buf[1] = (TM == 'a') ? 'x' : 'X';
+		size += 2;
+
+		if constexpr ((FGS & __FLAG_LONGDBL) == __FLAG_LONGDBL) {
+			long double ldbl = static_cast<long double>(arg);
+			ret = std::to_chars(buf + 2, buf + N, ldbl,
+				std::chars_format::hex, prec);
+		}
+		else {
+			double dbl = static_cast<double>(arg);
+			ret = std::to_chars(buf + 2, buf + N, dbl,
+				std::chars_format::hex, prec);
+		}
+
+		size = static_cast<size_t>(ret.ptr - buf);
+
+		if constexpr ((FGS & __FLAG_ALT) == __FLAG_ALT) {
+			if (buf[3] != '.') { // 0x1.xxxxxxxp+xxx
+				std::memmove(buf + 4, buf + 3, static_cast<size_t>(ret.ptr - (buf + 3)));
+				buf[3] = '.';
+				size++;
+			}
+		}
+		//return std::make_tuple(buf, size);
 	}
 	else { // invalid termnial specifier
 		return std::make_tuple(nullptr, 0);
 	}
+
+	return std::make_tuple(buf, size);
 }
 
 
@@ -1235,7 +1268,6 @@ inline uintmax_t UARG(T/*&&*/ arg) {
 template<flags_t flags, terminal_t term>
 inline constexpr int maxFractSize() {
 	if (term == 'F' || term == 'f'
-		|| term == 'a' || term == 'A'
 		|| term == 'g' || term == 'G') {
 		if ((flags & __FLAG_LONGDBL) == __FLAG_LONGDBL) // L*
 			return MAXFRACT_LF;
@@ -1248,12 +1280,13 @@ inline constexpr int maxFractSize() {
 		else // e E
 			return MAXFRACT_E;
 	}
+	else if (term == 'a' || term == 'A') // a A La LA
+		return MAXFRACT_A;
 }
 
 template<flags_t flags, terminal_t term>
 inline constexpr size_t fitBufferSize() {
 	if (term == 'F' || term == 'f'
-		|| term == 'a' || term == 'A'
 		|| term == 'g' || term == 'G') {
 		if ((flags & __FLAG_LONGDBL) == __FLAG_LONGDBL) // L*
 			return static_cast<size_t>(BUFSIZE_LF);
@@ -1265,6 +1298,9 @@ inline constexpr size_t fitBufferSize() {
 			return static_cast<size_t>(BUFSIZE_LE);
 		else // e E
 			return static_cast<size_t>(BUFSIZE_E);
+	}
+	else if (term == 'a' || term == 'A') { // e E Le LE
+		return static_cast<size_t>(BUFSIZE_A);
 	}
 	else if (term == 's') {
 		if ((flags & __FLAG_LONGINT) == __FLAG_LONGINT) //ls
@@ -1627,8 +1663,8 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 						fpprec = P - MAXFRACT;
 					P = MAXFRACT;	// they asked for it!
 				}
-				if (P == -1)
-					P = DEFPREC;		// ANSI default precision
+				//if (P == -1)
+				//	P = DEFPREC;		// ANSI default precision
 
 				if (arg < 0.0) {
 					arg = std::abs(arg);
@@ -1779,10 +1815,14 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 		}
 
 		// the string or number proper
-		if constexpr (SI.terminal_ == 'e' || SI.terminal_ == 'E') {
+		if constexpr (SI.terminal_ == 'e' || SI.terminal_ == 'E'
+			|| SI.terminal_ == 'a' || SI.terminal_ == 'A') {
 			if (fpprec > 0) {
-				pExpstr = cp + size - 2; // x.xxxxe+xx
-				while (*(--pExpstr) != 'e');
+				char exp = (SI.terminal_ == 'e' || SI.terminal_ == 'E') ? 
+					'e' : 'p';
+
+				pExpstr = cp + size - 2; // x.xxxxe+xx  1.xxxxp+xxx
+				while (*(--pExpstr) != /*'e'*/exp);
 				expsize = static_cast<size_t>(cp + size - pExpstr);
 				size = static_cast<size_t>(pExpstr - cp);
 			}
@@ -1798,7 +1838,8 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 			outbuf.writePaddings<&ZEROS>(fpprec);
 		}
 
-		if constexpr (SI.terminal_ == 'e' || SI.terminal_ == 'E') {
+		if constexpr (SI.terminal_ == 'e' || SI.terminal_ == 'E'
+			|| SI.terminal_ == 'a' || SI.terminal_ == 'A') {
 			if (fpprec > 0) {
 				outbuf.write(pExpstr, expsize);
 			}
