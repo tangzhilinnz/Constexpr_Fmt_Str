@@ -2478,8 +2478,8 @@ int main() {
 
 		//result = snprintf(buf, 2000, "%A", 23.8);
 
-        /*result = snprintf*/CFMT_STR(result, buf, 2000, "%#a", /*1234567.0*//*123456.0*//*0. / 0*//*std::numeric_limits<long double>::max()*//*1e+200*//*(double)i*//*-2.365*/(double)i);
-        //ret = std::to_chars(buf, buf + 2000, /*1234567.0*//*123456.0*//*std::numeric_limits<double>::max()*//*(double)1 / 3*//*(double)i*/, std::chars_format::general, 4);
+        result = snprintf/*CFMT_STR*/(/*result,*/ buf, 2000, "%#.1000g", /*1234567.0*//*123456.0*//*0. / 0*//*std::numeric_limits<double>::max()*/1. /3/*1e+200*//*(double)i*//*-2.365*//*(double)i*/);
+        //ret = std::to_chars(buf, buf + 2000, /*1234567.0*//*123456.0*/std::numeric_limits<double>::max()/*(double)1 / 3*//*(double)i*/, std::chars_format::general, 400);
 
        ///*result = snprintf*/  CFMT_STR(result, buf, 5000, "%.2000e", (double)std::numeric_limits<double>::max());
 

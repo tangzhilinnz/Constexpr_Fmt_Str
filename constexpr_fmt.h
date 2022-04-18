@@ -520,27 +520,27 @@ std::tuple<const char*, size_t> formatDuble(char(&buf)[N], T arg, int prec) {
 		//return std::make_tuple(buf, size);
 	}
 	else if constexpr (TM == 'a' || TM == 'A') {
-		//buf[0] = '0';
-		//buf[1] = (TM == 'a') ? 'x' : 'X';
-		//size += 2;
+		buf[0] = '0';
+		buf[1] = (TM == 'a') ? 'x' : 'X';
+		size += 2;
 		if constexpr ((FGS & __FLAG_LONGDBL) == __FLAG_LONGDBL) {
 			long double ldbl = static_cast<long double>(arg);
-			ret = std::to_chars(buf /*+ 2*/, buf + N, ldbl,
+			ret = std::to_chars(buf + 2, buf + N, ldbl,
 				std::chars_format::hex, prec);
 		}
 		else {
 			double dbl = static_cast<double>(arg);
-			ret = std::to_chars(buf /*+ 2*/, buf + N, dbl,
+			ret = std::to_chars(buf + 2, buf + N, dbl,
 				std::chars_format::hex, prec);
 		}
 
 		size = static_cast<size_t>(ret.ptr - buf);
 
 		if constexpr ((FGS & __FLAG_ALT) == __FLAG_ALT) {
-			if (buf[/*3*/1] != '.') { // 0x1.xxxxxxxp+xxx
-				std::memmove(buf + 2/*4*/, buf + /*3*/1, 
-					static_cast<size_t>(ret.ptr - (buf + /*3*/1)));
-				buf[/*3*/1] = '.';
+			if (buf[3/*1*/] != '.') { // 0x1.xxxxxxxp+xxx
+				std::memmove(buf + /*2*/4, buf + 3/*1*/, 
+					static_cast<size_t>(ret.ptr - (buf + 3/*1*/)));
+				buf[3/*1*/] = '.';
 				size++;
 			}
 		}
