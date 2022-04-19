@@ -1750,7 +1750,7 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 			|| SI.terminal_ == 'g' || SI.terminal_ == 'G') {
 			realsz = static_cast<int>(size + fpprec); // normally fpprec is 0
 		}
-		else
+		else // SI.terminal_: 'c' 's' 'p'
 			realsz = static_cast<int>(size);
 
 

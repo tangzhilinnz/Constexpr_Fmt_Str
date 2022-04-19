@@ -51,14 +51,14 @@ using namespace chrono;
 //constexpr int kNVS1 = countValidSpecInfos("dsdsdsds%k%kds%h.h.hlcdsd.\n");
 //constexpr auto specInfos1 = analyzeFormatString<kNVS1 + 1>("dsdsdsds%k%kds%h.h.hlcdsd.\n");
 
-void print_wide(const std::wstring& wstr) {
-	std::mbstate_t state{};
-	for (wchar_t wc : wstr) {
-		std::string mb(MB_CUR_MAX, '\0');
-		std::size_t ret = std::wcrtomb(&mb[0], wc, &state);
-		std::cout << "multibyte char " << mb << " is " << ret << " bytes\n";
-	}
-}
+//void print_wide(const std::wstring& wstr) {
+//	std::mbstate_t state{};
+//	for (wchar_t wc : wstr) {
+//		std::string mb(MB_CUR_MAX, '\0');
+//		std::size_t ret = std::wcrtomb(&mb[0], wc, &state);
+//		std::cout << "multibyte char " << mb << " is " << ret << " bytes\n";
+//	}
+//}
 
 /** std::tuple_size_v provides access to the number of elements in a tuple as a
  * compile-time constant expression */
@@ -74,6 +74,7 @@ int main() {
 	char buf[5000];
 	size_t size = 0;
 	char* cp = nullptr;
+	int exponent = 0;
 
 	int result = 0;
 	int64_t ran = 0;
@@ -2478,8 +2479,9 @@ int main() {
 
 		//result = snprintf(buf, 2000, "%A", 23.8);
 
-        result = snprintf/*CFMT_STR*/(/*result,*/ buf, 2000, "%#.1000g", /*1234567.0*//*123456.0*//*0. / 0*//*std::numeric_limits<double>::max()*/1. /3/*1e+200*//*(double)i*//*-2.365*//*(double)i*/);
-        //ret = std::to_chars(buf, buf + 2000, /*1234567.0*//*123456.0*/std::numeric_limits<double>::max()/*(double)1 / 3*//*(double)i*/, std::chars_format::general, 400);
+        //result = snprintf/*CFMT_STR*/(/*result,*/ buf, 2000, "%.1000g", /*0.0000256*//*1234567.0*//*123456.0*//*0. / 0*//*std::numeric_limits<double>::max()*/1. /3/*1e+200*//*(double)i*//*-2.365*//*(double)i*/);
+        //ret = std::to_chars(buf, buf + 2000, /*1234567.0*//*123456.0*//*std::numeric_limits<double>::max()*/1. / 3/*(double)i*/, std::chars_format::general, 10000);
+       exponent = static_cast<int>(std::floor(std::log10(/*1. / 3*/ 3434545/*std::numeric_limits<long double>::max()*/)));
 
        ///*result = snprintf*/  CFMT_STR(result, buf, 5000, "%.2000e", (double)std::numeric_limits<double>::max());
 
@@ -2553,6 +2555,7 @@ int main() {
 	std::cout << "ret: " << (ret.ptr - buf) << std::endl;
 	std::cout << "result: " << result << std::endl;
 	std::cout << "ran: " << ran << std::endl;
+	std::cout << "exponent: " << exponent << std::endl;
 
 	std::cout << "cost: "
 		<< double(duration.count()) * microseconds::period::num / microseconds::period::den << "seconds" << std::endl;

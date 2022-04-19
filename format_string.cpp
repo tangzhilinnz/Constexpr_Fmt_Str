@@ -1161,9 +1161,11 @@ fioFormat(const char* fmt, va_list vaList, OUTBUF_ARG* outarg) {
             if (isinf(dbl)) {  // infinite?+
                 // fill in the string
                 if (ch == 'E' || ch == 'G' || ch == 'F')
-                    strcpy(cp, "INF");
+                    /*strcpy(cp, "INF");*/
+                    memcpy(cp, "INF", 3);
                 else
-                    strcpy(cp, "inf");
+                    /*strcpy(cp, "inf");*/
+                    memcpy(cp, "inf", 3);
 
                 if (dbl < 0.0)				 // less than 0.0
                     doSign = true;           // we need a sign
@@ -1174,9 +1176,11 @@ fioFormat(const char* fmt, va_list vaList, OUTBUF_ARG* outarg) {
             else if (/*ISNAN*/isnan(dbl)) { // not a number?
                 // fill in the string
                 if (ch == 'E' || ch == 'G' || ch == 'F')
-                    strcpy(cp, "NAN");
+                    /*strcpy(cp, "NAN");*/
+                    memcpy(cp, "NAN", 3);
                 else
-                    strcpy(cp, "nan");
+                    /*strcpy(cp, "nan");*/
+                    memcpy(cp, "nan", 3);
 
                 size = -3;  // length will be three
                 // macro isnan(x): returns whether x is a NaN (Not-A-Number) value.
