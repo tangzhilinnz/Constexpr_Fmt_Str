@@ -1291,18 +1291,27 @@ inline constexpr int maxFractSize() {
 
 template<flags_t flags, terminal_t term>
 inline constexpr size_t fitBufferSize() {
-	if (term == 'F' || term == 'f'
-		|| term == 'g' || term == 'G') {
-		if ((flags & __FLAG_LONGDBL) == __FLAG_LONGDBL) // L*
+	if (term == 'F' || term == 'f') {
+		if ((flags & __FLAG_LONGDBL) == __FLAG_LONGDBL) // Lf LF
 			return static_cast<size_t>(BUFSIZE_LF);
-		else // f F a A g G
+		else // f F
 			return static_cast<size_t>(BUFSIZE_F);
 	}
-	else if (term == 'e' || term == 'E') { // Le LE
-		if ((flags & __FLAG_LONGDBL) == __FLAG_LONGDBL)
+	else if (term == 'e' || term == 'E') {
+		if ((flags & __FLAG_LONGDBL) == __FLAG_LONGDBL) // Le LE
 			return static_cast<size_t>(BUFSIZE_LE);
 		else // e E
 			return static_cast<size_t>(BUFSIZE_E);
+	}
+	else if (term == 'g' || term == 'G') {
+		if ((flags & __FLAG_LONGDBL) == __FLAG_LONGDBL) {// Lg LG
+			int buf = (BUFSIZE_LF > BUFSIZE_LE) ? BUFSIZE_LF : BUFSIZE_LE;
+			return static_cast<size_t>(buf);
+		}
+		else { // g G
+			int buf = (BUFSIZE_F > BUFSIZE_E) ? BUFSIZE_F : BUFSIZE_E;
+			return static_cast<size_t>(buf);
+		}
 	}
 	else if (term == 'a' || term == 'A') { // e E Le LE
 		return static_cast<size_t>(BUFSIZE_A);
