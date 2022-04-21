@@ -1271,12 +1271,11 @@ inline uintmax_t UARG(T/*&&*/ arg) {
 }
 
 template<flags_t flags, terminal_t term>
-inline constexpr int maxFractSize() {
-	if (term == 'F' || term == 'f'
-		|| term == 'g' || term == 'G') {
-		if ((flags & __FLAG_LONGDBL) == __FLAG_LONGDBL) // L*
+inline constexpr int maxFractSize() { // for f F a A e E
+	if (term == 'F' || term == 'f') {
+		if ((flags & __FLAG_LONGDBL) == __FLAG_LONGDBL) // Lf LF
 			return MAXFRACT_LF;
-		else // f F a A g G
+		else // f F
 			return MAXFRACT_F;
 	}
 	else if (term == 'e' || term == 'E') { // Le LE
@@ -1664,29 +1663,37 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 
 		if constexpr (std::is_floating_point_v<std::remove_reference_t<T>>) {
 
-			constexpr int MAXFRACT = maxFractSize<SI.flags_, SI.terminal_>();
-
 			switch (std::fpclassify(arg)) {
 			case FP_NORMAL:
 			case FP_SUBNORMAL:
 			case FP_ZERO:
-
-				if (P > MAXFRACT) { // do realistic precision
-					if constexpr ((SI.terminal_ != 'g' && SI.terminal_ != 'G')
-						|| (SI.flags_ & __FLAG_ALT) == __FLAG_ALT)
-						fpprec = P - MAXFRACT;
-					P = MAXFRACT;	// they asked for it!
-				}
-				//if (P == -1)
-				//	P = DEFPREC;		// ANSI default precision
 
 				if (arg < 0.0) {
 					arg = std::abs(arg);
 					sign = '-';
 				}
 
-				std::tie(cp, size) = 
-					formatDuble<SI.terminal_, SI.flags_>(buf, arg, P);
+				if constexpr (SI.terminal_ != 'g' && SI.terminal_ != 'G') {
+					constexpr int MAXFRACT = 
+						maxFractSize<SI.flags_, SI.terminal_>();
+					if (P > MAXFRACT) { // do realistic precision
+						/*if constexpr ((SI.terminal_ != 'g' && SI.terminal_ != 'G')
+							|| (SI.flags_ & __FLAG_ALT) == __FLAG_ALT)*/
+						fpprec = P - MAXFRACT;
+						P = MAXFRACT;	// they asked for it!
+					}
+					std::tie(cp, size) =
+						formatDuble<SI.terminal_, SI.flags_>(buf, arg, P);
+				}
+				else { // SI.terminal_ == 'g' || SI.terminal_ == 'G'
+					int exp = static_cast<int>(std::floor(std::log10(arg)));
+				}
+
+				//if (P == -1)
+				//	P = DEFPREC;		// ANSI default precision
+
+				/*std::tie(cp, size) = 
+					formatDuble<SI.terminal_, SI.flags_>(buf, arg, P);*/
 				break;
 
 			case FP_INFINITE:
