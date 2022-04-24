@@ -2385,7 +2385,7 @@ int main() {
 //result = tz_snprintf(/*result,*/ buf, 800, "%+0*.*u", 20, 10, i);
 //result = tz_snprintf(/*result,*/ buf, 800, "%+0*.*u", 20, 10, i);
 
-		result = snprintf/*CFMT_STR*/(/*result,*/ buf, 2000,
+		result = /*tz_*/snprintf/*CFMT_STR*/(/*result,*/ buf, 2000,
 			//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd"
 			//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd"
 			//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd"
@@ -2401,7 +2401,7 @@ int main() {
 			//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld",
 			//"%+030hhd%+030hhd%+030.10hhd%+030.10hhd%+030.10hhd",
 			//"%0*.*u|", -20, 10, i,
-			"%e", /*-99.9999*/ /*sqrt(2.)*//*0./0*/ /*30,*/ 0.0l/*(double)pdata[i]*//*2.365*//*nullptr*//*nullptr*//*&i*/
+			"%g", /*-99.9999*/ /*sqrt(2.)*//*0./0*/ /*30,*/ /*0.0l*//*(double)i*/ (double)pdata[i]/*2.365*//*nullptr*//*nullptr*//*&i*/
 			//"test  %d %x %c %s", /*(double)i,*/ i, i, (char)i, "zhilin tang"
 			//"%#p", "ss"
 			//"%lld",

@@ -520,31 +520,45 @@ std::tuple<const char*, size_t> formatDuble(char(&buf)[N], T arg, int prec) {
 		//return std::make_tuple(buf, size);
 	}
 	else if constexpr (TM == 'a' || TM == 'A') {
-		buf[0] = '0';
-		buf[1] = (TM == 'a') ? 'x' : 'X';
-		size += 2;
+		//buf[0] = '0';
+		//buf[1] = (TM == 'a') ? 'x' : 'X';
+		//size += 2;
 		if constexpr ((FGS & __FLAG_LONGDBL) == __FLAG_LONGDBL) {
 			long double ldbl = static_cast<long double>(arg);
-			ret = std::to_chars(buf + 2, buf + N, ldbl,
+			ret = std::to_chars(buf/* + 2*/, buf + N, ldbl,
 				std::chars_format::hex, prec);
 		}
 		else {
 			double dbl = static_cast<double>(arg);
-			ret = std::to_chars(buf + 2, buf + N, dbl,
+			ret = std::to_chars(buf/* + 2*/, buf + N, dbl,
 				std::chars_format::hex, prec);
 		}
 
 		size = static_cast<size_t>(ret.ptr - buf);
 
 		if constexpr ((FGS & __FLAG_ALT) == __FLAG_ALT) {
-			if (buf[3/*1*/] != '.') { // 0x1.xxxxxxxp+xxx
-				std::memmove(buf + /*2*/4, buf + 3/*1*/, 
-					static_cast<size_t>(ret.ptr - (buf + 3/*1*/)));
-				buf[3/*1*/] = '.';
+			if (buf[/*3*/1] != '.') { // 0x1.xxxxxxxp+xxx
+				std::memmove(buf + 2/*4*/, buf + /*3*/1, 
+					static_cast<size_t>(ret.ptr - (buf + /*3*/1)));
+				buf[/*3*/1] = '.';
 				size++;
 			}
 		}
 		//return std::make_tuple(buf, size);
+	}
+	else if constexpr (TM == 'g' || TM == 'G') {
+		if constexpr ((FGS & __FLAG_LONGDBL) == __FLAG_LONGDBL) {
+			long double ldbl = static_cast<long double>(arg);
+			ret = std::to_chars(buf, buf + N, ldbl, std::chars_format::general,
+				                prec);
+		}
+		else {
+			double dbl = static_cast<double>(arg);
+			ret = std::to_chars(buf, buf + N, dbl, std::chars_format::general,
+				                prec);
+		}
+
+		size = static_cast<size_t>(ret.ptr - buf);
 	}
 	else { // invalid termnial specifier
 		return std::make_tuple(nullptr, 0);
@@ -1663,7 +1677,7 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 
 		if constexpr (std::is_floating_point_v<std::remove_reference_t<T>>) {
 
-			switch (std::fpclassify(arg)) {
+			switch (auto stat = std::fpclassify(arg)) {
 			case FP_NORMAL:
 			case FP_SUBNORMAL:
 			case FP_ZERO:
@@ -1686,7 +1700,70 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 						formatDuble<SI.terminal_, SI.flags_>(buf, arg, P);
 				}
 				else { // SI.terminal_ == 'g' || SI.terminal_ == 'G'
-					int exp = static_cast<int>(std::floor(std::log10(arg)));
+					/** 
+					 * g/G format: floating-point number is converted in style
+					 * f or e(or in style F or E in the case of a G conversion
+					 * specifier), depending on the value convertedand the
+					 * precision. Let P equal the precision if nonzero, 6 if
+					 * the precision is omitted(-1), or 1 if the precision is
+					 * zero. 
+					 * Then, if a conversion with style E would have an exponent
+					 * of X: 
+					 * if P > X >= -4, the conversion is with style f(or F) and
+					 * precision P - (X + 1).
+					 * otherwise, the conversion is with style e(or E) and 
+					 * precision P - 1.
+					 * Finally, unless the # flag is used, any trailing zeros
+					 * are removed from the fractional portion of the result and
+					 * the decimal-point character is removed if there is no 
+					 * fractional portion remaining. */
+					P = (-1 == P) ? 6 : ((0 == P) ? 1 : P);
+					int exp = 0;
+					if (FP_ZERO != stat) 
+					    exp = static_cast<int>(std::floor(std::log10(arg)));
+
+					if constexpr ((SI.flags_ & __FLAG_ALT) == __FLAG_ALT) {
+						if (P > exp && exp >= -4) {
+							P = P - (exp + 1);
+							constexpr int MAXFRACT =
+								maxFractSize<SI.flags_, 'f'>();
+							if (P > MAXFRACT) {
+								fpprec = P - MAXFRACT;
+								P = MAXFRACT;
+							}
+							std::tie(cp, size) = (SI.terminal_ != 'g') 
+								? formatDuble<'f', SI.flags_>(buf, arg, P) 
+								: formatDuble<'F', SI.flags_>(buf, arg, P);
+						}
+						else {
+							--P;
+							constexpr int MAXFRACT =
+								maxFractSize<SI.flags_, 'e'>();
+							if (P > MAXFRACT) {
+								fpprec = P - MAXFRACT;
+								P = MAXFRACT;
+							}
+							std::tie(cp, size) = (SI.terminal_ != 'g')
+								? formatDuble<'e', SI.flags_>(buf, arg, P)
+								: formatDuble<'E', SI.flags_>(buf, arg, P);
+						}
+					}
+					else {
+						if (P > exp && exp >= -4) {
+							P = P - (exp + 1);
+							constexpr int MAXFRACT = 
+								maxFractSize<SI.flags_, 'f'>();
+							if (P > MAXFRACT) P = MAXFRACT;
+						}
+						else {
+							--P;
+							constexpr int MAXFRACT =
+								maxFractSize<SI.flags_, 'e'>();
+							if (P > MAXFRACT) P = MAXFRACT;
+						}
+						std::tie(cp, size) =
+							formatDuble<SI.terminal_, SI.flags_>(buf, arg, P);
+					}
 				}
 
 				//if (P == -1)
