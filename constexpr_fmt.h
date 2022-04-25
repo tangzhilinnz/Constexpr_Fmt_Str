@@ -568,13 +568,11 @@ std::tuple<const char*, size_t> formatDuble(char(&buf)[N], T arg, int prec) {
 		return std::make_tuple(buf, size);
 	else // probably std::errc::value_too_large
 		return std::make_tuple(nullptr, 0);
-	
-	//return std::make_tuple(buf, size);
 }
 
 
-
-// A non-type template - parameter shall have one of the following(optionally cv-qualified) types:
+// A non-type template - parameter shall have one of the following 
+// (optionally cv-qualified) types:
 // integral or enumeration type,
 // pointer to object or pointer to function,
 // lvalue reference to object or lvalue reference to function,
@@ -1364,6 +1362,7 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 	int	realsz = 0;	    // field size expanded by dprec
 	size_t size = 0;
 	size_t expsize = 0; // character count for expstr
+	bool gtoe = false;  // is conversion for g/G with style e/E
 
 	//int fieldsz = 0;	// field size expanded by sign, etc
 	//char ox[2] = { 0, 0 };	// space for 0x; ox[1] is either x, X, or \0
@@ -1646,42 +1645,45 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 
 	if constexpr (SI.terminal_ == 'n') {
 		if constexpr (std::is_convertible_v<T, const void*>) {
-			if constexpr ((SI.flags_ & __FLAG_LONGINT) != 0)
+			if constexpr ((SI.flags_ & __FLAG_LONGINT) == __FLAG_LONGINT)
 				*reinterpret_cast<long int*>(arg) = outbuf.getWrittenNum();
-			else if constexpr ((SI.flags_ & __FLAG_SHORTINT) != 0)
+			else if constexpr (
+				(SI.flags_ & __FLAG_SHORTINT) == __FLAG_SHORTINT)
 				*reinterpret_cast<short int*>(arg) = outbuf.getWrittenNum();
-			else if constexpr ((SI.flags_ & __FLAG_CHARINT) != 0)
+			else if constexpr ((SI.flags_ & __FLAG_CHARINT) == __FLAG_CHARINT)
 				*reinterpret_cast<signed char*>(arg) = outbuf.getWrittenNum();
-			else if constexpr ((SI.flags_ & __FLAG_LLONGINT) != 0)
-				*reinterpret_cast<long long int*>(arg) = outbuf.getWrittenNum();
-			else if constexpr ((SI.flags_ & __FLAG_INTMAXT) != 0)
+			else if constexpr (
+				(SI.flags_ & __FLAG_LLONGINT) == __FLAG_LLONGINT)
+				*reinterpret_cast<long long int*>(arg) = 
+				    outbuf.getWrittenNum();
+			else if constexpr ((SI.flags_ & __FLAG_INTMAXT) == __FLAG_INTMAXT)
 				*reinterpret_cast<intmax_t*>(arg) = outbuf.getWrittenNum();
-			else if constexpr ((SI.flags_ & __FLAG_SIZET) != 0)
-				*reinterpret_cast<std::make_signed_t<size_t>*>(arg) = outbuf.getWrittenNum();
-			else if constexpr ((SI.flags_ & __FLAG_PTRDIFFT) != 0)
+			else if constexpr ((SI.flags_ & __FLAG_SIZET) == __FLAG_SIZET)
+				*reinterpret_cast<std::make_signed_t<size_t>*>(arg) = 
+				    outbuf.getWrittenNum();
+			else if constexpr (
+				(SI.flags_ & __FLAG_PTRDIFFT) == __FLAG_PTRDIFFT)
 				*reinterpret_cast<ptrdiff_t*>(arg) = outbuf.getWrittenNum();
 			else
 				*reinterpret_cast<int*>(arg) = outbuf.getWrittenNum();
 		}
-		else {
+		else
 			outbuf.write("(ER)", sizeof("(ER)") - 1);
-		}
 
 		return;
 	}
 
-	if constexpr (SI.terminal_ == 'F' || SI.terminal_ == 'f'
+	if constexpr (SI.terminal_ == 'f' || SI.terminal_ == 'F'
 		|| SI.terminal_ == 'a' || SI.terminal_ == 'A'
 		|| SI.terminal_ == 'e' || SI.terminal_ == 'E'
 		|| SI.terminal_ == 'g' || SI.terminal_ == 'G') {
 
 		if constexpr (std::is_floating_point_v<std::remove_reference_t<T>>) {
-
-			switch (auto stat = std::fpclassify(arg)) {
+			auto stat = std::fpclassify(arg);
+			switch (/*auto stat = std::fpclassify(arg)*/stat) {
 			case FP_NORMAL:
 			case FP_SUBNORMAL:
 			case FP_ZERO:
-
 				if (arg < 0.0) {
 					arg = std::abs(arg);
 					sign = '-';
@@ -1717,12 +1719,11 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 					 * are removed from the fractional portion of the result and
 					 * the decimal-point character is removed if there is no 
 					 * fractional portion remaining. */
-					P = (-1 == P) ? 6 : ((0 == P) ? 1 : P);
-					int exp = 0;
-					if (FP_ZERO != stat) 
-					    exp = static_cast<int>(std::floor(std::log10(arg)));
-
 					if constexpr ((SI.flags_ & __FLAG_ALT) == __FLAG_ALT) {
+						P = (-1 == P) ? 6 : ((0 == P) ? 1 : P);
+						int exp = 0;
+						if (FP_ZERO != stat)
+							exp = static_cast<int>(std::floor(std::log10(arg)));
 						if (P > exp && exp >= -4) {
 							P = P - (exp + 1);
 							constexpr int MAXFRACT =
@@ -1746,31 +1747,26 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 							std::tie(cp, size) = (SI.terminal_ != 'g')
 								? formatDuble<'e', SI.flags_>(buf, arg, P)
 								: formatDuble<'E', SI.flags_>(buf, arg, P);
+							gtoe = true;
 						}
 					}
 					else {
-						if (P > exp && exp >= -4) {
-							P = P - (exp + 1);
-							constexpr int MAXFRACT = 
-								maxFractSize<SI.flags_, 'f'>();
-							if (P > MAXFRACT) P = MAXFRACT;
-						}
-						else {
-							--P;
-							constexpr int MAXFRACT =
-								maxFractSize<SI.flags_, 'e'>();
-							if (P > MAXFRACT) P = MAXFRACT;
-						}
+						//if (P > exp && exp >= -4) {
+						//	P = P - (exp + 1);
+						//	constexpr int MAXFRACT = 
+						//		maxFractSize<SI.flags_, 'f'>();
+						//	if (P > MAXFRACT) P = MAXFRACT;
+						//}
+						//else {
+						//	--P;
+						//	constexpr int MAXFRACT =
+						//		maxFractSize<SI.flags_, 'e'>();
+						//	if (P > MAXFRACT) P = MAXFRACT;
+						//}
 						std::tie(cp, size) =
 							formatDuble<SI.terminal_, SI.flags_>(buf, arg, P);
 					}
 				}
-
-				//if (P == -1)
-				//	P = DEFPREC;		// ANSI default precision
-
-				/*std::tie(cp, size) = 
-					formatDuble<SI.terminal_, SI.flags_>(buf, arg, P);*/
 				break;
 
 			case FP_INFINITE:
@@ -1816,7 +1812,6 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 	}
 
 	if constexpr (SI.terminal_ != 'n') {
-
 		// All reasonable formats wind up here. At this point, `cp' points to a
 		// string which (if not flags&__FLAG_LADJUST) should be padded out to
 		// `width' places. If flags&__FLAG_ZEROPAD, it should first be prefixed
@@ -1845,7 +1840,6 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 		}
 		else // SI.terminal_: 'c' 's' 'p'
 			realsz = static_cast<int>(size);
-
 
 		if constexpr (SI.terminal_ == 'F' || SI.terminal_ == 'f'
 			|| SI.terminal_ == 'a' || SI.terminal_ == 'A'
@@ -1924,7 +1918,16 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 				expsize = static_cast<size_t>(cp + size - pExpstr);
 				size = static_cast<size_t>(pExpstr - cp);
 			}
-		} 
+		}
+
+		if constexpr (SI.terminal_ == 'g' || SI.terminal_ == 'G') {
+			if (fpprec > 0 && gtoe) {
+				pExpstr = cp + size - 2; // x.xxxxe+xx  1.xxxxp+xxx
+				while (*(--pExpstr) != 'e');
+				expsize = static_cast<size_t>(cp + size - pExpstr);
+				size = static_cast<size_t>(pExpstr - cp);
+			}
+		}
 		    
 		outbuf.write(cp, size);
 
@@ -1937,7 +1940,8 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 		}
 
 		if constexpr (SI.terminal_ == 'e' || SI.terminal_ == 'E'
-			|| SI.terminal_ == 'a' || SI.terminal_ == 'A') {
+			|| SI.terminal_ == 'a' || SI.terminal_ == 'A'
+			|| SI.terminal_ == 'g' || SI.terminal_ == 'G') {
 			if (fpprec > 0) {
 				outbuf.write(pExpstr, expsize);
 			}
