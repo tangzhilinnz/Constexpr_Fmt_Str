@@ -1193,18 +1193,6 @@ squeezeSoundSize(const char(&fmt)[N]) {
 //CFMT_PRINTF_FORMAT_ATTR(1, 2)
 //checkFormat(CFMT_PRINTF_FORMAT const char*, ...) {}
 
-//template<size_t N, size_t L>
-//constexpr inline const char*
-//getRTFmtStr(const char(&fmt)[N], const std::array<char, L>& fmtArr) {
-//	if constexpr (0 == L) {
-//		// return { fmt, /*static_cast<size_t>(N)*/ N };
-//
-//		return fmt;
-//	}
-//	else 
-//		// return { fmtArr.data(), static_cast<int>(L) };
-//		return /*fmtArr.data()*/const_cast<const char*>(&fmtArr[0]);
-//}
 
 // ============================================================================
 // ============================================================================
@@ -1216,7 +1204,6 @@ inline constexpr int formattedPrec([[maybe_unused]] T/*&&*/ n) {
 	else
 		return static_cast<int>(-1);
 }
-
 
 template <class T>
 inline constexpr int formattedWidth([[maybe_unused]] T/*&&*/ n) {
@@ -1324,7 +1311,7 @@ inline constexpr size_t fitBufferSize() {
 			return static_cast<size_t>(buf);
 		}
 	}
-	else if (term == 'a' || term == 'A') { // e E Le LE
+	else if (term == 'a' || term == 'A') { // a A La LA
 		return static_cast<size_t>(BUFSIZE_A);
 	}
 	else if (term == 's') {
@@ -1363,12 +1350,6 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 	size_t size = 0;
 	size_t expsize = 0; // character count for expstr
 	bool gtoe = false;  // is conversion for g/G with style e/E
-
-	//int fieldsz = 0;	// field size expanded by sign, etc
-	//char ox[2] = { 0, 0 };	// space for 0x; ox[1] is either x, X, or \0
-	//bool isPre = false;  // prefix indicator for 0, 0x
-	//std::to_chars_result ret;
-	//uintmax_t ujval = 0;
 
 	flags_t flags = SI.flags_;
 	sign_t sign = SI.sign_;
@@ -1539,9 +1520,6 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 		}
 		else
 			size = strlen(cp);
-
-		//P = 0;
-		//sign = '\0';
 	}
 
 	if constexpr (SI.terminal_ == 'i' || SI.terminal_ == 'd' ||
@@ -1561,8 +1539,6 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 			std::memcpy(buf + BUF - 16, ZEROS, 16);
 			/*std::tie(cp, size) = */formatHex<'X'>(buf, ujval);
 		}
-
-		//else if constexpr (SI.terminal_ != 'p' && std::is_integral_v<std::remove_reference_t<T>>) {
 
 		else if constexpr ((SI.terminal_ == 'i' || SI.terminal_ == 'd' || SI.terminal_ == 'u') &&
 			std::is_integral_v<std::remove_reference_t<T>>) {
@@ -2078,19 +2054,12 @@ struct Converter {
 //		return Template<std::get<Is>(tuple_like)...>{};
 //	} (std::make_index_sequence<size>{});
 //}
+//}
 
-
-
-template</*auto fmtStr, */int N, template<auto...> typename Template, auto fmt/*, size_t M*/>
-constexpr decltype(auto) unpack(/*const char(&fmt)[M]*/) {
-	//constexpr auto SIs = analyzeFormatString<N>(*fmt);
-	//return[&]<std::size_t... Is>(std::index_sequence<Is...>) {
-	//	return Template<std::get<Is>(SIs)...>{};
-	//} (std::make_index_sequence<N>{});
-
+template<int N, template<auto...> typename Template, auto fmt>
+constexpr decltype(auto) unpack() {
 	return[&]<std::size_t... Is>(std::index_sequence<Is...>) {
-		//static constexpr SpecInfo SI = getOneSepc(fmt, Is);
-		return Template </*fmtStr, */getOneSepc(*fmt, Is)... > {};
+		return Template <getOneSepc(*fmt, Is)... > {};
 	} (std::make_index_sequence<N>{});
 }
 
@@ -2134,11 +2103,10 @@ static constexpr auto fmtRawStr = format; \
  * change their extent, but it does change its visibility with respect to
  * other translation units; the name is not exported to the linker, so it
  * cannot be accessed by name from another translation unit. */ \
-static constexpr std::array<SpecInfo, kNVSIs + 1> kSIs \
-	= analyzeFormatString<kNVSIs + 1>(format); \
+/*static constexpr std::array<SpecInfo, kNVSIs + 1> kSIs */\
+	/*= analyzeFormatString<kNVSIs + 1>(format);*/ \
 static constexpr auto kfmtArr = preprocessInvalidSpecs<kSS>(format); \
-static constexpr auto kRTStr /*= getRTFmtStr(format, kfmtArr);*/ \
-   = kSS < sizeof(format)? kfmtArr.data() : format; \
+static constexpr auto kRTStr = kSS < sizeof(format)? kfmtArr.data() : format; \
 /** 
  * use the address of the pointer to a string literal (&kRTStr) with static
  * storage duration and internal linkage instead of a raw string literal to
