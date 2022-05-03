@@ -1354,6 +1354,10 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 	flags_t flags = SI.flags_;
 	sign_t sign = SI.sign_;
 
+	if constexpr (SI.end_ - SI.begin_ > 0) {
+		outbuf.write(*fmt + SI.begin_, static_cast<size_t>(SI.end_ - SI.begin_));
+	}
+
 	if constexpr (SI.width_ != DYNAMIC_WIDTH
 		&& SI.prec_ == DYNAMIC_PRECISION) {
 		W = SI.width_;
@@ -1783,9 +1787,9 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 		}
 	}
 
-	if constexpr (SI.end_ - SI.begin_ > 0) {
-		outbuf.write(*fmt + SI.begin_, static_cast<size_t>(SI.end_ - SI.begin_));
-	}
+	//if constexpr (SI.end_ - SI.begin_ > 0) {
+	//	outbuf.write(*fmt + SI.begin_, static_cast<size_t>(SI.end_ - SI.begin_));
+	//}
 
 	if constexpr (SI.terminal_ != 'n') {
 		// All reasonable formats wind up here. At this point, `cp' points to a
@@ -2003,7 +2007,7 @@ inline void converter_D_D_args(OutbufArg& outbuf, D1/*&&*/ d1, D2/*&&*/ d2, T/*&
 template<const char* const* fmt, SpecInfo... SIs, typename... Ts>
 inline void converter_impl(OutbufArg& outbuf, Ts/*&&*/...args) {
 	// According to CFMT_STR implementation, at least one argument exists in the
-	// template parameter pack SpecInfo... SIs.
+	// template parameter pack SpecInfo... SIs (tailed SI).
 	constexpr auto& SI = std::get<0>(std::forward_as_tuple(SIs...));
 
 	if constexpr (sizeof ...(SIs) > 1) {
@@ -2025,12 +2029,12 @@ inline void converter_impl(OutbufArg& outbuf, Ts/*&&*/...args) {
 	}
 }
 
-template</*const char* const* fmt, */SpecInfo... SIs>
+template</*const char* const* pRTStr,*/ SpecInfo... SIs>
 struct Converter {
 	constexpr Converter() {}
 
-	template <const char* const* fmt, typename... Ts>
-	void /*operator()*/convert(OutbufArg& outbuf, Ts/*&&*/... args) const {
+	template <const char* const* pRTStr, typename... Ts>
+	void convert(OutbufArg& outbuf, Ts/*&&*/... args) const {
 		constexpr auto numArgsReuqired = countArgsRequired<SIs...>();
 		if constexpr (static_cast<uint32_t>(numArgsReuqired) > 
 			static_cast<uint32_t>(sizeof...(Ts))) {
@@ -2041,7 +2045,7 @@ struct Converter {
 			abort();
 		}
 		else {
-			converter_impl<fmt, SIs...>(outbuf, /*std::forward<Ts>*/(args)...);
+			converter_impl</*fmt*/pRTStr, SIs...>(outbuf, /*std::forward<Ts>*/(args)...);
 		}
 	}
 
@@ -2056,10 +2060,10 @@ struct Converter {
 //}
 //}
 
-template<int N, template<auto...> typename Template, auto fmt>
+template</*const char* const* pRTStr,*/ int N, template<auto...> typename Template, auto fmt>
 constexpr decltype(auto) unpack() {
 	return[&]<std::size_t... Is>(std::index_sequence<Is...>) {
-		return Template <getOneSepc(*fmt, Is)... > {};
+		return Template </*pRTStr,*/ getOneSepc(*fmt, Is)... > {};
 	} (std::make_index_sequence<N>{});
 }
 
@@ -2111,7 +2115,8 @@ static constexpr auto kRTStr = kSS < sizeof(format)? kfmtArr.data() : format; \
  * use the address of the pointer to a string literal (&kRTStr) with static
  * storage duration and internal linkage instead of a raw string literal to
  * comply with c++ standard 14.3.2/1 */ \
-static constexpr auto kConverter = unpack<kNVSIs + 1, Converter, &fmtRawStr>(); \
+static constexpr auto kConverter = \
+    unpack</*&kRTStr,*/ kNVSIs + 1, Converter, &fmtRawStr>(); \
 /*static constexpr auto kConverter = unpack<kSIs, Converter>();*/ \
 OutbufArg outbuf(buffer, count); \
 kConverter.convert<&kRTStr>(outbuf, ##__VA_ARGS__); \
@@ -2140,5 +2145,27 @@ outbuf.done(); /* null - terminate the string */ \
  *    (4.11); or
  * 6) a pointer to member expressed as described in 5.3.1; or
  * 7) an address constant expression of type std::nullptr_t. */
+
+
+#define CFMT_STR_TUPLE(result, buffer, count, format, tuple) do { \
+constexpr int kNVSIs = countValidSpecInfos(format); \
+constexpr int kSS = squeezeSoundSize(format); \
+static constexpr auto fmtRawStr = format; \
+static constexpr auto kfmtArr = preprocessInvalidSpecs<kSS>(format); \
+static constexpr auto kRTStr = kSS < sizeof(format) ? kfmtArr.data() : format; \
+/**
+* use the address of the pointer to a string literal (&kRTStr) with static
+* storage duration and internal linkage instead of a raw string literal to
+* comply with c++ standard 14.3.2/1 */ \
+static constexpr auto kConverter = \
+    unpack</*&kRTStr,*/ kNVSIs + 1, Converter, &fmtRawStr>(); \
+OutbufArg outbuf(buffer, count); \
+auto convert_lambda = [&](auto... args) { \
+	return kConverter.convert<&kRTStr>(outbuf, (args)...); }; \
+std::apply(convert_lambda, tuple); \
+result = outbuf.getWrittenNum(); \
+outbuf.done(); \
+} while (0);
+
 
 #endif
