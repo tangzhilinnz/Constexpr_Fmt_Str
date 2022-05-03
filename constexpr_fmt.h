@@ -2039,7 +2039,7 @@ struct Converter {
 		if constexpr (static_cast<uint32_t>(numArgsReuqired) > 
 			static_cast<uint32_t>(sizeof...(Ts))) {
 			std::cerr << "CFMT: forced abort due to illegal number of variadic arguments"
-				"passed to CFMT_STR for converting\n"
+				" passed to CFMT_STR for converting\n"
 				"(Required: " << numArgsReuqired << " ---- " <<
 				"Passed: " << (sizeof...(Ts)) << ")";
 			abort();
