@@ -1354,6 +1354,8 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 	flags_t flags = SI.flags_;
 	sign_t sign = SI.sign_;
 
+	// output the characters between the previous specifier and this specifier
+	// in fmt
 	if constexpr (SI.end_ - SI.begin_ > 0) {
 		outbuf.write(*fmt + SI.begin_, static_cast<size_t>(SI.end_ - SI.begin_));
 	}
@@ -1787,10 +1789,6 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 		}
 	}
 
-	//if constexpr (SI.end_ - SI.begin_ > 0) {
-	//	outbuf.write(*fmt + SI.begin_, static_cast<size_t>(SI.end_ - SI.begin_));
-	//}
-
 	if constexpr (SI.terminal_ != 'n') {
 		// All reasonable formats wind up here. At this point, `cp' points to a
 		// string which (if not flags&__FLAG_LADJUST) should be padded out to
@@ -2089,8 +2087,8 @@ constexpr decltype(auto) unpack() {
  *      Depending on the format string, the function may expect a sequence of
  *      additional arguments, each containing a value to be used to replace a
  *      format specifier in the format string (or a pointer to a storage
- *      location, for n). There should be at least as many of these arguments
- *      as the number of values specified in the valid format specifiers.
+ *      location, for specifier n). There should be at least as many of these
+ *      arguments as the number of valid format specifiers.
  */
 #define CFMT_STR(result, buffer, count, format, ...) do { \
 constexpr int kNVSIs = countValidSpecInfos(format); \
@@ -2126,27 +2124,27 @@ outbuf.done(); /* null - terminate the string */ \
 
 
 /**
- * A template-argument for a non-type, non-template template-parameter shall
- * be one of:
- * 1) for a non-type template-parameter of integral or enumeration type, a
- *    converted constant expression(5.19) of the type of the 
- *    template-parameter; or
- * 2) the name of a non-type template-parameter; or
- * 3) a constant expression(5.19) that designates the address of an object
- *    with static storage duration and external or internal linkage or a 
- *    function with external or internal linkage, including function 
- *    templates and function template-ids but excluding non-static class
- *    members, expressed(ignoring parentheses) as & id-expression, except
- *    that the & may be omitted if the name refers to a function or an array
- *    and shall be omitted if the corresponding template-parameter is a 
- *    reference; or
- * 4) a constant expression that evaluates to a null pointer value(4.10); or
- * 5) a constant expression that evaluates to a null member pointer value
- *    (4.11); or
- * 6) a pointer to member expressed as described in 5.3.1; or
- * 7) an address constant expression of type std::nullptr_t. */
-
-
+ * CFMT_STR_TUPLE macro used for caching format specifier infos at compile
+ * time with tuple or tuple-like types array and pair as arguments.
+ *
+ * \param result
+ *      The variable to store the number of characters that would have been
+ *      written to buffer if count had been sufficiently large, not counting
+ *      the terminating null character.
+ *      Notice that only when this returned value is non-negative and less
+ *      than count, the string has been completely written.
+ * \param buffer
+ *      buffer to write to formatted string
+ * \param count
+ *      max number of characters to store in buffer
+ * \param format
+ *      printf-like format string (must be literal)
+ * \param tuple
+ *      A tuple or tuple-like types array and pair containing values to be used
+ *      to replace format specifiers in the format string (or a pointer to a 
+ *      storage location, for specifier n). There should be at least as many of
+ *      values in tuple as the number of valid format specifiers.
+ */
 #define CFMT_STR_TUPLE(result, buffer, count, format, tuple) do { \
 constexpr int kNVSIs = countValidSpecInfos(format); \
 constexpr int kSS = squeezeSoundSize(format); \
@@ -2166,6 +2164,29 @@ std::apply(convert_lambda, tuple); \
 result = outbuf.getWrittenNum(); \
 outbuf.done(); \
 } while (0);
+
+
+/**
+ * A template-argument for a non-type, non-template template-parameter shall
+ * be one of:
+ * 1) for a non-type template-parameter of integral or enumeration type, a
+ *    converted constant expression(5.19) of the type of the
+ *    template-parameter; or
+ * 2) the name of a non-type template-parameter; or
+ * 3) a constant expression(5.19) that designates the address of an object
+ *    with static storage duration and external or internal linkage or a
+ *    function with external or internal linkage, including function
+ *    templates and function template-ids but excluding non-static class
+ *    members, expressed(ignoring parentheses) as & id-expression, except
+ *    that the & may be omitted if the name refers to a function or an array
+ *    and shall be omitted if the corresponding template-parameter is a
+ *    reference; or
+ * 4) a constant expression that evaluates to a null pointer value(4.10); or
+ * 5) a constant expression that evaluates to a null member pointer value
+ *    (4.11); or
+ * 6) a pointer to member expressed as described in 5.3.1; or
+ * 7) an address constant expression of type std::nullptr_t.
+ */
 
 
 #endif
