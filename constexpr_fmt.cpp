@@ -95,6 +95,8 @@ int main() {
 
 	char pc[5] = "asdf";
 
+	char arr[] = {'t', 'a', 'n', 'g', ' ', 'z', 'h', 'i', 'l', 'i', 'n', '\0'};
+
 	auto tu = std::make_tuple("zoe", 2, 3., 4, 5.);
 
 	auto start = system_clock::now();
@@ -2387,7 +2389,7 @@ int main() {
 //result = tz_snprintf(/*result,*/ buf, 800, "%+0*.*u", 20, 10, i);
 //int& j = i;
 
-CFMT_STR_TUPLE(result, buf, 2000, "%#xsdsdsdsdsdsdsdsdsdsd", /*"test zhilin tang %s %d %lld %hx %x"*//*tu*/std::make_tuple(pdata[i]));
+//CFMT_STR_TUPLE(result, buf, 2000, "%#xsdsdsdsdsdsdsdsdsdsd", /*"test zhilin tang %s %d %lld %hx %x"*//*tu*/std::make_tuple(pdata[i]));
 		///*result = tz_snprintf*/CFMT_STR(result, buf, 2000,
 		//	//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd"
 		//	//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd"
@@ -2404,10 +2406,12 @@ CFMT_STR_TUPLE(result, buf, 2000, "%#xsdsdsdsdsdsdsdsdsdsd", /*"test zhilin tang
 		//	//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld",
 		//	//"%+030hhd%+030hhd%+030.10hhd%+030.10hhd%+030.10hhd",
 		//	//"%0*.*u|", -20, 10, i,
-		//	"%#xsdsdsdsdsdsdsdsdsdsd", /*-99.9999*/ /*sqrt(2.)*//*1./0*/ /*30,*/ /*0.0l*//*(double)i*/ /*std::numeric_limits<double>::max()*//*1./ 3*//*i*//*(double)*/pdata[i]/*i*//*2.365*//*nullptr*//*nullptr*//*&i*/
+		//	//"%#xsdsdsdsdsdsdsdsdsdsd", /*-99.9999*/ /*sqrt(2.)*//*1./0*/ /*30,*/ /*0.0l*//*(double)i*/ /*std::numeric_limits<double>::max()*//*1./ 3*//*i*//*(double)*/pdata[i]/*i*//*2.365*//*nullptr*//*nullptr*//*&i*/
 		//	//"test  %d %x %c %s", /*(double)i,*/ i, i, (char)i, "zhilin tang"
 		//	//"%#p", "ss"
 		//	//"%lld",
+		//	//"%s", arr
+		//	"%x", i
 		//	//"test%dtest%dtest%dtest%dtest%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", pdata[i], pdata[(i+1)% 10000000], pdata[(i + 2) % 10000000], pdata[(i + 3) % 10000000],
 		//	//"%+0*.*u", 20, 10, i,
 		//	//i, i,i,i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i,i,

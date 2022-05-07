@@ -1,5 +1,5 @@
-#ifndef CONSTEXPR_IF_H__
-#define CONSTEXPR_IF_H__
+#ifndef CONSTEXPR_FMT_H__
+#define CONSTEXPR_FMT_H__
 
 #define STACK_MEMORY_FOR_WIDE_STRING_FORMAT
 
@@ -596,66 +596,6 @@ struct SpecInfo {
 								  // dynamically resolved
 };
 constexpr int LEN = sizeof(SpecInfo);
-
-/**
- * Stores the static format information associated with a CFMT_STR invocation site.
- */
- //struct StaticFmtInfo {
- //	// With constexpr constructors, objects of user-defined types can be
- //	// included in valid constant expressions.
- //	// Definitions of constexpr constructors must satisfy the following 
- //	// requirements:
- //	// - The containing class must not have any virtual base classes.
- //	// - Each of the parameter types is a literal type. 
- //	//   (all reference types are literal types)
- //	// - Its function body is = delete or = default; otherwise, it must satisfy
- //	//   the following constraints:
- //	//   1) It is not a function try block.
- //	//   2) The compound statement in it must contain only the following statements:
- //	//      null statements, static_assert declarations,
- //	//      typedef declarations that do not define classes or enumerations,
- //	//      using directives, using declarations
- //	// - Each nonstatic data member and base class subobject is initialized.
- //	// - Each constructor that is used for initializing nonstatic data members
- //	//   and base class subobjects is a constexpr constructor.
- //	// - Initializers for all nonstatic data members that are not named by a 
- //	//   member initializer identifier are constant expressions.
- //	// - When initializing data members, all implicit conversions that are 
- //	//   involved in the following context must be valid in a constant expression:
- //	//   Calling any constructors, Converting any expressions to data member types
- //	constexpr StaticFmtInfo(const char* fmtString, const int numSpecs,
- //		const int numVarArgs, const SpecInfo* fmtInfos)
- //		: /*filename_(filename)
- //		, lineNum_(lineNum)
- //		, severity_(severity)
- //		,*/ formatString_(fmtString)
- //		, numSpecs_(numSpecs)
- //		, numVarArgs_(numVarArgs)
- //		, fmtInfos_(fmtInfos)
- //	{ }
- //
- //
- //	//// File where the log invocation is invoked
- //	//const char* filename_;
- //
- //	//// Line number in the file for the invocation
- //	//const uint32_t lineNum_;
- //
- //	//// LogLevel severity associated with the log invocation
- //	//const uint8_t severity_;
- //
- //	// printf format string associated with the log invocation
- //	const char* formatString_;
- //
- //	// Number of fmt specifiers fetched from format string
- //	const int numSpecs_;
- //
- //	// Number of variadic arguments required for CFMT_STR invocation
- //	const int numVarArgs_;
- //
- //	// Mapping of detailed infos of fmt specifiers as inferred from CFMT_STR invocation.
- //	const SpecInfo* fmtInfos_;
- //};
 
 
 /**
@@ -2036,8 +1976,8 @@ struct Converter {
 		constexpr auto numArgsReuqired = countArgsRequired<SIs...>();
 		if constexpr (static_cast<uint32_t>(numArgsReuqired) > 
 			static_cast<uint32_t>(sizeof...(Ts))) {
-			std::cerr << "CFMT: forced abort due to illegal number of variadic arguments"
-				" passed to CFMT_STR for converting\n"
+			std::cerr << "CFMT: forced abort due to illegal number of variadic"
+				" arguments passed to CFMT_STR for converting\n"
 				"(Required: " << numArgsReuqired << " ---- " <<
 				"Passed: " << (sizeof...(Ts)) << ")";
 			abort();
@@ -2058,7 +1998,7 @@ struct Converter {
 //}
 //}
 
-template</*const char* const* pRTStr,*/ int N, template<auto...> typename Template, auto fmt>
+template<int N, template<auto...> typename Template, auto fmt>
 constexpr decltype(auto) unpack() {
 	return[&]<std::size_t... Is>(std::index_sequence<Is...>) {
 		return Template </*pRTStr,*/ getOneSepc(*fmt, Is)... > {};
@@ -2189,4 +2129,4 @@ outbuf.done(); \
  */
 
 
-#endif
+#endif  /* CONSTEXPR_FMT_H__ */
