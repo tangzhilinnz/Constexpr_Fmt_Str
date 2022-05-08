@@ -120,4 +120,149 @@ struct OneLogEntry {
 };
 
 
+/**
+ * Stores a single printf argument into a buffer and bumps the buffer pointer.
+ *
+ * Non-string types are stored (full-width) and string types are stored
+ * with a uint32_t header describing the string length in bytes followed
+ * by the string itself with NULL terminator
+ * ('\0' for char* and L'\0' for wchar_t*).
+ *
+ * Note: This is the non-string specialization of the function
+ * (hence the std::enable_if below), so it contains extra
+ * parameters that are unused.
+ *
+ * \tparam T
+ *      Type to store (automatically deduced)
+ *
+ * \param[in/out] storage
+ *      Buffer to store the argument into
+ * \param arg
+ *      Argument to store
+ * \param paramType
+ *      Type information deduced from the format string about this
+ *      argument (unused here)
+ * \param stringSize
+ *      Stores the byte length of the argument, if it is a string (unused here)
+ */
+template<typename T>
+inline
+typename std::enable_if<!std::is_same<T, const wchar_t*>::value
+	                    && !std::is_same<T, const char*>::value
+	                    && !std::is_same<T, wchar_t*>::value
+	                    && !std::is_same<T, char*>::value
+	                    , void>::type
+store_argument(char** storage, T arg, ParamType paramType, size_t stringSize) {
+	std::memcpy(*storage, &arg, sizeof(T));
+	*storage += sizeof(T);
+}
+
+// string specialization of the above
+template<typename T>
+inline
+typename std::enable_if<std::is_same<T, const wchar_t*>::value
+	|| std::is_same<T, const char*>::value
+	|| std::is_same<T, wchar_t*>::value
+	|| std::is_same<T, char*>::value
+	, void>::type
+	store_argument(char** storage,
+		T arg,
+		const ParamType paramType,
+		const size_t stringSize)
+{
+	// If the printf style format string's specifier says the arg is not
+	// a string, we save it as a pointer instead
+	if (paramType <= ParamType::NON_STRING) {
+		store_argument<const void*>(storage, static_cast<const void*>(arg),
+			paramType, stringSize);
+		return;
+	}
+
+	// Since we've already paid the cost to find the string length earlier,
+	// might as well save it in the stream so that the compression function
+	// can later avoid another strlen/wsclen invocation.
+	if (stringSize > std::numeric_limits<uint32_t>::max())
+	{
+		throw std::invalid_argument("Strings larger than std::numeric_limits<uint32_t>::max() are unsupported");
+	}
+	auto size = static_cast<uint32_t>(stringSize);
+	std::memcpy(*storage, &size, sizeof(uint32_t));
+	*storage += sizeof(uint32_t);
+
+#ifdef ENABLE_DEBUG_PRINTING
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpointer-arith"
+#pragma GCC diagnostic ignored "-Wformat"
+	if (sizeof(typename std::remove_pointer<T>::type) == 1) {
+		printf("\tRString[%p-%u]= %s\r\n", *buffer, size, arg);
+	}
+	else {
+		printf("\tRWString[%p-%u]= %ls\r\n", *buffer, size, arg);
+	}
+#pragma GCC diagnostic pop
+#endif
+
+	memcpy(*storage, arg, stringSize);
+	*storage += stringSize;
+	return;
+}
+
+/**
+ * Given a variable number of arguments to a NANO_LOG (i.e. printf-like)
+ * statement, recursively unpack the arguments, store them to a buffer, and
+ * bump the buffer pointer.
+ *
+ * \tparam argNum
+ *      Internal counter indicating which parameter we're storing
+ *      (aka the recursion depth).
+ * \tparam N
+ *      Size of the isArgString array (automatically deduced)
+ * \tparam M
+ *      Size of the stringSizes array (automatically deduced)
+ * \tparam T1
+ *      Type of the Head of the remaining variable number of arguments (deduced)
+ * \tparam Ts
+ *      Type of the Rest of the remaining variable number of arguments (deduced)
+ *
+ * \param paramTypes
+ *      Type information deduced from the printf format string about the
+ *      n-th argument to be processed.
+ * \param[in/out] stringBytes
+ *      Stores the byte length of the n-th argument, if it is a string
+ *      (if not, it is undefined).
+ * \param[in/out] storage
+ *      Buffer to store the arguments to
+ * \param head
+ *      Head of the remaining number of variable arguments
+ * \param rest
+ *      Rest of the remaining variable number of arguments
+ */
+template<int argNum = 0, unsigned long N, int M, typename T1, typename... Ts>
+inline void
+store_arguments(const std::array<ParamType, N>& paramTypes,
+	size_t(&stringBytes)[M],
+	char** storage,
+	T1 head,
+	Ts... rest)
+{
+	// Peel off one argument to store, and then recursively process rest
+	store_argument(storage, head, paramTypes[argNum], stringBytes[argNum]);
+	store_arguments<argNum + 1>(paramTypes, stringBytes, storage, rest...);
+}
+
+/**
+ * Specialization of store_arguments that processes no arguments, i.e. this
+ * is the end of the head/rest recursion. See above for full documentation.
+ */
+template<int argNum = 0, unsigned long N, int M>
+inline void
+store_arguments(const std::array<ParamType, N>&,
+	size_t(&stringSizes)[M],
+	char**)
+{
+	// No arguments, do nothing.
+}
+
+
+
 #endif /* TZ_LOGGER_H__ */
