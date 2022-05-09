@@ -263,6 +263,25 @@ store_arguments(const std::array<ParamType, N>&,
 	// No arguments, do nothing.
 }
 
+//InstantiateFN
+
+template<SpecInfo... SIs>
+struct LogGenerator {
+	constexpr LogGenerator() { }
+
+	template <size_t N, typename... Ts>
+	size_t requiredBytes(Ts ...args) const {
+	}
+
+	template <size_t N, typename... Ts>
+	void dump(char** storage, Ts ...args) const {
+	}
+
+	template <const char* const* pRTStr, typename... Ts>
+	void convert(OutbufArg& outbuf, char** input) const {
+	}
+
+};
 
 
 #endif /* TZ_LOGGER_H__ */
