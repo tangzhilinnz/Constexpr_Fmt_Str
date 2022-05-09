@@ -257,11 +257,31 @@ store_arguments(const std::array<ParamType, N>& paramTypes,
 template<int argNum = 0, unsigned long N, int M>
 inline void
 store_arguments(const std::array<ParamType, N>&,
-	size_t(&stringSizes)[M],
-	char**)
+	size_t(&stringSizes)[M], char**)
 {
 	// No arguments, do nothing.
 }
+
+
+template<SpecInfo... SIs, typename... Ts>
+inline void store_arguments_impl(char** storage, Ts ...args) {
+	// At least one argument exists in the template parameter pack
+	// SpecInfo... SIs (tailed SI holding no valid terminal).
+	if constexpr (sizeof ...(SIs) > 1) {
+		if constexpr (SI.width_ == DYNAMIC_WIDTH
+			&& SI.prec_ == DYNAMIC_PRECISION) {
+			store_D_D_args<SIs...>(storage, (args)...);
+		}
+		else if constexpr (SI.width_ == DYNAMIC_WIDTH
+			|| SI.prec_ == DYNAMIC_PRECISION) {
+			store_D_args<SIs...>(storage, (args)...);
+		}
+		else {
+			store_args<SIs...>(storage, (args)...);
+		}
+	}
+}
+
 
 //InstantiateFN
 
@@ -269,11 +289,11 @@ template<SpecInfo... SIs>
 struct LogGenerator {
 	constexpr LogGenerator() { }
 
-	template <size_t N, typename... Ts>
+	template <typename... Ts>
 	size_t requiredBytes(Ts ...args) const {
 	}
 
-	template <size_t N, typename... Ts>
+	template <typename... Ts>
 	void dump(char** storage, Ts ...args) const {
 	}
 
