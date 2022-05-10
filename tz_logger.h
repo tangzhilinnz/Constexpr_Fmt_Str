@@ -263,10 +263,111 @@ store_arguments(const std::array<ParamType, N>&,
 }
 
 
+template<SpecInfo SI, typename T>
+inline void store_arg(char** storage, T arg) {
+	if constexpr (SI.terminal_ != 's') {
+		//std::memcpy(*storage, &arg, sizeof(T));
+		*reinterpret_cast<T*>(*storage) = arg;
+		*storage += sizeof(T);
+	}
+	else {
+		uint32_t* pSize = reinterpret_cast<uint32_t*>(*storage);
+		*storage += sizeof(uint32_t);
+
+		if constexpr ((SI.flags_ & __FLAG_LONGINT) == __FLAG_LONGINT) {
+			if constexpr (std::is_convertible_v<T, const wchar_t*>) {
+				// wchar_t string is 2 bytes UTF-16 on Windows, 
+				// 4 bytes UTF-32 (gcc/g++ and XCode) on Linux and OS,
+				// and 2 bytes UTF-16 on Cygwin (cygwin uses Windows APIs)
+				const wchar_t* wcp = static_cast<const wchar_t*>(arg);
+
+				if (nullptr == wcp)
+					cp = "(null)";
+				else {
+
+				}
+			}
+			else {
+				*reinterpret_cast<T*>(*storage) = arg;
+				*storage += sizeof(T);
+			}
+		}
+		else {
+			if constexpr (std::is_convertible_v<T, const char*>) {
+				const char* cp = static_cast<const char*>(arg);
+
+				if (nullptr == cp)
+					cp = "(null)";
+			}
+			else {
+				*reinterpret_cast<T*>(*storage) = arg;
+				*storage += sizeof(T);
+			}
+		}
+
+		//// get string size(<=P) excluding the tail '\0'
+		//if (P >= 0) {
+		//	// can't use strlen; can only look for the
+		//	// NULL in the first `prec' characters, and
+		//	// strlen() will go further.
+		//	// The C library function
+		//	// void* memchr(const void* str, int c, size_t n) 
+		//	// searches for the first occurrence of the character 
+		//	// c(an unsigned char) in the first n bytes of the string 
+		//	// pointed to by the argument str.
+		//	// This function returns a pointer to the matching byte or NULL 
+		//	// if the character does not occur in the given memory area.
+		//	char* it = (char*)memchr(cp, 0, static_cast<size_t>(P));
+
+		//	if (it != NULL) {
+		//		size = static_cast<size_t>(it - cp);
+		//		//if (size > static_cast<size_t>(P))
+		//		//	size = static_cast<size_t>(P);
+		//	}
+		//	else
+		//		size = static_cast<size_t>(P);
+		//}
+		//else
+		//	size = strlen(cp);
+	}
+}
+
+template<SpecInfo SI, SpecInfo... SIs, typename T, typename... Ts>
+inline void store_args(char** storage, T arg, Ts ... rest) {
+	store_arg<SI>(storage, arg);
+	store_arguments_impl<SIs...>(storage, (rest)...);
+}
+
+template<SpecInfo SI, SpecInfo... SIs, typename D, typename T, typename... Ts>
+inline void converter_D_args(char** storage, D d, T arg, Ts ... rest) {
+	// std::memcpy(*storage, &d, sizeof(D));
+	*reinterpret_cast<D*>(*storage) = d;
+	*storage += sizeof(D);
+
+	store_arg<SI>(storage, arg);
+	store_arguments_impl<SIs...>(storage, (rest)...);
+}
+
+template<SpecInfo SI, SpecInfo... SIs, typename D1, typename D2, typename T, 
+	     typename... Ts>
+inline void store_D_D_args(char** storage, D1 d1, D2 d2, T arg, Ts... rest) {
+	// std::memcpy(*storage, &d1, sizeof(D1));
+	*reinterpret_cast<D1*>(*storage) = d1;
+	*storage += sizeof(D1);
+	// std::memcpy(*storage, &d2, sizeof(D2));
+	*reinterpret_cast<D2*>(*storage) = d2;
+	*storage += sizeof(D2);
+
+	store_arg<SI>(storage, arg);
+	store_arguments_impl<SIs...>(storage, (rest)...);
+}
+
 template<SpecInfo... SIs, typename... Ts>
 inline void store_arguments_impl(char** storage, Ts ...args) {
 	// At least one argument exists in the template parameter pack
 	// SpecInfo... SIs (tailed SI holding no valid terminal).
+	constexpr auto& SI = std::get<0>(std::forward_as_tuple(SIs...));
+
 	if constexpr (sizeof ...(SIs) > 1) {
 		if constexpr (SI.width_ == DYNAMIC_WIDTH
 			&& SI.prec_ == DYNAMIC_PRECISION) {
