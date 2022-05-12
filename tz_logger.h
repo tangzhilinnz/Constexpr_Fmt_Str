@@ -120,6 +120,30 @@ struct OneLogEntry {
 };
 
 
+template <typename T>
+inline constexpr size_t getArgSize() {
+	return sizeof(T);
+}
+
+template<int bound, typename T, typename... Ts>
+inline constexpr size_t getArgSizes() {
+	if constexpr (bound > 0)
+		return getArgSize<T>() + getArgSizes<bound - 1, Ts...>();
+	else
+		return 0;
+}
+
+template<int bound>
+inline constexpr size_t getArgSizes() {
+	return 0;
+}
+
+
+template<int bound, typename... Ts>
+inline constexpr size_t requiredSizes(Ts ...args) {
+	return getArgSizes<bound, Ts...>();
+}
+
 /**
  * Stores a single printf argument into a buffer and bumps the buffer pointer.
  *
@@ -403,6 +427,39 @@ struct LogGenerator {
 	}
 
 };
+
+
+
+/**
+ * TZ_LOG macro used for logging.
+ *
+ * \param severity
+ *      The LogLevel of the log invocation (must be constant)
+ * \param format
+ *      printf-like format string (must be literal)
+ * \param ...UNASSIGNED_LOGID
+ *      Log arguments associated with the printf-like string.
+ */
+ // nParams can be zero, the specialization of the std::array with N equal to
+ // zero defines an empty container
+#define TZ_LOG(severity, format, ...) do { \
+constexpr int kNVSIs = countValidSpecInfos(format); \
+constexpr int kSS = squeezeSoundSize(format); \
+/**
+ * A static variable inside a scope or function is something different than
+ * a global static variable. Since there can be as many scoped statics with
+ * the same name as you like (provided they are all in different scopes),
+ * the compiler might have to change their names internally (incorporating
+ * the function's name or the line number or whatever), so that the linker
+ * can tell them apart.
+ * Adding the static keyword to the file scope version of variables doesn't
+ * change their extent, but it does change its visibility with respect to
+ * other translation units; the name is not exported to the linker, so it
+ * cannot be accessed by name from another translation unit. */ \
+static constexpr auto fmtRawStr = format; \
+static constexpr auto kfmtArr = preprocessInvalidSpecs<kSS>(format); \
+static constexpr auto kRTStr = kSS < sizeof(format) ? kfmtArr.data() : format; \
+} while (0)
 
 
 #endif /* TZ_LOGGER_H__ */
