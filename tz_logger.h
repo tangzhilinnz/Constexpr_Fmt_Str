@@ -516,10 +516,11 @@ void convertImpl(char** input) {
 template<>
 void convertImpl<>(char** input) {}
 
-
 template <typename... Ts>
 constexpr decltype(auto) convertGen(std::tuple<Ts...> const&) {
-	return &convertImpl<Ts...>;
+	// return the address of an instance of function template convertImpl which
+    // can be taken by a function pointer.
+	return &(convertImpl<Ts...>);
 }
 //=============================================================================
 
