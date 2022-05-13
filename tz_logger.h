@@ -430,6 +430,158 @@ struct LogGenerator {
 
 
 
+
+
+struct StaticFmtInfo {
+	using ConvertFn = void (*)(char**);
+
+	constexpr StaticFmtInfo(ConvertFn convertFN,
+		const char* filename,
+		const uint32_t lineNum,
+		const char* fmtString,
+		const int numVarArgs)
+		: convertFN_(convertFN)
+		, filename_(filename)
+		, lineNum_(lineNum)
+		, formatString_(fmtString)
+		, numVarArgs_(numVarArgs)
+	{ }
+
+	// Stores the convert function to be used on the log's runtime arguments
+	ConvertFn convertFN_;
+
+	// File where the log invocation is invoked
+	const char* filename_;
+
+	// Line number in the file for the invocation
+	const uint32_t lineNum_;
+
+	// format string associated with the log invocation
+	const char* formatString_;
+
+	// Number of variadic arguments required for format string
+	const int numVarArgs_;
+};
+
+//=============================================================================
+template<int bound, typename... Ts>
+constexpr auto sum_size_impl();
+
+template <typename T>
+constexpr size_t getArgSize() {
+	return sizeof(T);
+}
+
+template<int bound, typename T, typename... Ts>
+constexpr size_t getArgSizes() {
+	return getArgSize<T>() + sum_size_impl<bound - 1, Ts...>();
+}
+
+template<int bound, typename... Ts>
+constexpr auto sum_size_impl() {
+	if constexpr (bound > 0)
+		return getArgSizes<bound, Ts...>();
+	else
+		return 0;
+}
+
+template <int bound, typename ... Ts>
+constexpr std::size_t sum_size(std::tuple<Ts...> const&) {
+	static_assert(static_cast<size_t>(bound) <= sizeof...(Ts),
+		"bound must be less than or equal to the number of elements in the"
+		" parameter pack");
+
+	return sum_size_impl<bound, Ts...>();
+}
+
+//=============================================================================
+template <typename T>
+void convertSingle(char** input) {
+
+	std::cout << "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" << std::endl;
+	std::cout << "This arg Type: " << typeid(T).name() << std::endl;
+	std::cout << "This arg size: " << sizeof(T) << std::endl;
+	std::cout << "This arg value: " << *reinterpret_cast<T*>(*input) << std::endl;
+
+	std::cout << "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" << std::endl;
+	*input += sizeof(T);
+}
+
+template<typename T = void, typename... Ts>
+void convertImpl(char** input) {
+	convertSingle<T>(input);
+	convertImpl<Ts...>(input);
+}
+
+template<>
+void convertImpl<>(char** input) {}
+
+
+template <typename... Ts>
+constexpr decltype(auto) convertGen(std::tuple<Ts...> const&) {
+	return &convertImpl<Ts...>;
+}
+//=============================================================================
+
+#define TEST do { \
+    using tuple_like_type = decltype(std::make_tuple(4, 6, 8.8, p)); \
+    constexpr size_t bytes = sum_size<4>(tuple_like_type()); \
+    static constexpr auto pFunc = convertGen(tuple_like_type()); \
+    static constexpr auto fmtInfo = StaticFmtInfo(pFunc, __FILE__, __LINE__, "test", 4); \
+    std::cout << fmtInfo.filename_ << std::endl; \
+    std::cout << fmtInfo.lineNum_ << std::endl; \
+    std::cout << fmtInfo.numVarArgs_ << std::endl; \
+    std::cout << fmtInfo.formatString_ << std::endl; \
+    pFunc(&begin); \
+} while (0)
+
+int main() {
+
+	const char* p = "asd";
+	const int& cri = 3;
+	int i = 3;
+	int& ri = i;
+
+	char input[100];
+	char* begin = input;
+	char* p1 = input;
+	*reinterpret_cast<int*>(p1) = 4;
+	p1 += sizeof(int);
+	*reinterpret_cast<int*>(p1) = 6;
+	p1 += sizeof(int);
+	*reinterpret_cast<double*>(p1) = 8.8;
+	p1 += sizeof(double);
+	*reinterpret_cast<decltype(p)*>(p1) = p;
+	p1 += sizeof(decltype(p));
+
+	const StaticFmtInfo* pFmtInfo = nullptr;
+
+	{
+		using tuple_like_type = decltype(std::make_tuple(4, 6, 8.8, p));
+		constexpr size_t bytes = sum_size<4>(tuple_like_type());
+		static constexpr auto pFunc = convertGen(tuple_like_type());
+		static constexpr auto fmtInfo = StaticFmtInfo(pFunc, __FILE__, __LINE__, "test", 4);
+
+		pFmtInfo = &fmtInfo;
+
+		pFunc(&begin);
+	}
+	std::cout << pFmtInfo->filename_ << std::endl;
+	std::cout << pFmtInfo->lineNum_ << std::endl;
+	std::cout << pFmtInfo->numVarArgs_ << std::endl;
+	std::cout << pFmtInfo->formatString_ << std::endl;
+
+	{
+		using tuple_like_type = decltype(std::make_tuple(ri, p, p, p));
+		constexpr size_t bytes = sum_size<4>(tuple_like_type());
+	}
+
+}
+
+
+
+
+
 /**
  * TZ_LOG macro used for logging.
  *
