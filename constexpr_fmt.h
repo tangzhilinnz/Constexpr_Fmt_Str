@@ -1001,7 +1001,6 @@ storeOneChar(const char(&fmt)[N], int& offset, int num = 0) {
 		}
 
 		return fmt[num + offset];
-
 	}
 	else
 		return '\0';
@@ -1654,7 +1653,7 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 								fpprec = P - MAXFRACT;
 								P = MAXFRACT;
 							}
-							std::tie(cp, size) = (SI.terminal_ != 'g') 
+							std::tie(cp, size) = (SI.terminal_ == 'g') 
 								? formatDuble<'f', SI.flags_>(buf, arg, P) 
 								: formatDuble<'F', SI.flags_>(buf, arg, P);
 						}
@@ -1666,7 +1665,7 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 								fpprec = P - MAXFRACT;
 								P = MAXFRACT;
 							}
-							std::tie(cp, size) = (SI.terminal_ != 'g')
+							std::tie(cp, size) = (SI.terminal_ == 'g')
 								? formatDuble<'e', SI.flags_>(buf, arg, P)
 								: formatDuble<'E', SI.flags_>(buf, arg, P);
 							gtoe = true;
@@ -1998,10 +1997,11 @@ struct Converter {
 //}
 //}
 
-template<int N, template<auto...> typename Template, auto fmt>
-constexpr decltype(auto) unpack() {
+template<int N, template</*auto*/SpecInfo...> typename Template,
+	     /*auto*/const char* const* fmt>
+	constexpr decltype(auto) unpack() {
 	return[&]<std::size_t... Is>(std::index_sequence<Is...>) {
-		return Template </*pRTStr,*/ getOneSepc(*fmt, Is)... > {};
+		return Template <getOneSepc(*fmt, Is)... > {};
 	} (std::make_index_sequence<N>{});
 }
 
