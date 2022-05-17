@@ -9,10 +9,13 @@
 #endif
 #endif
 
+#include <cwchar>
+#include <cstring>
+
 #include "constexpr_fmt.h"
 
 
-#define MAX_SIZE_OF_TOTAL_STRING  16 * 1024
+#define MAX_SIZE_OF_FORMAT_ARGS  64 * 1024
 
 /**
  * The levels of verbosity for messages logged with #TZ_LOG.
@@ -386,7 +389,7 @@ struct OneLogEntry {
 //}
 
 
-// declaration 
+// forward declaration of template getNArgsSize
 template<int N, typename... Ts>
 constexpr size_t getNArgsSize();
 
@@ -419,27 +422,67 @@ constexpr inline int getStrsNum() {
 	return count;
 }
 
-template<SpecInfo SI, SpecInfo... SIs, typename T, typename... Ts>
-inline void getStrSize(T arg, Ts... rest) {
-	getStrSize_internal<SI>(arg);
-	getStrSizeArray<SIs...>(rest...);
+template<int INX, SpecInfo SI, typename T>
+inline void getSizeForTerminal_s(size_t* arr, T arg) {
+	if constexpr ((SI.flags_ & __FLAG_LONGINT) == __FLAG_LONGINT) { // '%ls'
+		if constexpr (std::is_convertible_v<T, const wchar_t*>) {
+			// wchar_t string is 2 bytes UTF-16 on Windows, 
+			// 4 bytes UTF-32 (gcc/g++ and XCode) on Linux and OS,
+			// and 2 bytes UTF-16 on Cygwin (cygwin uses Windows APIs)
+			const wchar_t* wcp = static_cast<const wchar_t*>(arg);
+			if (nullptr == wcp)
+				arr[INX] = 0;
+			else
+				arr[INX] = (std::wcslen(str) + 1) * MARKUP_SIZEOFWCHAR;
+		}
+		else // T is not const wchar_t* type
+			arr[INX] = 0;
+	}
+	else { // '%s'
+		if constexpr (std::is_convertible_v<T, const char*>) {
+			const char* cp = static_cast<const char*>(arg);
+			if (nullptr == cp)
+				arr[INX] = 0;
+			else
+				arr[INX] = std::strlen(cp) + 1;
+		}
+		else // T is not const char* type
+			arr[INX] = 0;
+	}
 }
 
-
-template<SpecInfo SI, SpecInfo... SIs, typename D, typename T, typename... Ts>
-inline void getStrSize_D(D d, T arg, Ts... rest) {
-	getStrSize_internal<SI>(arg);
-	getStrSizeArray<SIs...>(rest...);
+template<int INX, SpecInfo SI, SpecInfo... SIs, typename T, typename... Ts>
+inline void getStrSize(size_t* arr, T arg, Ts... rest) {
+	if constexpr (SI.terminal_ == 's') {		 
+		getSizeForTerminal_s<INX, SI>(arr, arg);
+		getStrSizeArray<INX + 1, SIs...>(size_t * arr, rest...);
+	}
+	else
+		getStrSizeArray<INX, SIs...>(size_t* arr, rest...);
 }
 
-template<SpecInfo SI, SpecInfo... SIs, typename D1, typename D2, typename T, typename... Ts>
-inline void getStrSize_D_D(D1 d1, D2 d2, T arg, Ts... rest) {
-	getStrSize_internal<SI>(arg);
-	getStrSizeArray<SIs...>(rest...);
+template<int INX, SpecInfo SI, SpecInfo... SIs, typename D, typename T, typename... Ts>
+inline void getStrSize_D(size_t* arr, D d, T arg, Ts... rest) {
+	if constexpr (SI.terminal_ == 's') {
+		getSizeForTerminal_s<INX, SI>(arr, arg);
+		getStrSizeArray<INX + 1, SIs...>(size_t * arr, rest...);
+	}
+	else
+		getStrSizeArray<INX, SIs...>(size_t * arr, rest...);
 }
 
-template<SpecInfo... SIs, typename... Ts>
-inline void getStrSizeArray(Ts...args) {
+template<int INX, SpecInfo SI, SpecInfo... SIs, typename D1, typename D2, typename T, typename... Ts>
+inline void getStrSize_D_D(size_t* arr, D1 d1, D2 d2, T arg, Ts... rest) {
+	if constexpr (SI.terminal_ == 's') {
+		getSizeForTerminal_s<INX, SI>(arr, arg);
+		getStrSizeArray<INX + 1, SIs...>(size_t * arr, rest...);
+	}
+	else
+		getStrSizeArray<INX, SIs...>(size_t * arr, rest...);
+}
+
+template<int INX, SpecInfo... SIs, typename... Ts>
+inline void getStrSizeArray(size_t* arr, Ts...args) {
 	// At least one argument exists in the template parameter pack
 	// SpecInfo... SIs (tailed SI holding no valid terminal).
 	constexpr auto& SI = std::get<0>(std::forward_as_tuple(SIs...));
@@ -447,14 +490,14 @@ inline void getStrSizeArray(Ts...args) {
 	if constexpr (sizeof ...(SIs) > 1) {
 		if constexpr (SI.width_ == DYNAMIC_WIDTH
 			&& SI.prec_ == DYNAMIC_PRECISION) {
-			getStrSize_D_D<SIs...>(args...);
+			getStrSize_D_D<INX, SIs...>(arr, args...);
 		}
 		else if constexpr (SI.width_ == DYNAMIC_WIDTH
 			|| SI.prec_ == DYNAMIC_PRECISION) {
-			getStrSize_D<SIs...>(args...);
+			getStrSize_D<SIs...>(arr, args...);
 		}
 		else {
-			getStrSize<SIs...>(args...);
+			getStrSize<SIs...>(arr, args...);
 		}
 	}
 }
@@ -486,8 +529,8 @@ struct LogEntryHandler {
 		constexpr auto NSTR = getStrsNum<SIs...>();
 		std::array<size_t, NSTR> arr{};
 
-		if constexpr (NSTR > 0)  {
-		}
+		if constexpr (NSTR > 0)
+			getStrSizeArray<0, SIs...>(arr.data(), args...);
 
 		return std::move(arr);
 	}
