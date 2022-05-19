@@ -14,6 +14,7 @@
 #include <cwchar>
 
 #include "constexpr_fmt.h"
+#include "tz_logger.h"
 
 using namespace std;
 using namespace chrono;
@@ -2389,7 +2390,7 @@ int main() {
 //result = tz_snprintf(/*result,*/ buf, 800, "%+0*.*u", 20, 10, i);
 //int& j = i;
 
-CFMT_STR/*_TUPLE*/(result, buf, 2000, "%#xsdsdsdsdsdsdsdsdsdsd", /*"test zhilin tang %s %d %lld %hx %x"*//*tu*//*std::make_tuple*/(pdata[i]));
+//CFMT_STR/*_TUPLE*/(result, buf, 2000, "%#xsdsdsdsdsdsdsdsdsdsd", /*"test zhilin tang %s %d %lld %hx %x"*//*tu*//*std::make_tuple*/(pdata[i]));
 		///*result = tz_snprintf*/CFMT_STR(result, buf, 2000,
 		//	//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd"
 		//	//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd"
@@ -2519,6 +2520,32 @@ CFMT_STR/*_TUPLE*/(result, buf, 2000, "%#xsdsdsdsdsdsdsdsdsdsd", /*"test zhilin 
 //result = /*tz_*/snprintf/*CFMT_STR*/(/*result,*/ buf, 2000, "LLONG_MAX = %lld\n", LLONG_MAX);
 //result = /*tz_*/snprintf/*CFMT_STR*/(/*result,*/ buf, 2000, "LLONG_MAX = %lld\n", LLONG_MIN);
 //result = /*tz_*/snprintf/*CFMT_STR*/(/*result,*/ buf, 2000, "ULLONG_MAX = %llu\n", ULLONG_MAX);
+
+{
+	using this_tupe_t = decltype(std::make_tuple('a', 100, "asd"/*NULL*/, L"asd", /*nullptr*/"asdf", L"asdf"/*NULL*/));
+	constexpr int kNVSIs = countValidSpecInfos(/*"test %hhl #-+0zjtM %c %x %s %ls %s %ls\n"*/"test %hhl #-+0zjtM %c %x\n");
+	constexpr int kSS = squeezeSoundSize(/*"test %hhl #-+0zjtM %c %x %s %ls %s %ls\n"*/"test %hhl #-+0zjtM %c %x\n");
+	static constexpr auto fmtRawStr = /*"test %hhl #-+0zjtM %c %x %s %ls %s %ls\n"*/"test %hhl #-+0zjtM %c %x\n";
+	static constexpr auto kfmtArr = preprocessInvalidSpecs<kSS>(/*"test %hhl #-+0zjtM %c %x %s %ls %s %ls\n"*/"test %hhl #-+0zjtM %c %x\n");
+	static constexpr auto kRTStr = kSS < sizeof(/*"test %hhl #-+0zjtM %c %x %s %ls %s %ls\n"*/"test %hhl #-+0zjtM %c %x\n") ? kfmtArr.data() : /*"test %hhl #-+0zjtM %c %x %s %ls %s %ls\n"*/"test %hhl #-+0zjtM %c %x\n";
+	static constexpr auto kHandler = unpack<kNVSIs + 1, LogEntryHandler, &fmtRawStr>();
+	constexpr auto kArgsSize = kHandler.argsSize(this_tupe_t());
+	auto strSizeArr = kHandler.strSizeArray('a', 100, "asd"/*NULL*/, L"asd", /*nullptr*/"asdf", L"asdf"/*NULL*/);
+	auto bufSize = kArgsSize;
+	if (!strSizeArr.empty()) {
+		for (auto e : strSizeArr)
+			bufSize += e;
+    }
+
+    //OutputConstArgsSize<kArgsSize>();
+
+    //OutputConstStrSize(strSizeArr);
+
+    //std::cout << "Buf Size: " << bufSize << std::endl;
+}
+
+
+
 	}
 
 	auto end = system_clock::now();

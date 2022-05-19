@@ -433,7 +433,7 @@ inline void getSizeForTerminal_s(size_t* arr, T arg) {
 			if (nullptr == wcp)
 				arr[INX] = 0;
 			else
-				arr[INX] = (std::wcslen(str) + 1) * MARKUP_SIZEOFWCHAR;
+				arr[INX] = (std::wcslen(wcp) + 1) * MARKUP_SIZEOFWCHAR;
 		}
 		else // T is not const wchar_t* type
 			arr[INX] = 0;
@@ -455,30 +455,30 @@ template<int INX, SpecInfo SI, SpecInfo... SIs, typename T, typename... Ts>
 inline void getStrSize(size_t* arr, T arg, Ts... rest) {
 	if constexpr (SI.terminal_ == 's') {		 
 		getSizeForTerminal_s<INX, SI>(arr, arg);
-		getStrSizeArray<INX + 1, SIs...>(size_t * arr, rest...);
+		getStrSizeArray<INX + 1, SIs...>(arr, rest...);
 	}
 	else
-		getStrSizeArray<INX, SIs...>(size_t* arr, rest...);
+		getStrSizeArray<INX, SIs...>(arr, rest...);
 }
 
 template<int INX, SpecInfo SI, SpecInfo... SIs, typename D, typename T, typename... Ts>
 inline void getStrSize_D(size_t* arr, D d, T arg, Ts... rest) {
 	if constexpr (SI.terminal_ == 's') {
 		getSizeForTerminal_s<INX, SI>(arr, arg);
-		getStrSizeArray<INX + 1, SIs...>(size_t * arr, rest...);
+		getStrSizeArray<INX + 1, SIs...>(arr, rest...);
 	}
 	else
-		getStrSizeArray<INX, SIs...>(size_t * arr, rest...);
+		getStrSizeArray<INX, SIs...>(arr, rest...);
 }
 
 template<int INX, SpecInfo SI, SpecInfo... SIs, typename D1, typename D2, typename T, typename... Ts>
 inline void getStrSize_D_D(size_t* arr, D1 d1, D2 d2, T arg, Ts... rest) {
 	if constexpr (SI.terminal_ == 's') {
 		getSizeForTerminal_s<INX, SI>(arr, arg);
-		getStrSizeArray<INX + 1, SIs...>(size_t * arr, rest...);
+		getStrSizeArray<INX + 1, SIs...>(arr, rest...);
 	}
 	else
-		getStrSizeArray<INX, SIs...>(size_t * arr, rest...);
+		getStrSizeArray<INX, SIs...>(arr, rest...);
 }
 
 template<int INX, SpecInfo... SIs, typename... Ts>
@@ -494,10 +494,10 @@ inline void getStrSizeArray(size_t* arr, Ts...args) {
 		}
 		else if constexpr (SI.width_ == DYNAMIC_WIDTH
 			|| SI.prec_ == DYNAMIC_PRECISION) {
-			getStrSize_D<SIs...>(arr, args...);
+			getStrSize_D<INX, SIs...>(arr, args...);
 		}
 		else {
-			getStrSize<SIs...>(arr, args...);
+			getStrSize<INX, SIs...>(arr, args...);
 		}
 	}
 }
@@ -519,7 +519,7 @@ struct LogEntryHandler {
 	}
 
 	template <typename... Ts>
-	auto strSizeArray(Ts ...args) const -> dealtype(arr) {
+	auto strSizeArray(Ts ...args) const {
 		constexpr auto N = countArgsRequired<SIs...>();
 		static_assert(static_cast<size_t>(N) <= sizeof...(Ts),
 			"The minimum number of arguments required by SpecInfo pack must be"
@@ -568,11 +568,11 @@ struct LogEntryHandler {
  *      printf-like format string (must be literal)
  * \param ...
  *      Log arguments associated with the printf-like string. */
-#define TZ_LOG(severity, format, ...) do { \
-/* std::make_tuple: zero or more arguments to construct the tuple from */ \
-using this_tupe_t = decltype(std::make_tuple(##__VA_ARGS__)); \
-constexpr int kNVSIs = countValidSpecInfos(format); \
-constexpr int kSS = squeezeSoundSize(format); \
+#define TZ_LOG(severity, format, ...) do {                                     \
+/* std::make_tuple: zero or more arguments to construct the tuple from */      \
+using this_tupe_t = decltype(std::make_tuple(##__VA_ARGS__));                  \
+constexpr int kNVSIs = countValidSpecInfos(format);                            \
+constexpr int kSS = squeezeSoundSize(format);                                  \
 /**
  * A static variable inside a scope or function is something different than
  * a global static variable. Since there can be as many scoped statics with
@@ -583,16 +583,23 @@ constexpr int kSS = squeezeSoundSize(format); \
  * Adding the static keyword to the file scope version of variables doesn't
  * change their extent, but it does change its visibility with respect to
  * other translation units; the name is not exported to the linker, so it
- * cannot be accessed by name from another translation unit. */ \
-static constexpr auto fmtRawStr = format; \
-static constexpr auto kfmtArr = preprocessInvalidSpecs<kSS>(format); \
+ * cannot be accessed by name from another translation unit. */                \
+static constexpr auto fmtRawStr = format;                                      \
+static constexpr auto kfmtArr = preprocessInvalidSpecs<kSS>(format);           \
 static constexpr auto kRTStr = kSS < sizeof(format) ? kfmtArr.data() : format; \
 /**
  * use the address of the pointer to a string literal (&kRTStr) with static
  * storage duration and internal linkage instead of a raw string literal to
- * comply with c++ standard 14.3.2/1 */ \
-static constexpr auto kHandler = \
-    unpack<kNVSIs + 1, LogEntryHandler, &fmtRawStr>(); \
+ * comply with c++ standard 14.3.2/1 */                                        \
+static constexpr auto kHandler =                                               \
+    unpack<kNVSIs + 1, LogEntryHandler, &fmtRawStr>();                         \
+constexpr auto kArgsSize = kHandler.argsSize(this_tupe_t());                   \
+auto strSizeArr = kHandler.strSizeArray(##__VA_ARGS__);                        \
+auto bufSize = kArgsSize;                                                      \
+if (!strSizeArr.empty()) {                                                     \
+    for (auto e : strSizeArr)                                                  \
+		bufSize += e;                                                          \
+}                                                                              \
 } while (0)
 
 
