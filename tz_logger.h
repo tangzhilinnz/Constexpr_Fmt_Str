@@ -388,6 +388,44 @@ struct OneLogEntry {
 //	}
 //}
 
+//template<size_t N>
+//void OutputConstArgsSize() {
+//	std::cout << "Args Size: " << N << std::endl;
+//}
+//
+//template<size_t N>
+//void OutputConstStrSize(std::array<size_t, N> arr) {
+//	int i = 0;
+//	for (auto e : arr)
+//		std::cout << "string " << i++ << " size: " << e << std::endl;
+//}
+//
+//char pstr[] = "tang zhilin";
+//wchar_t pwstr[] = L"tang zhilin";
+//{
+//	using this_tupe_t = decltype(std::make_tuple('a', 100, pstr/*"asd"*//*NULL*/, L"asd", /*nullptr*/"asdf", pwstr/*L"asdf"*//*NULL*/));
+//	constexpr int kNVSIs = countValidSpecInfos("test %hhl #-+0zjtM %c %x %s %ls %s %ls\n"/*"test %hhl #-+0zjtM %c %x\n"*/);
+//	constexpr int kSS = squeezeSoundSize("test %hhl #-+0zjtM %c %x %s %ls %s %ls\n"/*"test %hhl #-+0zjtM %c %x\n"*/);
+//	static constexpr auto fmtRawStr = "test %hhl #-+0zjtM %c %x %s %ls %s %ls\n"/*"test %hhl #-+0zjtM %c %x\n"*/;
+//	static constexpr auto kfmtArr = preprocessInvalidSpecs<kSS>("test %hhl #-+0zjtM %c %x %s %ls %s %ls\n"/*"test %hhl #-+0zjtM %c %x\n"*/);
+//	static constexpr auto kRTStr = kSS < sizeof("test %hhl #-+0zjtM %c %x %s %ls %s %ls\n"/*"test %hhl #-+0zjtM %c %x\n"*/) ? kfmtArr.data() :
+//		"test %hhl #-+0zjtM %c %x %s %ls %s %ls\n"/*"test %hhl #-+0zjtM %c %x\n"*/;
+//	static constexpr auto kHandler = unpack<kNVSIs + 1, LogEntryHandler, &fmtRawStr>();
+//	constexpr auto kArgsSize = kHandler.argsSize(this_tupe_t());
+//	auto strSizeArr = kHandler.strSizeArray('a', 100, pstr/*"asd"*//*NULL*/, L"asd", /*nullptr*/"asdf", pwstr/*L"asdf"*//*NULL*/);
+//	auto bufSize = kArgsSize;
+//	if (!strSizeArr.empty()) {
+//		for (auto e : strSizeArr)
+//			bufSize += e;
+//	}
+//
+//	OutputConstArgsSize<kArgsSize>();
+//
+//	OutputConstStrSize(strSizeArr);
+//
+//	std::cout << "Buf Size: " << bufSize << std::endl;
+//}
+
 
 // forward declaration of template getNArgsSize
 template<int N, typename... Ts>

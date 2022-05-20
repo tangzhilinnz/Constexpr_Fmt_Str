@@ -686,7 +686,7 @@ toDigit(char c) {
  */
 //template<int N>
 constexpr inline SpecInfo
-getOneSepc(/*const char(&fmt)[N]*/const char* fmt, int num = 0) {
+getOneSpec(/*const char(&fmt)[N]*/const char* fmt, int num = 0) {
 	begin_t begin = 0;
 	end_t end = 0;
 	flags_t flags = 0;
@@ -941,8 +941,8 @@ getOneSepc(/*const char(&fmt)[N]*/const char* fmt, int num = 0) {
 template<int N, std::size_t... Indices>
 constexpr /*auto*/std::array<SpecInfo, sizeof...(Indices)> // Returns the number of elements in pack Indices
 analyzeFormatStringHelper(const char(&fmt)[N]/*const char* fmt*/, std::index_sequence<Indices...>) {
-	return { { getOneSepc(fmt, Indices)... } };
-	//return std::make_tuple(getOneSepc(fmt, Indices)...);
+	return { { getOneSpec(fmt, Indices)... } };
+	//return std::make_tuple(getOneSpec(fmt, Indices)...);
 }
 
 
@@ -2001,7 +2001,7 @@ template<int N, template</*auto*/SpecInfo...> typename Template,
 	     /*auto*/const char* const* fmt>
 	constexpr decltype(auto) unpack() {
 	return[&]<std::size_t... Is>(std::index_sequence<Is...>) {
-		return Template <getOneSepc(*fmt, Is)... > {};
+		return Template <getOneSpec(*fmt, Is)... > {};
 	} (std::make_index_sequence<N>{});
 }
 
