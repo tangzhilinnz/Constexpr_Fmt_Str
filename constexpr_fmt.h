@@ -2030,10 +2030,10 @@ template<int N, template</*auto*/SpecInfo...> typename Template,
  *      location, for specifier n). There should be at least as many of these
  *      arguments as the number of valid format specifiers.
  */
-#define CFMT_STR(result, buffer, count, format, ...) do { \
-constexpr int kNVSIs = countValidSpecInfos(format); \
-constexpr int kSS = squeezeSoundSize(format); \
-static constexpr auto fmtRawStr = format; \
+#define CFMT_STR(result, buffer, count, format, ...) do {                      \
+constexpr int kNVSIs = countValidSpecInfos(format);                            \
+constexpr int kSS = squeezeSoundSize(format);                                  \
+static constexpr auto fmtRawStr = format;                                      \
 /**
  * A static variable inside a scope or function is something different than
  * a global static variable. Since there can be as many scoped statics with
@@ -2044,22 +2044,21 @@ static constexpr auto fmtRawStr = format; \
  * Adding the static keyword to the file scope version of variables doesn't
  * change their extent, but it does change its visibility with respect to
  * other translation units; the name is not exported to the linker, so it
- * cannot be accessed by name from another translation unit. */ \
-/*static constexpr std::array<SpecInfo, kNVSIs + 1> kSIs */\
-	/*= analyzeFormatString<kNVSIs + 1>(format);*/ \
-static constexpr auto kfmtArr = preprocessInvalidSpecs<kSS>(format); \
+ * cannot be accessed by name from another translation unit. */               \
+/*static constexpr std::array<SpecInfo, kNVSIs + 1> kSIs */                   \
+	/*= analyzeFormatString<kNVSIs + 1>(format);*/                            \
+static constexpr auto kfmtArr = preprocessInvalidSpecs<kSS>(format);          \
 static constexpr auto kRTStr = kSS < sizeof(format)? kfmtArr.data() : format; \
 /** 
  * use the address of the pointer to a string literal (&kRTStr) with static
  * storage duration and internal linkage instead of a raw string literal to
- * comply with c++ standard 14.3.2/1 */ \
-static constexpr auto kConverter = \
-    unpack</*&kRTStr,*/ kNVSIs + 1, Converter, &fmtRawStr>(); \
-/*static constexpr auto kConverter = unpack<kSIs, Converter>();*/ \
-OutbufArg outbuf(buffer, count); \
-kConverter.convert<&kRTStr>(outbuf, ##__VA_ARGS__); \
-result = outbuf.getWrittenNum(); \
-outbuf.done(); /* null - terminate the string */ \
+ * comply with c++ standard 14.3.2/1 */                                       \
+static constexpr auto kConverter =                                            \
+    unpack</*&kRTStr,*/ kNVSIs + 1, Converter, &fmtRawStr>();                 \
+OutbufArg outbuf(buffer, count);                                              \
+kConverter.convert<&kRTStr>(outbuf, ##__VA_ARGS__);                           \
+result = outbuf.getWrittenNum();                                              \
+outbuf.done(); /* null - terminate the string */                              \
 } while (0);
 
 
@@ -2085,24 +2084,24 @@ outbuf.done(); /* null - terminate the string */ \
  *      storage location, for specifier n). There should be at least as many of
  *      values in tuple as the number of valid format specifiers.
  */
-#define CFMT_STR_TUPLE(result, buffer, count, format, tuple) do { \
-constexpr int kNVSIs = countValidSpecInfos(format); \
-constexpr int kSS = squeezeSoundSize(format); \
-static constexpr auto fmtRawStr = format; \
-static constexpr auto kfmtArr = preprocessInvalidSpecs<kSS>(format); \
+#define CFMT_STR_TUPLE(result, buffer, count, format, tuple) do {              \
+constexpr int kNVSIs = countValidSpecInfos(format);                            \
+constexpr int kSS = squeezeSoundSize(format);                                  \
+static constexpr auto fmtRawStr = format;                                      \
+static constexpr auto kfmtArr = preprocessInvalidSpecs<kSS>(format);           \
 static constexpr auto kRTStr = kSS < sizeof(format) ? kfmtArr.data() : format; \
 /**
 * use the address of the pointer to a string literal (&kRTStr) with static
 * storage duration and internal linkage instead of a raw string literal to
-* comply with c++ standard 14.3.2/1 */ \
-static constexpr auto kConverter = \
-    unpack</*&kRTStr,*/ kNVSIs + 1, Converter, &fmtRawStr>(); \
-OutbufArg outbuf(buffer, count); \
-auto convert_lambda = [&](auto... args) { \
-	return kConverter.convert<&kRTStr>(outbuf, (args)...); }; \
-std::apply(convert_lambda, tuple); \
-result = outbuf.getWrittenNum(); \
-outbuf.done(); \
+* comply with c++ standard 14.3.2/1 */                                         \
+static constexpr auto kConverter =                                             \
+    unpack<kNVSIs + 1, Converter, &fmtRawStr>();                               \
+OutbufArg outbuf(buffer, count);                                               \
+auto convert_lambda = [&](auto... args) {                                      \
+	return kConverter.convert<&kRTStr>(outbuf, (args)...); };                  \
+std::apply(convert_lambda, tuple);                                             \
+result = outbuf.getWrittenNum();                                               \
+outbuf.done(); /* null - terminate the string */                               \
 } while (0);
 
 
