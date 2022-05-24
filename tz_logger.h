@@ -244,7 +244,7 @@ inline void getStrSizeArray(size_t* arr, Ts...args) {
 
 
 template<int INX, SpecInfo SI, typename T>
-storeArg(char** storage, char** storage2, size_t* arr, T arg) {
+inline void storeArg(char** storage, char** storage2, size_t* arr, T arg) {
 	if constexpr (SI.terminal_ == 's') {
 		if constexpr ((SI.flags_ & __FLAG_LONGINT) == __FLAG_LONGINT) {
 			if constexpr (std::is_convertible_v<T, const wchar_t*>) {
@@ -253,17 +253,17 @@ storeArg(char** storage, char** storage2, size_t* arr, T arg) {
 				// and 2 bytes UTF-16 on Cygwin (cygwin uses Windows APIs)
 				const wchar_t* wcp = static_cast<const wchar_t*>(arg);
 				if (nullptr == wcp) {
-					*reinterpret_cast<const wchar_t**>(*storage) = nullptr;
-					*storage += sizeof(const wchar_t*);
+					*reinterpret_cast<wchar_t**>(*storage) = nullptr;
+					*storage += sizeof(wchar_t*);
 				}
 				else {
 					size_t size = arr[INX] - MARKUP_SIZEOFWCHAR;
 					const char* cp = reinterpret_cast<const char*>(wcp);
 					std::memcpy(*storage2, cp, size);
-					*reinterpret_cast<const wchar_t*>(*storage2 + size) = L'\0';
-					*reinterpret_cast<const wchar_t**>(*storage) =
-						reinterpret_cast<const wchar_t*>(*storage2);
-					*storage += sizeof(const wchar_t*) + arr[INX];
+					*reinterpret_cast<wchar_t*>(*storage2 + size) = L'\0';
+					*reinterpret_cast<wchar_t**>(*storage) =
+						reinterpret_cast<wchar_t*>(*storage2);
+					*storage += sizeof(wchar_t*);
 					*storage2 += arr[INX];
 				}
 			}
@@ -276,15 +276,15 @@ storeArg(char** storage, char** storage2, size_t* arr, T arg) {
 			if constexpr (std::is_convertible_v<T, const char*>) {
 				const char* cp = static_cast<const char*>(arg);
 				if (nullptr == cp) {
-					*reinterpret_cast<const char**>(*storage) = nullptr;
-					*storage += sizeof(const char*);
+					*reinterpret_cast<char**>(*storage) = nullptr;
+					*storage += sizeof(char*);
 				}
 				else {
 					size_t size = arr[INX] - 1;
 					std::memcpy(*storage2, cp, size);
 					*(*storage2 + size) = '\0';
-					*reinterpret_cast<const char**>(*storage) =  *storage2;
-					*storage += sizeof(const char*);
+					*reinterpret_cast<char**>(*storage) =  *storage2;
+					*storage += sizeof(char*);
 					*storage2 += arr[INX];
 				}
 			}

@@ -69,6 +69,18 @@ int foo(int& i) { return i; }
 int tz_snprintf(char* buffer, size_t  count, const char* fmt, ...);
 int test_CFMT_STR(int& i);
 
+template<size_t N>
+void OutputConstArgsSize() {
+	std::cout << "Args Size: " << N << std::endl;
+}
+
+template<size_t N>
+void OutputConstStrSize(std::array<size_t, N> arr) {
+	int i = 0;
+	for (auto e : arr)
+		std::cout << "string " << i++ << " size: " << e << std::endl;
+}
+
 int main() {
 
 	std::to_chars_result ret;
@@ -99,6 +111,10 @@ int main() {
 	char arr[] = {'t', 'a', 'n', 'g', ' ', 'z', 'h', 'i', 'l', 'i', 'n', '\0'};
 
 	auto tu = std::make_tuple("zoe", 2, 3., 4, 5.);
+
+	char pstr[] = "tang zhilin";
+	char* pBuf = buf;
+	wchar_t pwstr[] = L"tang zhilin";
 
 	auto start = system_clock::now();
 
@@ -2520,29 +2536,37 @@ int main() {
 //result = /*tz_*/snprintf/*CFMT_STR*/(/*result,*/ buf, 2000, "LLONG_MAX = %lld\n", LLONG_MAX);
 //result = /*tz_*/snprintf/*CFMT_STR*/(/*result,*/ buf, 2000, "LLONG_MAX = %lld\n", LLONG_MIN);
 //result = /*tz_*/snprintf/*CFMT_STR*/(/*result,*/ buf, 2000, "ULLONG_MAX = %llu\n", ULLONG_MAX);
+    pBuf = buf;
+     
+	{
+		using this_tupe_t = decltype(std::make_tuple('a', 100, pstr/*"asd"*//*NULL*/, L'a', 123, L"asd", /*nullptr*/"asdf", pwstr/*L"asdf"*//*NULL*/));
+		constexpr int kNVSIs = countValidSpecInfos("test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"/*"test %hhl #-+0zjtM %c %x\n"*/);
+		constexpr int kSS = squeezeSoundSize("test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"/*"test %hhl #-+0zjtM %c %x\n"*/);
+		static constexpr auto fmtRawStr = "test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"/*"test %hhl #-+0zjtM %c %x\n"*/;
+		static constexpr auto kfmtArr = preprocessInvalidSpecs<kSS>("test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"/*"test %hhl #-+0zjtM %c %x\n"*/);
+		static constexpr auto kRTStr = kSS < sizeof("test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"/*"test %hhl #-+0zjtM %c %x\n"*/) ? kfmtArr.data() :
+			"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"/*"test %hhl #-+0zjtM %c %x\n"*/;
+		static constexpr auto kHandler = unpack<kNVSIs + 1, LogEntryHandler, &fmtRawStr>();
+		constexpr auto kArgsSize = kHandler.argsSize(this_tupe_t());
+		auto strSizeArr = kHandler.strSizeArray('a', 100, pstr/*"asd"*//*NULL*/, L'a', 123, L"asd", /*nullptr*/"asdf", pwstr/*L"asdf"*//*NULL*/);
+		auto bufSize = kArgsSize;
+		if (!strSizeArr.empty()) {
+			for (auto e : strSizeArr)
+				bufSize += e;
+		}
 
-{
-	using this_tupe_t = decltype(std::make_tuple('a', 100, "asd"/*NULL*/, L"asd", /*nullptr*/"asdf", L"asdf"/*NULL*/));
-	constexpr int kNVSIs = countValidSpecInfos(/*"test %hhl #-+0zjtM %c %x %s %ls %s %ls\n"*/"test %hhl #-+0zjtM %c %x\n");
-	constexpr int kSS = squeezeSoundSize(/*"test %hhl #-+0zjtM %c %x %s %ls %s %ls\n"*/"test %hhl #-+0zjtM %c %x\n");
-	static constexpr auto fmtRawStr = /*"test %hhl #-+0zjtM %c %x %s %ls %s %ls\n"*/"test %hhl #-+0zjtM %c %x\n";
-	static constexpr auto kfmtArr = preprocessInvalidSpecs<kSS>(/*"test %hhl #-+0zjtM %c %x %s %ls %s %ls\n"*/"test %hhl #-+0zjtM %c %x\n");
-	static constexpr auto kRTStr = kSS < sizeof(/*"test %hhl #-+0zjtM %c %x %s %ls %s %ls\n"*/"test %hhl #-+0zjtM %c %x\n") ? kfmtArr.data() : /*"test %hhl #-+0zjtM %c %x %s %ls %s %ls\n"*/"test %hhl #-+0zjtM %c %x\n";
-	static constexpr auto kHandler = unpack<kNVSIs + 1, LogEntryHandler, &fmtRawStr>();
-	constexpr auto kArgsSize = kHandler.argsSize(this_tupe_t());
-	auto strSizeArr = kHandler.strSizeArray('a', 100, "asd"/*NULL*/, L"asd", /*nullptr*/"asdf", L"asdf"/*NULL*/);
-	auto bufSize = kArgsSize;
-	if (!strSizeArr.empty()) {
-		for (auto e : strSizeArr)
-			bufSize += e;
-    }
+		(void)kHandler.dump<kArgsSize>(&pBuf, strSizeArr, 'a', 100, pstr/*"asd"*//*NULL*/, L'a', 123, L"asd", /*nullptr*/"asdf", pwstr/*L"asdf"*//*NULL*/);
+	
+		//OutputConstArgsSize<kArgsSize>();
+	
+		//OutputConstStrSize(strSizeArr);
+	
+		//std::cout << "Buf Size: " << bufSize << std::endl;
 
-    //OutputConstArgsSize<kArgsSize>();
-
-    //OutputConstStrSize(strSizeArr);
-
-    //std::cout << "Buf Size: " << bufSize << std::endl;
-}
+		//for (int i = 0; i < bufSize; i++) {
+		//	std::cout << buf[i] << std::endl;
+		//}
+	}
 
 
 
