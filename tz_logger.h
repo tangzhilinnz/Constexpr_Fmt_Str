@@ -350,26 +350,18 @@ inline void store_D_D_A_Args(char** storage, char** storage2, size_t* arr,
  * Stores entire printf arguments into a buffer and bumps the buffer pointer.
  *
  * Non-string types are stored (full-width) and string types are stored
- * with a uint32_t header describing the string length in bytes followed
- * by the string itself with NULL terminator
+ * with its string pointer at storage and the string itself with NULL
+ * terminator is stored at storage2
  * ('\0' for char* and L'\0' for wchar_t*).
  *
- * Note: This is the non-string specialization of the function
- * (hence the std::enable_if below), so it contains extra
- * parameters that are unused.
- *
- * \tparam T
- *      Type to store (automatically deduced)
- *
  * \param[in/out] storage
- *      Buffer to store the argument into
- * \param arg
- *      Argument to store
- * \param paramType
- *      Type information deduced from the format string about this
- *      argument (unused here)
- * \param stringSize
- *      Stores the byte length of the argument, if it is a string (unused here)
+ *      Buffer to store all arguments into
+ * \param[in/out] storage2
+ *      Buffer to store all strings corresponding to format specifier 's' into
+ * \param arr
+ *      The pointer to the array of string size
+ * \param ...args
+ *      Arguments to store
  */
 template<int INX, SpecInfo... SIs, typename... Ts>
 inline void storeArgs(char** storage, char** storage2, size_t* arr, Ts ...args) {
@@ -393,12 +385,104 @@ inline void storeArgs(char** storage, char** storage2, size_t* arr, Ts ...args) 
 }
 
 
+// forward declaration of template storeArgs
+template<const char* const* FmtStr, SpecInfo... SIs, typename... Ts>
+inline void formator(OutbufArg& outbuf, char** input);
+
+template<const char* const* FmtStr, SpecInfo SI, SpecInfo... SIs, typename T, typename... Ts>
+inline void formator_A_args(OutbufArg& outbuf, char** input) {
+	T val = *reinterpret_cast<T*>(*input);
+	*input += sizeof(T);
+
+	converter_single<FmtStr, SI, T>(outbuf, val);
+	formator<FmtStr, SIs..., Ts...>(outbuf, input);
+}
+
+template<const char* const* FmtStr, SpecInfo SI, SpecInfo... SIs, typename D, typename T, typename... Ts>
+inline void formator_D_A_args(OutbufArg& outbuf, char** input) {
+	int d;
+
+	if constexpr (std::is_integral_v<std::remove_reference_t<D>>)
+		d = static_cast<int>(*reinterpret_cast<D*>(*input));
+	else {
+		if constexpr (SI.width_ == DYNAMIC_WIDTH)
+			d = 0;
+		else if constexpr (SI.prec_ == DYNAMIC_PRECISION)
+			d = -1;
+		else /* should never happen */
+			abort();
+	}
+
+	*input += sizeof(D);
+	T val = *reinterpret_cast<T*>(*input);
+	*input += sizeof(T);
+
+	if constexpr (SI.width_ == DYNAMIC_WIDTH) {
+		int d = 0;
+		if constexpr (std::is_integral_v<std::remove_reference_t<D>>)
+			d = static_cast<int>(*reinterpret_cast<D*>(*input));
+
+
+		converter_single<FmtStr, SI, T>(outbuf, val, d, -1);
+	}
+	else if constexpr (SI.prec_ == DYNAMIC_PRECISION) {
+		converter_single<FmtStr, SI, T>(outbuf, val, 0, d);
+	}
+	else { /* should never happen */
+		abort();
+	}
+
+	formator<FmtStr, SIs..., Ts...>(outbuf, input);
+}
+
+template<const char* const* FmtStr, SpecInfo SI, SpecInfo... SIs, typename D1, typename D2, typename T, typename... Ts>
+inline void formator_D_D_A_args(OutbufArg& outbuf, char** input) {
+	int d1, d2;
+
+
+	if constexpr (SI.wFirst_) {
+		converter_single<FmtStr, SI>(outbuf, (arg), formattedWidth(d1), formattedPrec(d2));
+	}
+	else {
+		converter_single<FmtStr, SI>(outbuf, arg, formattedWidth(d2), formattedPrec(d1));
+	}
+
+	formator<FmtStr, SIs..., Ts...>(outbuf, input);
+}
+
+template<const char* const* FmtStr, SpecInfo... SIs, typename... Ts>
+inline void formator(OutbufArg& outbuf, char** input) {
+	// At least one argument exists in the template parameter pack
+    // SpecInfo... SIs (tailed SI holding no valid terminal).
+	constexpr auto& SI = std::get<0>(std::forward_as_tuple(SIs...));
+
+	if constexpr (sizeof ...(SIs) > 1) {
+		if constexpr (SI.width_ == DYNAMIC_WIDTH
+			&& SI.prec_ == DYNAMIC_PRECISION) {
+			formator_D_D_A_args<FmtStr, SIs..., Ts...>(outbuf, input);
+		}
+		else if constexpr (SI.width_ == DYNAMIC_WIDTH
+			|| SI.prec_ == DYNAMIC_PRECISION) {
+			formator_D_A_args<FmtStr, SIs..., Ts...>(outbuf, input);
+		}
+		else {
+			formator_A_args<FmtStr, SIs..., Ts...>(outbuf, input);
+		}
+	}
+	else {
+		// Fetch tail SpecInfo to terminate the formatting process.
+		outbuf.write(*FmtStr + SI.begin_, 
+			static_cast<size_t>(SI.end_ - SI.begin_));
+	}
+}
+
+
 template<SpecInfo... SIs>
 struct LogEntryHandler {
 	constexpr LogEntryHandler() { }
 
 	template <typename... Ts>
-	constexpr size_t argsSize(std::tuple<Ts...> const&) const {
+	constexpr size_t argsSize(std::tuple<Ts...>&&) const {
 		constexpr auto N = countArgsRequired<SIs...>();
 		static_assert(static_cast<size_t>(N) <= sizeof...(Ts),
 			"The minimum number of arguments required by SpecInfo pack must be"
@@ -437,8 +521,9 @@ struct LogEntryHandler {
 		storeArgs<0, SIs...>(storage, &pStrStorage, arr.data(), args...);
 	}
 
-	template <const char* const* pRTStr, typename... Ts>
-	void convert(OutbufArg& outbuf, char** input) const {
+	template <const char* const* FmtStr, typename... Ts>
+	constexpr decltype(auto) formatFuncGen(std::tuple<Ts...>&&) const {
+		return &(formator<FmtStr, SIs..., Ts...>);
 	}
 
 };
