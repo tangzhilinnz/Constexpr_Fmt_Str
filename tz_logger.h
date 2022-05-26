@@ -400,32 +400,26 @@ inline void formator_A_args(OutbufArg& outbuf, char** input) {
 
 template<const char* const* FmtStr, SpecInfo SI, SpecInfo... SIs, typename D, typename T, typename... Ts>
 inline void formator_D_A_args(OutbufArg& outbuf, char** input) {
-	int d;
-
-	if constexpr (std::is_integral_v<std::remove_reference_t<D>>)
-		d = static_cast<int>(*reinterpret_cast<D*>(*input));
-	else {
-		if constexpr (SI.width_ == DYNAMIC_WIDTH)
-			d = 0;
-		else if constexpr (SI.prec_ == DYNAMIC_PRECISION)
-			d = -1;
-		else /* should never happen */
-			abort();
-	}
-
-	*input += sizeof(D);
-	T val = *reinterpret_cast<T*>(*input);
-	*input += sizeof(T);
-
 	if constexpr (SI.width_ == DYNAMIC_WIDTH) {
 		int d = 0;
 		if constexpr (std::is_integral_v<std::remove_reference_t<D>>)
 			d = static_cast<int>(*reinterpret_cast<D*>(*input));
+		*input += sizeof(D);
 
+		T val = *reinterpret_cast<T*>(*input);
+		*input += sizeof(T);
 
 		converter_single<FmtStr, SI, T>(outbuf, val, d, -1);
 	}
 	else if constexpr (SI.prec_ == DYNAMIC_PRECISION) {
+		int d = -1;
+		if constexpr (std::is_integral_v<std::remove_reference_t<D>>)
+			d = static_cast<int>(*reinterpret_cast<D*>(*input));
+		*input += sizeof(D);
+
+		T val = *reinterpret_cast<T*>(*input);
+		*input += sizeof(T);
+
 		converter_single<FmtStr, SI, T>(outbuf, val, 0, d);
 	}
 	else { /* should never happen */
@@ -437,14 +431,33 @@ inline void formator_D_A_args(OutbufArg& outbuf, char** input) {
 
 template<const char* const* FmtStr, SpecInfo SI, SpecInfo... SIs, typename D1, typename D2, typename T, typename... Ts>
 inline void formator_D_D_A_args(OutbufArg& outbuf, char** input) {
-	int d1, d2;
-
-
 	if constexpr (SI.wFirst_) {
-		converter_single<FmtStr, SI>(outbuf, (arg), formattedWidth(d1), formattedPrec(d2));
+		int d1 = 0, d2 = -1;
+		if constexpr (std::is_integral_v<std::remove_reference_t<D1>>)
+			d1 = static_cast<int>(*reinterpret_cast<D1*>(*input));
+		*input += sizeof(D1);
+		if constexpr (std::is_integral_v<std::remove_reference_t<D2>>)
+			d2 = static_cast<int>(*reinterpret_cast<D2*>(*input));
+		*input += sizeof(D2);
+
+		T val = *reinterpret_cast<T*>(*input);
+		*input += sizeof(T);
+
+		converter_single<FmtStr, SI, T>(outbuf, val, d1, d2);
 	}
 	else {
-		converter_single<FmtStr, SI>(outbuf, arg, formattedWidth(d2), formattedPrec(d1));
+		int d1 = -1, d2 = 0;
+		if constexpr (std::is_integral_v<std::remove_reference_t<D1>>)
+			d1 = static_cast<int>(*reinterpret_cast<D1*>(*input));
+		*input += sizeof(D1);
+		if constexpr (std::is_integral_v<std::remove_reference_t<D2>>)
+			d2 = static_cast<int>(*reinterpret_cast<D2*>(*input));
+		*input += sizeof(D2);
+
+		T val = *reinterpret_cast<T*>(*input);
+		*input += sizeof(T);
+
+		converter_single<FmtStr, SI, T>(outbuf, val, d2, d1);
 	}
 
 	formator<FmtStr, SIs..., Ts...>(outbuf, input);
