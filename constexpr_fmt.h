@@ -110,11 +110,17 @@ struct OutbufArg {
 
 	template <size_t N>
 	OutbufArg(char(&buffer)[N])
-		: pBuf_(buffer), pBufEnd_(buffer + N), written_(0) {
+		: pBuf_(buffer)
+		, pBufBegind_(buffer)
+		, pBufEnd_(buffer + N)
+		, written_(0) {
 	}
 
 	OutbufArg(char* buffer, size_t size)
-		: pBuf_(buffer), pBufEnd_(buffer + size), written_(0) {
+		: pBuf_(buffer)
+		, pBufBegind_(buffer)
+		, pBufEnd_(buffer + size)
+		, written_(0) {
 	}
 
 	size_t getWrittenNum() {
@@ -147,6 +153,11 @@ struct OutbufArg {
 		// fail if at the end of buffer, recall need a single byte for null
 		if (static_cast<std::make_signed<size_t>::type>(remaining) >= 0)
 			pBuf_ += n;
+	}
+
+	void reset() {
+		pBuf_ = pBufBegind_;
+		written_ = 0;
 	}
 
 	void write(char ch) noexcept {
@@ -229,12 +240,11 @@ private:
 	char* pBuf_/*{ nullptr }*/;
 	// const pointer to buffer end
 	char* const pBufEnd_;
+	// const pointer to buffer begin
+	char* const pBufBegind_;
 
 	// pointer to buffer end
 	// char* pBufEnd_{ nullptr };
-
-	// writing buffer size
-	// size_t size_/*{ 0 }*/;
 
 	// record the number of characters that would have been written if writing
 	// buffer had been sufficiently large, not counting the terminating null 

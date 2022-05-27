@@ -50,7 +50,7 @@ enum class LogLevel {
  */
 struct StaticFmtInfo {
 	// Function signature of the convert function used in the log sink thread
-	using ConvertFn =  void (*)(OutbufArg&, char*);
+	using ConvertFn =  void (*)(OutbufArg&, char**);
 
 	// With constexpr constructors, objects of user-defined types can be
 	// included in valid constant expressions.
@@ -158,7 +158,7 @@ constexpr inline int getStrsNum() {
 	return count;
 }
 
-template<int INX, SpecInfo SI, typename T>
+template<size_t IDX, SpecInfo SI, typename T>
 inline void getSizeForTerminal_s(size_t* arr, T arg) {
 	if constexpr ((SI.flags_ & __FLAG_LONGINT) == __FLAG_LONGINT) { // '%ls'
 		if constexpr (std::is_convertible_v<T, const wchar_t*>) {
@@ -167,61 +167,61 @@ inline void getSizeForTerminal_s(size_t* arr, T arg) {
 			// and 2 bytes UTF-16 on Cygwin (cygwin uses Windows APIs)
 			const wchar_t* wcp = static_cast<const wchar_t*>(arg);
 			if (nullptr == wcp)
-				arr[INX] = 0;
+				arr[IDX] = 0;
 			else
-				arr[INX] = (std::wcslen(wcp) + 1) * MARKUP_SIZEOFWCHAR;
+				arr[IDX] = (std::wcslen(wcp) + 1) * MARKUP_SIZEOFWCHAR;
 		}
 		else // T is not const wchar_t* type
-			arr[INX] = 0;
+			arr[IDX] = 0;
 	}
 	else { // '%s'
 		if constexpr (std::is_convertible_v<T, const char*>) {
 			const char* cp = static_cast<const char*>(arg);
 			if (nullptr == cp)
-				arr[INX] = 0;
+				arr[IDX] = 0;
 			else
-				arr[INX] = std::strlen(cp) + 1;
+				arr[IDX] = std::strlen(cp) + 1;
 		}
 		else // T is not const char* type
-			arr[INX] = 0;
+			arr[IDX] = 0;
 	}
 }
 
 // forward declaration of template getStrSizeArray
-template<int INX, SpecInfo... SIs, typename... Ts>
+template<size_t IDX, SpecInfo... SIs, typename... Ts>
 inline void getStrSizeArray(size_t* arr, Ts...args);
 
-template<int INX, SpecInfo SI, SpecInfo... SIs, typename T, typename... Ts>
+template<size_t IDX, SpecInfo SI, SpecInfo... SIs, typename T, typename... Ts>
 inline void getStrSize(size_t* arr, T arg, Ts... rest) {
 	if constexpr (SI.terminal_ == 's') {		 
-		getSizeForTerminal_s<INX, SI>(arr, arg);
-		getStrSizeArray<INX + 1, SIs...>(arr, rest...);
+		getSizeForTerminal_s<IDX, SI>(arr, arg);
+		getStrSizeArray<IDX + 1, SIs...>(arr, rest...);
 	}
 	else
-		getStrSizeArray<INX, SIs...>(arr, rest...);
+		getStrSizeArray<IDX, SIs...>(arr, rest...);
 }
 
-template<int INX, SpecInfo SI, SpecInfo... SIs, typename D, typename T, typename... Ts>
+template<size_t IDX, SpecInfo SI, SpecInfo... SIs, typename D, typename T, typename... Ts>
 inline void getStrSize_D(size_t* arr, D d, T arg, Ts... rest) {
 	if constexpr (SI.terminal_ == 's') {
-		getSizeForTerminal_s<INX, SI>(arr, arg);
-		getStrSizeArray<INX + 1, SIs...>(arr, rest...);
+		getSizeForTerminal_s<IDX, SI>(arr, arg);
+		getStrSizeArray<IDX + 1, SIs...>(arr, rest...);
 	}
 	else
-		getStrSizeArray<INX, SIs...>(arr, rest...);
+		getStrSizeArray<IDX, SIs...>(arr, rest...);
 }
 
-template<int INX, SpecInfo SI, SpecInfo... SIs, typename D1, typename D2, typename T, typename... Ts>
+template<size_t IDX, SpecInfo SI, SpecInfo... SIs, typename D1, typename D2, typename T, typename... Ts>
 inline void getStrSize_D_D(size_t* arr, D1 d1, D2 d2, T arg, Ts... rest) {
 	if constexpr (SI.terminal_ == 's') {
-		getSizeForTerminal_s<INX, SI>(arr, arg);
-		getStrSizeArray<INX + 1, SIs...>(arr, rest...);
+		getSizeForTerminal_s<IDX, SI>(arr, arg);
+		getStrSizeArray<IDX + 1, SIs...>(arr, rest...);
 	}
 	else
-		getStrSizeArray<INX, SIs...>(arr, rest...);
+		getStrSizeArray<IDX, SIs...>(arr, rest...);
 }
 
-template<int INX, SpecInfo... SIs, typename... Ts>
+template<size_t IDX, SpecInfo... SIs, typename... Ts>
 inline void getStrSizeArray(size_t* arr, Ts...args) {
 	// At least one argument exists in the template parameter pack
 	// SpecInfo... SIs (tailed SI holding no valid terminal).
@@ -230,20 +230,20 @@ inline void getStrSizeArray(size_t* arr, Ts...args) {
 	if constexpr (sizeof ...(SIs) > 1) {
 		if constexpr (SI.width_ == DYNAMIC_WIDTH
 			&& SI.prec_ == DYNAMIC_PRECISION) {
-			getStrSize_D_D<INX, SIs...>(arr, args...);
+			getStrSize_D_D<IDX, SIs...>(arr, args...);
 		}
 		else if constexpr (SI.width_ == DYNAMIC_WIDTH
 			|| SI.prec_ == DYNAMIC_PRECISION) {
-			getStrSize_D<INX, SIs...>(arr, args...);
+			getStrSize_D<IDX, SIs...>(arr, args...);
 		}
 		else {
-			getStrSize<INX, SIs...>(arr, args...);
+			getStrSize<IDX, SIs...>(arr, args...);
 		}
 	}
 }
 
 
-template<int INX, SpecInfo SI, typename T>
+template<size_t IDX, SpecInfo SI, typename T>
 inline void storeArg(char** storage, char** storage2, size_t* arr, T arg) {
 	if constexpr (SI.terminal_ == 's') {
 		if constexpr ((SI.flags_ & __FLAG_LONGINT) == __FLAG_LONGINT) {
@@ -257,14 +257,14 @@ inline void storeArg(char** storage, char** storage2, size_t* arr, T arg) {
 					*storage += sizeof(wchar_t*);
 				}
 				else {
-					size_t size = arr[INX] - MARKUP_SIZEOFWCHAR;
+					size_t size = arr[IDX] - MARKUP_SIZEOFWCHAR;
 					const char* cp = reinterpret_cast<const char*>(wcp);
 					std::memcpy(*storage2, cp, size);
 					*reinterpret_cast<wchar_t*>(*storage2 + size) = L'\0';
 					*reinterpret_cast<wchar_t**>(*storage) =
 						reinterpret_cast<wchar_t*>(*storage2);
 					*storage += sizeof(wchar_t*);
-					*storage2 += arr[INX];
+					*storage2 += arr[IDX];
 				}
 			}
 			else {
@@ -280,12 +280,12 @@ inline void storeArg(char** storage, char** storage2, size_t* arr, T arg) {
 					*storage += sizeof(char*);
 				}
 				else {
-					size_t size = arr[INX] - 1;
+					size_t size = arr[IDX] - 1;
 					std::memcpy(*storage2, cp, size);
 					*(*storage2 + size) = '\0';
 					*reinterpret_cast<char**>(*storage) =  *storage2;
 					*storage += sizeof(char*);
-					*storage2 += arr[INX];
+					*storage2 += arr[IDX];
 				}
 			}
 			else {
@@ -302,34 +302,34 @@ inline void storeArg(char** storage, char** storage2, size_t* arr, T arg) {
 }
 
 // forward declaration of template storeArgs
-template<int INX, SpecInfo... SIs, typename... Ts>
+template<size_t IDX, SpecInfo... SIs, typename... Ts>
 inline void storeArgs(char** storage, char** storage2, size_t* arr, Ts ...args);
 
-template<int INX, SpecInfo SI, SpecInfo... SIs, typename T, typename... Ts>
+template<size_t IDX, SpecInfo SI, SpecInfo... SIs, typename T, typename... Ts>
 inline void store_A_Args(char** storage, char** storage2, size_t* arr,
 	                     T arg, Ts ... rest) {
-	storeArg<INX, SI>(storage, storage2, arr, arg);
+	storeArg<IDX, SI>(storage, storage2, arr, arg);
 	if constexpr(SI.terminal_ == 's') 
-	    storeArgs<INX + 1, SIs...>(storage, storage2, arr, (rest)...);
+	    storeArgs<IDX + 1, SIs...>(storage, storage2, arr, (rest)...);
 	else
-		storeArgs<INX, SIs...>(storage, storage2, arr, (rest)...);
+		storeArgs<IDX, SIs...>(storage, storage2, arr, (rest)...);
 }
 
-template<int INX, SpecInfo SI, SpecInfo... SIs, typename D, typename T, typename... Ts>
+template<size_t IDX, SpecInfo SI, SpecInfo... SIs, typename D, typename T, typename... Ts>
 inline void store_D_A_Args(char** storage, char** storage2, size_t* arr,
 	                       D d, T arg, Ts ... rest) {
 	// std::memcpy(*storage, &d, sizeof(D));
 	*reinterpret_cast<D*>(*storage) = d;
 	*storage += sizeof(D);
 
-	storeArg<INX, SI>(storage, storage2, arr, arg);
+	storeArg<IDX, SI>(storage, storage2, arr, arg);
 	if constexpr (SI.terminal_ == 's')
-		storeArgs<INX + 1, SIs...>(storage, storage2, arr, (rest)...);
+		storeArgs<IDX + 1, SIs...>(storage, storage2, arr, (rest)...);
 	else
-		storeArgs<INX, SIs...>(storage, storage2, arr, (rest)...);
+		storeArgs<IDX, SIs...>(storage, storage2, arr, (rest)...);
 }
 
-template<int INX, SpecInfo SI, SpecInfo... SIs, typename D1, typename D2, typename T, typename... Ts>
+template<size_t IDX, SpecInfo SI, SpecInfo... SIs, typename D1, typename D2, typename T, typename... Ts>
 inline void store_D_D_A_Args(char** storage, char** storage2, size_t* arr,
 	                         D1 d1, D2 d2, T arg, Ts... rest) {
 	// std::memcpy(*storage, &d1, sizeof(D1));
@@ -339,11 +339,11 @@ inline void store_D_D_A_Args(char** storage, char** storage2, size_t* arr,
 	*reinterpret_cast<D2*>(*storage) = d2;
 	*storage += sizeof(D2);
 
-	storeArg<INX, SI>(storage, storage2, arr, arg);
+	storeArg<IDX, SI>(storage, storage2, arr, arg);
 	if constexpr (SI.terminal_ == 's')
-		storeArgs<INX + 1, SIs...>(storage, storage2, arr, (rest)...);
+		storeArgs<IDX + 1, SIs...>(storage, storage2, arr, (rest)...);
 	else
-		storeArgs<INX, SIs...>(storage, arr, storage2, (rest)...);
+		storeArgs<IDX, SIs...>(storage, arr, storage2, (rest)...);
 }
 
 /**
@@ -363,7 +363,7 @@ inline void store_D_D_A_Args(char** storage, char** storage2, size_t* arr,
  * \param ...args
  *      Arguments to store
  */
-template<int INX, SpecInfo... SIs, typename... Ts>
+template<size_t IDX, SpecInfo... SIs, typename... Ts>
 inline void storeArgs(char** storage, char** storage2, size_t* arr, Ts ...args) {
 	// At least one argument exists in the template parameter pack
 	// SpecInfo... SIs (tailed SI holding no valid terminal).
@@ -372,34 +372,39 @@ inline void storeArgs(char** storage, char** storage2, size_t* arr, Ts ...args) 
 	if constexpr (sizeof ...(SIs) > 1) {
 		if constexpr (SI.width_ == DYNAMIC_WIDTH
 			&& SI.prec_ == DYNAMIC_PRECISION) {
-			store_D_D_A_Args<INX, SIs...>(storage, storage2, arr, (args)...);
+			store_D_D_A_Args<IDX, SIs...>(storage, storage2, arr, (args)...);
 		}
 		else if constexpr (SI.width_ == DYNAMIC_WIDTH
 			|| SI.prec_ == DYNAMIC_PRECISION) {
-			store_D_A_Args<INX, SIs...>(storage, storage2, arr, (args)...);
+			store_D_A_Args<IDX, SIs...>(storage, storage2, arr, (args)...);
 		}
 		else {
-			store_A_Args<INX, SIs...>(storage, storage2, arr, (args)...);
+			store_A_Args<IDX, SIs...>(storage, storage2, arr, (args)...);
 		}
 	}
 }
 
 
 // forward declaration of template storeArgs
-template<const char* const* FmtStr, SpecInfo... SIs, typename... Ts>
+template<size_t IDX, const char* const* FmtStr, typename TUPLE, SpecInfo... SIs>
 inline void formator(OutbufArg& outbuf, char** input);
 
-template<const char* const* FmtStr, SpecInfo SI, SpecInfo... SIs, typename T, typename... Ts>
+template<size_t IDX, const char* const* FmtStr, typename TUPLE, SpecInfo SI, SpecInfo... SIs>
 inline void formator_A_args(OutbufArg& outbuf, char** input) {
+	using T = std::tuple_element_t<IDX, TUPLE>;
+
 	T val = *reinterpret_cast<T*>(*input);
 	*input += sizeof(T);
 
 	converter_single<FmtStr, SI, T>(outbuf, val);
-	formator<FmtStr, SIs..., Ts...>(outbuf, input);
+	formator<IDX + 1, FmtStr, TUPLE, SIs...>(outbuf, input);
 }
 
-template<const char* const* FmtStr, SpecInfo SI, SpecInfo... SIs, typename D, typename T, typename... Ts>
+template<size_t IDX, const char* const* FmtStr, typename TUPLE, SpecInfo SI, SpecInfo... SIs>
 inline void formator_D_A_args(OutbufArg& outbuf, char** input) {
+	using D = std::tuple_element_t<IDX, TUPLE>;
+	using T = std::tuple_element_t<IDX + 1, TUPLE>;
+
 	if constexpr (SI.width_ == DYNAMIC_WIDTH) {
 		int d = 0;
 		if constexpr (std::is_integral_v<std::remove_reference_t<D>>)
@@ -426,11 +431,15 @@ inline void formator_D_A_args(OutbufArg& outbuf, char** input) {
 		abort();
 	}
 
-	formator<FmtStr, SIs..., Ts...>(outbuf, input);
+	formator<IDX + 2, FmtStr, TUPLE, SIs...>(outbuf, input);
 }
 
-template<const char* const* FmtStr, SpecInfo SI, SpecInfo... SIs, typename D1, typename D2, typename T, typename... Ts>
+template<size_t IDX, const char* const* FmtStr, typename TUPLE, SpecInfo SI, SpecInfo... SIs>
 inline void formator_D_D_A_args(OutbufArg& outbuf, char** input) {
+	using D1 = std::tuple_element_t<IDX, TUPLE>;
+	using D2 = std::tuple_element_t<IDX + 1, TUPLE>;
+	using T = std::tuple_element_t<IDX + 2, TUPLE>;
+
 	if constexpr (SI.wFirst_) {
 		int d1 = 0, d2 = -1;
 		if constexpr (std::is_integral_v<std::remove_reference_t<D1>>)
@@ -460,10 +469,10 @@ inline void formator_D_D_A_args(OutbufArg& outbuf, char** input) {
 		converter_single<FmtStr, SI, T>(outbuf, val, d2, d1);
 	}
 
-	formator<FmtStr, SIs..., Ts...>(outbuf, input);
+	formator<IDX + 3, FmtStr, TUPLE, SIs...>(outbuf, input);
 }
 
-template<const char* const* FmtStr, SpecInfo... SIs, typename... Ts>
+template<size_t IDX, const char* const* FmtStr, typename TUPLE, SpecInfo... SIs>
 inline void formator(OutbufArg& outbuf, char** input) {
 	// At least one argument exists in the template parameter pack
     // SpecInfo... SIs (tailed SI holding no valid terminal).
@@ -472,14 +481,14 @@ inline void formator(OutbufArg& outbuf, char** input) {
 	if constexpr (sizeof ...(SIs) > 1) {
 		if constexpr (SI.width_ == DYNAMIC_WIDTH
 			&& SI.prec_ == DYNAMIC_PRECISION) {
-			formator_D_D_A_args<FmtStr, SIs..., Ts...>(outbuf, input);
+			formator_D_D_A_args<IDX, FmtStr, TUPLE, SIs...>(outbuf, input);
 		}
 		else if constexpr (SI.width_ == DYNAMIC_WIDTH
 			|| SI.prec_ == DYNAMIC_PRECISION) {
-			formator_D_A_args<FmtStr, SIs..., Ts...>(outbuf, input);
+			formator_D_A_args<IDX, FmtStr, TUPLE, SIs...>(outbuf, input);
 		}
 		else {
-			formator_A_args<FmtStr, SIs..., Ts...>(outbuf, input);
+			formator_A_args<IDX, FmtStr, TUPLE, SIs...>(outbuf, input);
 		}
 	}
 	else {
@@ -536,7 +545,13 @@ struct LogEntryHandler {
 
 	template <const char* const* FmtStr, typename... Ts>
 	constexpr decltype(auto) formatFuncGen(std::tuple<Ts...>&&) const {
-		return &(formator<FmtStr, SIs..., Ts...>);
+		constexpr auto N = countArgsRequired<SIs...>();
+		static_assert(static_cast<size_t>(N) <= sizeof...(Ts),
+			"The minimum number of arguments required by SpecInfo pack must be"
+			" less than or equal to the number of elements in the parameter"
+			" pack in TZ_LOG");
+
+		return &(formator<0, FmtStr, std::tuple<Ts...>, SIs...>);
 	}
 
 };
