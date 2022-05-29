@@ -9,6 +9,15 @@
 #endif
 #endif
 
+// A workaround of __LINE__ that is not constexpr in MSVC
+#if (defined(_MSC_VER))
+#define CAT(X, Y)     CAT2(X, Y)
+#define CAT2(X, Y)    X##Y
+#define __USABLE_LINE__     int(CAT(__LINE__, U)) 
+#else
+#define __USABLE_LINE__     __LINE__
+#endif
+
 #include <cwchar>
 #include <cstring>
 

@@ -1,6 +1,10 @@
 #ifndef CONSTEXPR_FMT_H__
 #define CONSTEXPR_FMT_H__
 
+#if (defined(_MSC_VER))
+#pragma warning(disable:4996)
+#endif
+
 #define STACK_MEMORY_FOR_WIDE_STRING_FORMAT
 
 #include <string>
