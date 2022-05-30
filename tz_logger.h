@@ -59,7 +59,7 @@ enum class LogLevel {
  */
 struct StaticFmtInfo {
 	// Function signature of the convert function used in the log sink thread
-	using ConvertFn =  void (*)(OutbufArg&, char**);
+	using ConvertFn =  void (*)(OutbufArg&, const char*/*char***/);
 
 	// With constexpr constructors, objects of user-defined types can be
 	// included in valid constant expressions.
@@ -396,43 +396,43 @@ inline void storeArgs(char** storage, char** storage2, size_t* arr, Ts ...args) 
 
 // forward declaration of template storeArgs
 template<size_t IDX, const char* const* FmtStr, typename TUPLE, SpecInfo... SIs>
-inline void formator(OutbufArg& outbuf, char** input);
+inline void formator(OutbufArg& outbuf, /*char***/const char* input);
 
 template<size_t IDX, const char* const* FmtStr, typename TUPLE, SpecInfo SI, SpecInfo... SIs>
-inline void formator_A_args(OutbufArg& outbuf, char** input) {
+inline void formator_A_args(OutbufArg& outbuf, /*char***/const char* input) {
 	using T = std::tuple_element_t<IDX, TUPLE>;
 
-	T val = *reinterpret_cast<T*>(*input);
-	*input += sizeof(T);
+	T val = *reinterpret_cast<const T*>(input);
+	input += sizeof(T);
 
 	converter_single<FmtStr, SI, T>(outbuf, val);
 	formator<IDX + 1, FmtStr, TUPLE, SIs...>(outbuf, input);
 }
 
 template<size_t IDX, const char* const* FmtStr, typename TUPLE, SpecInfo SI, SpecInfo... SIs>
-inline void formator_D_A_args(OutbufArg& outbuf, char** input) {
+inline void formator_D_A_args(OutbufArg& outbuf, /*char***/const char* input) {
 	using D = std::tuple_element_t<IDX, TUPLE>;
 	using T = std::tuple_element_t<IDX + 1, TUPLE>;
 
 	if constexpr (SI.width_ == DYNAMIC_WIDTH) {
 		int d = 0;
 		if constexpr (std::is_integral_v<std::remove_reference_t<D>>)
-			d = static_cast<int>(*reinterpret_cast<D*>(*input));
-		*input += sizeof(D);
+			d = static_cast<int>(*reinterpret_cast<const D*>(input));
+		input += sizeof(D);
 
-		T val = *reinterpret_cast<T*>(*input);
-		*input += sizeof(T);
+		T val = *reinterpret_cast<const T*>(input);
+		input += sizeof(T);
 
 		converter_single<FmtStr, SI, T>(outbuf, val, d, -1);
 	}
 	else if constexpr (SI.prec_ == DYNAMIC_PRECISION) {
 		int d = -1;
 		if constexpr (std::is_integral_v<std::remove_reference_t<D>>)
-			d = static_cast<int>(*reinterpret_cast<D*>(*input));
-		*input += sizeof(D);
+			d = static_cast<int>(*reinterpret_cast<const D*>(input));
+		input += sizeof(D);
 
-		T val = *reinterpret_cast<T*>(*input);
-		*input += sizeof(T);
+		T val = *reinterpret_cast<const T*>(input);
+		input += sizeof(T);
 
 		converter_single<FmtStr, SI, T>(outbuf, val, 0, d);
 	}
@@ -444,7 +444,7 @@ inline void formator_D_A_args(OutbufArg& outbuf, char** input) {
 }
 
 template<size_t IDX, const char* const* FmtStr, typename TUPLE, SpecInfo SI, SpecInfo... SIs>
-inline void formator_D_D_A_args(OutbufArg& outbuf, char** input) {
+inline void formator_D_D_A_args(OutbufArg& outbuf, /*char***/const char* input) {
 	using D1 = std::tuple_element_t<IDX, TUPLE>;
 	using D2 = std::tuple_element_t<IDX + 1, TUPLE>;
 	using T = std::tuple_element_t<IDX + 2, TUPLE>;
@@ -452,28 +452,28 @@ inline void formator_D_D_A_args(OutbufArg& outbuf, char** input) {
 	if constexpr (SI.wFirst_) {
 		int d1 = 0, d2 = -1;
 		if constexpr (std::is_integral_v<std::remove_reference_t<D1>>)
-			d1 = static_cast<int>(*reinterpret_cast<D1*>(*input));
-		*input += sizeof(D1);
+			d1 = static_cast<int>(*reinterpret_cast<const D1*>(input));
+		input += sizeof(D1);
 		if constexpr (std::is_integral_v<std::remove_reference_t<D2>>)
-			d2 = static_cast<int>(*reinterpret_cast<D2*>(*input));
-		*input += sizeof(D2);
+			d2 = static_cast<int>(*reinterpret_cast<const D2*>(input));
+		input += sizeof(D2);
 
-		T val = *reinterpret_cast<T*>(*input);
-		*input += sizeof(T);
+		T val = *reinterpret_cast<const T*>(input);
+		input += sizeof(T);
 
 		converter_single<FmtStr, SI, T>(outbuf, val, d1, d2);
 	}
 	else {
 		int d1 = -1, d2 = 0;
 		if constexpr (std::is_integral_v<std::remove_reference_t<D1>>)
-			d1 = static_cast<int>(*reinterpret_cast<D1*>(*input));
-		*input += sizeof(D1);
+			d1 = static_cast<int>(*reinterpret_cast<const D1*>(input));
+		input += sizeof(D1);
 		if constexpr (std::is_integral_v<std::remove_reference_t<D2>>)
-			d2 = static_cast<int>(*reinterpret_cast<D2*>(*input));
-		*input += sizeof(D2);
+			d2 = static_cast<int>(*reinterpret_cast<const D2*>(input));
+		input += sizeof(D2);
 
-		T val = *reinterpret_cast<T*>(*input);
-		*input += sizeof(T);
+		T val = *reinterpret_cast<const T*>(input);
+		input += sizeof(T);
 
 		converter_single<FmtStr, SI, T>(outbuf, val, d2, d1);
 	}
@@ -482,7 +482,7 @@ inline void formator_D_D_A_args(OutbufArg& outbuf, char** input) {
 }
 
 template<size_t IDX, const char* const* FmtStr, typename TUPLE, SpecInfo... SIs>
-inline void formator(OutbufArg& outbuf, char** input) {
+inline void formator(OutbufArg& outbuf, /*char***/ const char* input) {
 	// At least one argument exists in the template parameter pack
     // SpecInfo... SIs (tailed SI holding no valid terminal).
 	constexpr auto& SI = std::get<0>(std::forward_as_tuple(SIs...));

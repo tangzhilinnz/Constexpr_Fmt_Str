@@ -122,24 +122,24 @@ int main() {
 
 
 	// ==========================================================================================================================================
-	//using this_tupe_t = decltype(std::make_tuple(100/*'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr*/));
-	//constexpr int kNVSIs = countValidSpecInfos("%d"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/);
-	//constexpr int kSS = squeezeSoundSize("%d"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/);
-	//static constexpr auto fmtRawStr = "%d"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/;
-	//static constexpr auto kfmtArr = preprocessInvalidSpecs<kSS>("%d"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/);
-	//static constexpr auto kRTStr = kSS < sizeof("%d"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/) ? kfmtArr.data() :
-	//	"%d"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/;
+	//using this_tupe_t = decltype(std::make_tuple(/*pdata[i], */pstr/*'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr*/));
+	//constexpr int kNVSIs = countValidSpecInfos("%s"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/);
+	//constexpr int kSS = squeezeSoundSize("%s"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/);
+	//static constexpr auto fmtRawStr = "%s"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/;
+	//static constexpr auto kfmtArr = preprocessInvalidSpecs<kSS>("%s"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/);
+	//static constexpr auto kRTStr = kSS < sizeof("%s"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/) ? kfmtArr.data() :
+	//	"%s"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/;
 	//static constexpr auto kHandler = unpack<kNVSIs + 1, LogEntryHandler, &fmtRawStr>();
 	//static constexpr auto pFormator = kHandler.formatFuncGen<&kRTStr>(this_tupe_t());
 	//static constexpr StaticFmtInfo fmtInfo(pFormator, __FILE__, __USABLE_LINE__, 3, kRTStr, 3);
 	//constexpr auto kArgsSize = kHandler.argsSize(this_tupe_t());
-	//auto strSizeArr = kHandler.strSizeArray(100/*'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr*/);
+	//auto strSizeArr = kHandler.strSizeArray(/*pdata[i], */pstr/*'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr*/);
 	//auto bufSize = kArgsSize;
 	//if (!strSizeArr.empty()) {
 	//	for (auto e : strSizeArr)
 	//		bufSize += e;
 	//}
-	//(void)kHandler.dump<kArgsSize>(&pBuf, strSizeArr, 100/*'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr*/);
+	//(void)kHandler.dump<kArgsSize>(&pBuf, strSizeArr, /*pdata[i], */pstr/*'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr*/);
 	//pBuf = buf;
 	// ==========================================================================================================================================
 
@@ -2434,60 +2434,60 @@ int main() {
 //int& j = i;
 
 //CFMT_STR/*_TUPLE*/(result, buf, 2000, "%#xsdsdsdsdsdsdsdsdsdsd", /*"test zhilin tang %s %d %lld %hx %x"*//*tu*//*std::make_tuple*/(pdata[i]));
-		///*result = tz_snprintf*/CFMT_STR(result, buf, 2000,
-		//	//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd"
-		//	//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd"
-		//	//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd"
-		//	//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd",
-		//	////"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld"
-		//	//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld"
-		//	//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld",
-		//	//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld %lld |||||%lld%lld%lld%"
-		//	//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld",
-		//	//"%lld%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx"
-		//	//"%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx",
-		//	//"%llu", i,
-		//	//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld",
-		//	//"%+030hhd%+030hhd%+030.10hhd%+030.10hhd%+030.10hhd",
-		//	//"%0*.*u|", -20, 10, i,
-		//	//"%#xsdsdsdsdsdsdsdsdsdsd", /*-99.9999*/ /*sqrt(2.)*//*1./0*/ /*30,*/ /*0.0l*//*(double)i*/ /*std::numeric_limits<double>::max()*//*1./ 3*//*i*//*(double)*/pdata[i]/*i*//*2.365*//*nullptr*//*nullptr*//*&i*/
-		//	//"test  %d %x %c %s", /*(double)i,*/ i, i, (char)i, "zhilin tang"
-		//	//"%#p", "ss"
-		//	//"%lld",
-		//	//"%s", arr
-		//	"%d", pdata[i]
-		//	//"test%dtest%dtest%dtest%dtest%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", pdata[i], pdata[(i+1)% 10000000], pdata[(i + 2) % 10000000], pdata[(i + 3) % 10000000],
-		//	//"%+0*.*u", 20, 10, i,
-		//	//i, i,i,i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i,i,
-		//	//i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i,
-		//	//"s", "s", "s", "s", "s", "s", "s", "s", "s", "s" "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s",
-		//	//"s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s",
-		//	//"s", "s", "s", "s", "s", "s", "s", "s", "s", "s" "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s",
-		//	//"s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s",
-		//	//922337203685477, 9223372036854771, 92233720368547712, 9223372036477123, 922337203, 9223, 92237, 92, 92233720368, 92237,
-		//	//922337203685477, 9223372036854771, 92233720368547712, 922337203685477123, 922337203, 9223, 92237, 92, 92233720368, 92237,
-		//	//922337203685477, 92233726854771, 92220368547712, 92233785477123, 9337203, 9223, 92237, 9, 92233720368, 92237,
-		//	//92237, 92233720771, 9223372037712, 92233785477123, 92233203, 9223, 92237, 92, 92233720368, 92237,
-		//	//92237, 9223372036854771, 92233720368547712, 9223372036477123, 922337203, 9223, 92237, 92, 92233720368, 92237,
-		//	//922337203685477, 92233720368, 92233720368, 92233720368, 922337203, 9223, 92237, 92233720368, 92233720368, 92237,
-		//	//92237, 92233726854771, 92237, 92233785477123, 9337203, 9223, 92237, 9, 92233720368, 92237,
-		//	//922337685477, 92233720771, 9223372037712, 92233785477123, 92233203, 9223, 92237, 92, 92233720368, 92237
-		//	/*rpdata, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i*/);
+		/*result = tz_snprintf*/CFMT_STR(result, buf, 2000,
+			//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd"
+			//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd"
+			//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd"
+			//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd",
+			////"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld"
+			//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld"
+			//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld",
+			//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld %lld |||||%lld%lld%lld%"
+			//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld",
+			//"%lld%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx"
+			//"%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx",
+			//"%llu", i,
+			//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld",
+			//"%+030hhd%+030hhd%+030.10hhd%+030.10hhd%+030.10hhd",
+			//"%0*.*u|", -20, 10, i,
+			//"%#xsdsdsdsdsdsdsdsdsdsd", /*-99.9999*/ /*sqrt(2.)*//*1./0*/ /*30,*/ /*0.0l*//*(double)i*/ /*std::numeric_limits<double>::max()*//*1./ 3*//*i*//*(double)*/pdata[i]/*i*//*2.365*//*nullptr*//*nullptr*//*&i*/
+			//"test  %d %x %c %s", /*(double)i,*/ i, i, (char)i, "zhilin tang"
+			//"%#p", "ss"
+			//"%lld",
+			//"%s", arr
+			"%#x, %s", pdata[i], "test"
+			//"test%dtest%dtest%dtest%dtest%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", pdata[i], pdata[(i+1)% 10000000], pdata[(i + 2) % 10000000], pdata[(i + 3) % 10000000],
+			//"%+0*.*u", 20, 10, i,
+			//i, i,i,i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i,i,
+			//i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i,
+			//"s", "s", "s", "s", "s", "s", "s", "s", "s", "s" "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s",
+			//"s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s",
+			//"s", "s", "s", "s", "s", "s", "s", "s", "s", "s" "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s",
+			//"s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s",
+			//922337203685477, 9223372036854771, 92233720368547712, 9223372036477123, 922337203, 9223, 92237, 92, 92233720368, 92237,
+			//922337203685477, 9223372036854771, 92233720368547712, 922337203685477123, 922337203, 9223, 92237, 92, 92233720368, 92237,
+			//922337203685477, 92233726854771, 92220368547712, 92233785477123, 9337203, 9223, 92237, 9, 92233720368, 92237,
+			//92237, 92233720771, 9223372037712, 92233785477123, 92233203, 9223, 92237, 92, 92233720368, 92237,
+			//92237, 9223372036854771, 92233720368547712, 9223372036477123, 922337203, 9223, 92237, 92, 92233720368, 92237,
+			//922337203685477, 92233720368, 92233720368, 92233720368, 922337203, 9223, 92237, 92233720368, 92233720368, 92237,
+			//92237, 92233726854771, 92237, 92233785477123, 9337203, 9223, 92237, 9, 92233720368, 92237,
+			//922337685477, 92233720771, 9223372037712, 92233785477123, 92233203, 9223, 92237, 92, 92233720368, 92237
+			/*rpdata, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i*/);
 			//static constexpr const char fmt[] = "%llx%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld";
 			//static constexpr const char fmt[] = "%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd";
 			//static constexpr const size_t size = sizeof(fmt);
@@ -2565,31 +2565,34 @@ int main() {
 //result = /*tz_*/snprintf/*CFMT_STR*/(/*result,*/ buf, 2000, "ULLONG_MAX = %llu\n", ULLONG_MAX);
  //   pBuf = buf;
  //    
-	{
-		using this_tupe_t = decltype(std::make_tuple(pdata[i], pstr/*'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr*/));
-		constexpr int kNVSIs = countValidSpecInfos("%#x %s"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/);
-		constexpr int kSS = squeezeSoundSize("%#x %s"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/);
-		static constexpr auto fmtRawStr = "%#x %s"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/;
-		static constexpr auto kfmtArr = preprocessInvalidSpecs<kSS>("%#x %s"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/);
-		static constexpr auto kRTStr = kSS < sizeof("%#x %s"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/) ? kfmtArr.data() :
-			"%#x %s"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/;
-		static constexpr auto kHandler = unpack<kNVSIs + 1, LogEntryHandler, &fmtRawStr>();
-		static constexpr auto pFormator = kHandler.formatFuncGen<&kRTStr>(this_tupe_t());
-		static constexpr StaticFmtInfo fmtInfo(pFormator, __FILE__, __USABLE_LINE__, 3, kRTStr, 3);
-		constexpr auto kArgsSize = kHandler.argsSize(this_tupe_t());
-		auto strSizeArr = kHandler.strSizeArray(pdata[i], pstr/*'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr*/);
-		auto bufSize = kArgsSize;
-		if (!strSizeArr.empty()) {
-			for (auto e : strSizeArr)
-				bufSize += e;
-		}
-		(void)kHandler.dump<kArgsSize>(&pBuf, strSizeArr, pdata[i], pstr/*'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr*/);
-		pBuf = buf;
+	//{
+	//	using this_tupe_t = decltype(std::make_tuple(pdata[i], "test"/*pstr*//*'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr*/));
+	//	constexpr int kNVSIs = countValidSpecInfos("%#x %s"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/);
+	//	constexpr int kSS = squeezeSoundSize("%#x %s"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/);
+	//	static constexpr auto fmtRawStr = "%#x %s"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/;
+	//	static constexpr auto kfmtArr = preprocessInvalidSpecs<kSS>("%#x %s"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/);
+	//	static constexpr auto kRTStr = kSS < sizeof("%#x %s"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/) ? kfmtArr.data() :
+	//		"%#x %s"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/;
+	//	static constexpr auto kHandler = unpack<kNVSIs + 1, LogEntryHandler, &fmtRawStr>();
+	//	static constexpr auto pFormator = kHandler.formatFuncGen<&kRTStr>(this_tupe_t());
+	//	static constexpr StaticFmtInfo fmtInfo(pFormator, __FILE__, __USABLE_LINE__, 3, kRTStr, 3);
+	//	constexpr auto kArgsSize = kHandler.argsSize(this_tupe_t());
+	//	auto strSizeArr = kHandler.strSizeArray(pdata[i], "test"/*pstr*//*'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr*/);
+	//	auto bufSize = kArgsSize;
+	//	if (!strSizeArr.empty()) {
+	//		for (auto e : strSizeArr)
+	//			bufSize += e;
+	//	}
+	//	(void)kHandler.dump<kArgsSize>(&pBuf, strSizeArr, pdata[i], "test"/*pstr*//*'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr*/);
+	//	pBuf = buf;
 
-		//(*pFormator)(outBuf, &pBuf);
-		//pBuf = buf;
-		//outBuf.reset();
-	}
+	//	outBuf.reset();
+
+	//	(*pFormator)(outBuf, pBuf);
+
+	//	outBuf.done();
+	//	//pBuf = buf;
+	//}
 
 
 
@@ -2638,14 +2641,14 @@ int main() {
 	////result = snprintf(buf, 5000, "%#.153g", dl);
 	////CFMT_STR(result1, buf1, 5000, "%#.153g", dl);
 
-	//printf("%s\n", buf);
+	printf("%s\n", buf);
 	//printf("%s\n", buf1);
-	////std::cout << "len: " << len << std::endl;
-	////std::cout << "ret: " << (ret.ptr - buf) << std::endl;
+	//std::cout << "len: " << len << std::endl;
+	//std::cout << "ret: " << (ret.ptr - buf) << std::endl;
 	//std::cout << "result: " << result << std::endl;
 	//std::cout << "result1: " << result1 << std::endl;
-	////std::cout << "ran: " << ran << std::endl;
-	////std::cout << "exponent: " << exponent << std::endl;
+	//std::cout << "ran: " << ran << std::endl;
+	//std::cout << "exponent: " << exponent << std::endl;
 
 	std::cout << "cost: "
 		<< double(duration.count()) * microseconds::period::num / microseconds::period::den << "seconds" << std::endl;
