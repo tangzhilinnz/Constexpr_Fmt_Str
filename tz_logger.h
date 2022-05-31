@@ -402,7 +402,9 @@ template<size_t IDX, const char* const* FmtStr, typename TUPLE, SpecInfo SI, Spe
 inline void formator_A_args(OutbufArg& outbuf, /*char***/const char* input) {
 	using T = std::tuple_element_t<IDX, TUPLE>;
 
-	T val = *reinterpret_cast<const T*>(input);
+	T val;
+	//T val = *reinterpret_cast<const T*>(input);
+	std::memcpy(&val, input, sizeof(T));
 	input += sizeof(T);
 
 	converter_single<FmtStr, SI, T>(outbuf, val);
@@ -512,9 +514,10 @@ template<SpecInfo... SIs>
 struct LogEntryHandler {
 	constexpr LogEntryHandler() { }
 
+	inline constexpr static size_t N = countArgsRequired<SIs...>();
+
 	template <typename... Ts>
 	constexpr size_t argsSize(std::tuple<Ts...>&&) const {
-		constexpr auto N = countArgsRequired<SIs...>();
 		static_assert(static_cast<size_t>(N) <= sizeof...(Ts),
 			"The minimum number of arguments required by SpecInfo pack must be"
 			" less than or equal to the number of elements in the parameter"
@@ -523,9 +526,18 @@ struct LogEntryHandler {
 		return getNArgsSize<N, Ts...>();
 	}
 
+	template <const char* const* FmtStr, typename... Ts>
+	constexpr decltype(auto) instFormator(std::tuple<Ts...>&&) const {
+		static_assert(static_cast<size_t>(N) <= sizeof...(Ts),
+			"The minimum number of arguments required by SpecInfo pack must be"
+			" less than or equal to the number of elements in the parameter"
+			" pack in TZ_LOG");
+
+		return &(formator<0, FmtStr, std::tuple<Ts...>, SIs...>);
+	}
+
 	template <typename... Ts>
 	auto strSizeArray(Ts ...args) const {
-		constexpr auto N = countArgsRequired<SIs...>();
 		static_assert(static_cast<size_t>(N) <= sizeof...(Ts),
 			"The minimum number of arguments required by SpecInfo pack must be"
 			" less than or equal to the number of elements in the parameter"
@@ -542,7 +554,6 @@ struct LogEntryHandler {
 
 	template <size_t ARGS_SIZE, size_t M, typename... Ts>
 	void dump(char** storage, std::array<size_t, M>& arr, Ts ...args) const {
-		constexpr auto N = countArgsRequired<SIs...>();
 		static_assert(static_cast<size_t>(N) <= sizeof...(Ts),
 			"The minimum number of arguments required by SpecInfo pack must be"
 			" less than or equal to the number of elements in the parameter"
@@ -550,17 +561,6 @@ struct LogEntryHandler {
 
 		char* pStrStorage = *storage + ARGS_SIZE;
 		storeArgs<0, SIs...>(storage, &pStrStorage, arr.data(), args...);
-	}
-
-	template <const char* const* FmtStr, typename... Ts>
-	constexpr decltype(auto) formatFuncGen(std::tuple<Ts...>&&) const {
-		constexpr auto N = countArgsRequired<SIs...>();
-		static_assert(static_cast<size_t>(N) <= sizeof...(Ts),
-			"The minimum number of arguments required by SpecInfo pack must be"
-			" less than or equal to the number of elements in the parameter"
-			" pack in TZ_LOG");
-
-		return &(formator<0, FmtStr, std::tuple<Ts...>, SIs...>);
 	}
 
 };

@@ -122,27 +122,27 @@ int main() {
 
 
 	// ==========================================================================================================================================
-	//using this_tupe_t = decltype(std::make_tuple(/*pdata[i], */pstr/*'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr*/));
-	//constexpr int kNVSIs = countValidSpecInfos("%s"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/);
-	//constexpr int kSS = squeezeSoundSize("%s"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/);
-	//static constexpr auto fmtRawStr = "%s"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/;
-	//static constexpr auto kfmtArr = preprocessInvalidSpecs<kSS>("%s"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/);
-	//static constexpr auto kRTStr = kSS < sizeof("%s"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/) ? kfmtArr.data() :
-	//	"%s"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/;
-	//static constexpr auto kHandler = unpack<kNVSIs + 1, LogEntryHandler, &fmtRawStr>();
-	//static constexpr auto pFormator = kHandler.formatFuncGen<&kRTStr>(this_tupe_t());
-	//static constexpr StaticFmtInfo fmtInfo(pFormator, __FILE__, __USABLE_LINE__, 3, kRTStr, 3);
-	//constexpr auto kArgsSize = kHandler.argsSize(this_tupe_t());
-	//auto strSizeArr = kHandler.strSizeArray(/*pdata[i], */pstr/*'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr*/);
-	//auto bufSize = kArgsSize;
-	//if (!strSizeArr.empty()) {
-	//	for (auto e : strSizeArr)
-	//		bufSize += e;
-	//}
-	//(void)kHandler.dump<kArgsSize>(&pBuf, strSizeArr, /*pdata[i], */pstr/*'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr*/);
-	//pBuf = buf;
+	using this_tupe_t = decltype(std::make_tuple(9999999, 1. /3/*, 1. / 3*//*pstr*//*'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr*/));
+	constexpr int kNVSIs = countValidSpecInfos("%#x %e"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/);
+	constexpr int kSS = squeezeSoundSize("%#x %e"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/);
+	static constexpr auto fmtRawStr = "%#x %e"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/;
+	static constexpr auto kfmtArr = preprocessInvalidSpecs<kSS>("%#x %e"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/);
+	static constexpr auto kRTStr = kSS < sizeof("%#x %e"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/) ? kfmtArr.data() :
+		"%#x %e"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/;
+	static constexpr auto kHandler = unpack<kNVSIs + 1, LogEntryHandler, &fmtRawStr>();
+	static constexpr auto pFormator = kHandler.instFormator<&kRTStr>(this_tupe_t());
+	static constexpr StaticFmtInfo fmtInfo(pFormator, __FILE__, __USABLE_LINE__, 3, kRTStr, 3);
+	constexpr auto kArgsSize = kHandler.argsSize(this_tupe_t());
+	auto strSizeArr = kHandler.strSizeArray(9999999, 1. / 3/*pstr*//*'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr*/);
+	auto bufSize = kArgsSize;
+	if (!strSizeArr.empty()) {
+		for (auto e : strSizeArr)
+			bufSize += e;
+	}
+	(void)kHandler.dump<kArgsSize>(&pBuf, strSizeArr, 9999999, 1. / 3/*pstr*//*'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr*/);
+	pBuf = buf;
 	// ==========================================================================================================================================
-
+	int j = 9999999;
 	auto start = system_clock::now();
 
 	for (int i = 0; i < 10000000; i++) {
@@ -2452,10 +2452,9 @@ int main() {
 			//"%0*.*u|", -20, 10, i,
 			//"%#xsdsdsdsdsdsdsdsdsdsd", /*-99.9999*/ /*sqrt(2.)*//*1./0*/ /*30,*/ /*0.0l*//*(double)i*/ /*std::numeric_limits<double>::max()*//*1./ 3*//*i*//*(double)*/pdata[i]/*i*//*2.365*//*nullptr*//*nullptr*//*&i*/
 			//"test  %d %x %c %s", /*(double)i,*/ i, i, (char)i, "zhilin tang"
-			//"%#p", "ss"
+			"%#x %e", i, 1. /3
 			//"%lld",
 			//"%s", arr
-			"%#x, %s", pdata[i], "test"
 			//"test%dtest%dtest%dtest%dtest%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", pdata[i], pdata[(i+1)% 10000000], pdata[(i + 2) % 10000000], pdata[(i + 3) % 10000000],
 			//"%+0*.*u", 20, 10, i,
 			//i, i,i,i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i,i,
@@ -2566,24 +2565,24 @@ int main() {
  //   pBuf = buf;
  //    
 	//{
-	//	using this_tupe_t = decltype(std::make_tuple(pdata[i], "test"/*pstr*//*'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr*/));
-	//	constexpr int kNVSIs = countValidSpecInfos("%#x %s"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/);
-	//	constexpr int kSS = squeezeSoundSize("%#x %s"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/);
-	//	static constexpr auto fmtRawStr = "%#x %s"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/;
-	//	static constexpr auto kfmtArr = preprocessInvalidSpecs<kSS>("%#x %s"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/);
-	//	static constexpr auto kRTStr = kSS < sizeof("%#x %s"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/) ? kfmtArr.data() :
-	//		"%#x %s"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/;
+	//	using this_tupe_t = decltype(std::make_tuple(i, 1./3 /*"test"*//*pstr*//*'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr*/));
+	//	constexpr int kNVSIs = countValidSpecInfos("%#x %e"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/);
+	//	constexpr int kSS = squeezeSoundSize("%#x %e"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/);
+	//	static constexpr auto fmtRawStr = "%#x %e"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/;
+	//	static constexpr auto kfmtArr = preprocessInvalidSpecs<kSS>("%#x %e"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/);
+	//	static constexpr auto kRTStr = kSS < sizeof("%#x %e"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/) ? kfmtArr.data() :
+	//		"%#x %e"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/;
 	//	static constexpr auto kHandler = unpack<kNVSIs + 1, LogEntryHandler, &fmtRawStr>();
-	//	static constexpr auto pFormator = kHandler.formatFuncGen<&kRTStr>(this_tupe_t());
+	//	static constexpr auto pFormator = kHandler.instFormator<&kRTStr>(this_tupe_t());
 	//	static constexpr StaticFmtInfo fmtInfo(pFormator, __FILE__, __USABLE_LINE__, 3, kRTStr, 3);
 	//	constexpr auto kArgsSize = kHandler.argsSize(this_tupe_t());
-	//	auto strSizeArr = kHandler.strSizeArray(pdata[i], "test"/*pstr*//*'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr*/);
+	//	auto strSizeArr = kHandler.strSizeArray(i, 1. / 3 /*"test"*//*pstr*//*'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr*/);
 	//	auto bufSize = kArgsSize;
 	//	if (!strSizeArr.empty()) {
 	//		for (auto e : strSizeArr)
 	//			bufSize += e;
 	//	}
-	//	(void)kHandler.dump<kArgsSize>(&pBuf, strSizeArr, pdata[i], "test"/*pstr*//*'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr*/);
+	//	(void)kHandler.dump<kArgsSize>(&pBuf, strSizeArr, i, 1. / 3 /*"test"*//*pstr*//*'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr*/);
 	//	pBuf = buf;
 
 	//	outBuf.reset();
@@ -2591,9 +2590,7 @@ int main() {
 	//	(*pFormator)(outBuf, pBuf);
 
 	//	outBuf.done();
-	//	//pBuf = buf;
 	//}
-
 
 
 	}
@@ -2632,6 +2629,7 @@ int main() {
 
 	
 	std::cout << "outbuf: " << buf_out << std::endl;
+	std::cout << j << std::endl;
 
 	//char buf1[5000];
 	//int result1;
