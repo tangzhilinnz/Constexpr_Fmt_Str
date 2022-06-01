@@ -402,9 +402,9 @@ template<size_t IDX, const char* const* FmtStr, typename TUPLE, SpecInfo SI, Spe
 inline void formator_A_args(OutbufArg& outbuf, /*char***/const char* input) {
 	using T = std::tuple_element_t<IDX, TUPLE>;
 
-	T val;
-	//T val = *reinterpret_cast<const T*>(input);
-	std::memcpy(&val, input, sizeof(T));
+	T val = *reinterpret_cast<const T*>(input);
+	// T val;
+	// std::memcpy(&val, input, sizeof(T));
 	input += sizeof(T);
 
 	converter_single<FmtStr, SI, T>(outbuf, val);
