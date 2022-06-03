@@ -122,25 +122,25 @@ int main() {
 
 
 	// ==========================================================================================================================================
-	using this_tupe_t = decltype(std::make_tuple(9999999, 1. /3/*, 1. / 3*//*pstr*//*'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr*/));
-	constexpr int kNVSIs = countValidSpecInfos("%#x %e"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/);
-	constexpr int kSS = squeezeSoundSize("%#x %e"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/);
-	static constexpr auto fmtRawStr = "%#x %e"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/;
-	static constexpr auto kfmtArr = preprocessInvalidSpecs<kSS>("%#x %e"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/);
-	static constexpr auto kRTStr = kSS < sizeof("%#x %e"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/) ? kfmtArr.data() :
-		"%#x %e"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/;
-	static constexpr auto kHandler = unpack<kNVSIs + 1, LogEntryHandler, &fmtRawStr>();
-	static constexpr auto pFormator = kHandler.instFormator<&kRTStr>(this_tupe_t());
-	static constexpr StaticFmtInfo fmtInfo(pFormator, __FILE__, __USABLE_LINE__, 3, kRTStr, 3);
-	constexpr auto kArgsSize = kHandler.argsSize(this_tupe_t());
-	auto strSizeArr = kHandler.strSizeArray(9999999, 1. / 3/*pstr*//*'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr*/);
-	auto bufSize = kArgsSize;
-	if (!strSizeArr.empty()) {
-		for (auto e : strSizeArr)
-			bufSize += e;
-	}
-	(void)kHandler.dump<kArgsSize>(&pBuf, strSizeArr, 9999999, 1. / 3/*pstr*//*'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr*/);
-	pBuf = buf;
+	//using this_tupe_t = decltype(std::make_tuple(9999999, 1. /3/*, 1. / 3*//*pstr*//*'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr*/));
+	//constexpr int kNVSIs = countValidSpecInfos("%#x %e"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/);
+	//constexpr int kSS = squeezeSoundSize("%#x %e"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/);
+	//static constexpr auto fmtRawStr = "%#x %e"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/;
+	//static constexpr auto kfmtArr = preprocessInvalidSpecs<kSS>("%#x %e"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/);
+	//static constexpr auto kRTStr = kSS < sizeof("%#x %e"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/) ? kfmtArr.data() :
+	//	"%#x %e"/*"test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n"*//*"test %hhl #-+0zjtM %c %x\n"*/;
+	//static constexpr auto kHandler = unpack<kNVSIs + 1, LogEntryHandler, &fmtRawStr>();
+	//static constexpr auto pFormator = kHandler.instFormator<&kRTStr>(this_tupe_t());
+	//static constexpr StaticFmtInfo fmtInfo(pFormator, __FILE__, __USABLE_LINE__, 3, kRTStr, 3);
+	//constexpr auto kArgsSize = kHandler.argsSize(this_tupe_t());
+	//auto strSizeArr = kHandler.strSizeArray(9999999, 1. / 3/*pstr*//*'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr*/);
+	//auto bufSize = kArgsSize;
+	//if (!strSizeArr.empty()) {
+	//	for (auto e : strSizeArr)
+	//		bufSize += e;
+	//}
+	//(void)kHandler.dump<kArgsSize>(&pBuf, strSizeArr, 9999999, 1. / 3/*pstr*//*'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr*/);
+	//pBuf = buf;
 	// ==========================================================================================================================================
 	int j = 9999999;
 	auto start = system_clock::now();
@@ -2434,59 +2434,59 @@ int main() {
 //int& j = i;
 
 //CFMT_STR/*_TUPLE*/(result, buf, 2000, "%#xsdsdsdsdsdsdsdsdsdsd", /*"test zhilin tang %s %d %lld %hx %x"*//*tu*//*std::make_tuple*/(pdata[i]));
-		/*result = tz_snprintf*/CFMT_STR(result, buf, 2000,
-			//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd"
-			//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd"
-			//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd"
-			//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd",
-			////"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld"
-			//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld"
-			//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld",
-			//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld %lld |||||%lld%lld%lld%"
-			//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld",
-			//"%lld%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx"
-			//"%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx",
-			//"%llu", i,
-			//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld",
-			//"%+030hhd%+030hhd%+030.10hhd%+030.10hhd%+030.10hhd",
-			//"%0*.*u|", -20, 10, i,
-			//"%#xsdsdsdsdsdsdsdsdsdsd", /*-99.9999*/ /*sqrt(2.)*//*1./0*/ /*30,*/ /*0.0l*//*(double)i*/ /*std::numeric_limits<double>::max()*//*1./ 3*//*i*//*(double)*/pdata[i]/*i*//*2.365*//*nullptr*//*nullptr*//*&i*/
-			//"test  %d %x %c %s", /*(double)i,*/ i, i, (char)i, "zhilin tang"
-			"%#x %e", i, 1. /3
-			//"%lld",
-			//"%s", arr
-			//"test%dtest%dtest%dtest%dtest%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", pdata[i], pdata[(i+1)% 10000000], pdata[(i + 2) % 10000000], pdata[(i + 3) % 10000000],
-			//"%+0*.*u", 20, 10, i,
-			//i, i,i,i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i,i,
-			//i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i,
-			//"s", "s", "s", "s", "s", "s", "s", "s", "s", "s" "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s",
-			//"s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s",
-			//"s", "s", "s", "s", "s", "s", "s", "s", "s", "s" "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s",
-			//"s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s",
-			//922337203685477, 9223372036854771, 92233720368547712, 9223372036477123, 922337203, 9223, 92237, 92, 92233720368, 92237,
-			//922337203685477, 9223372036854771, 92233720368547712, 922337203685477123, 922337203, 9223, 92237, 92, 92233720368, 92237,
-			//922337203685477, 92233726854771, 92220368547712, 92233785477123, 9337203, 9223, 92237, 9, 92233720368, 92237,
-			//92237, 92233720771, 9223372037712, 92233785477123, 92233203, 9223, 92237, 92, 92233720368, 92237,
-			//92237, 9223372036854771, 92233720368547712, 9223372036477123, 922337203, 9223, 92237, 92, 92233720368, 92237,
-			//922337203685477, 92233720368, 92233720368, 92233720368, 922337203, 9223, 92237, 92233720368, 92233720368, 92237,
-			//92237, 92233726854771, 92237, 92233785477123, 9337203, 9223, 92237, 9, 92233720368, 92237,
-			//922337685477, 92233720771, 9223372037712, 92233785477123, 92233203, 9223, 92237, 92, 92233720368, 92237
-			/*rpdata, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
-			(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i*/);
+		///*result = tz_snprintf*/CFMT_STR(result, buf, 2000,
+		//	//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd"
+		//	//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd"
+		//	//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd"
+		//	//"%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd%10hhd",
+		//	////"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld"
+		//	//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld"
+		//	//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld",
+		//	//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld %lld |||||%lld%lld%lld%"
+		//	//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld",
+		//	//"%lld%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx"
+		//	//"%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx%llx",
+		//	//"%llu", i,
+		//	//"%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld",
+		//	//"%+030hhd%+030hhd%+030.10hhd%+030.10hhd%+030.10hhd",
+		//	//"%0*.*u|", -20, 10, i,
+		//	//"%#xsdsdsdsdsdsdsdsdsdsd", /*-99.9999*/ /*sqrt(2.)*//*1./0*/ /*30,*/ /*0.0l*//*(double)i*/ /*std::numeric_limits<double>::max()*//*1./ 3*//*i*//*(double)*/pdata[i]/*i*//*2.365*//*nullptr*//*nullptr*//*&i*/
+		//	//"test  %d %x %c %s", /*(double)i,*/ i, i, (char)i, "zhilin tang"
+		//	"%#x %e", i, 1. /3
+		//	//"%lld",
+		//	//"%s", arr
+		//	//"test%dtest%dtest%dtest%dtest%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", pdata[i], pdata[(i+1)% 10000000], pdata[(i + 2) % 10000000], pdata[(i + 3) % 10000000],
+		//	//"%+0*.*u", 20, 10, i,
+		//	//i, i,i,i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i,i,
+		//	//i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i,
+		//	//"s", "s", "s", "s", "s", "s", "s", "s", "s", "s" "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s",
+		//	//"s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s",
+		//	//"s", "s", "s", "s", "s", "s", "s", "s", "s", "s" "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s",
+		//	//"s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s", "s",
+		//	//922337203685477, 9223372036854771, 92233720368547712, 9223372036477123, 922337203, 9223, 92237, 92, 92233720368, 92237,
+		//	//922337203685477, 9223372036854771, 92233720368547712, 922337203685477123, 922337203, 9223, 92237, 92, 92233720368, 92237,
+		//	//922337203685477, 92233726854771, 92220368547712, 92233785477123, 9337203, 9223, 92237, 9, 92233720368, 92237,
+		//	//92237, 92233720771, 9223372037712, 92233785477123, 92233203, 9223, 92237, 92, 92233720368, 92237,
+		//	//92237, 9223372036854771, 92233720368547712, 9223372036477123, 922337203, 9223, 92237, 92, 92233720368, 92237,
+		//	//922337203685477, 92233720368, 92233720368, 92233720368, 922337203, 9223, 92237, 92233720368, 92233720368, 92237,
+		//	//92237, 92233726854771, 92237, 92233785477123, 9337203, 9223, 92237, 9, 92233720368, 92237,
+		//	//922337685477, 92233720771, 9223372037712, 92233785477123, 92233203, 9223, 92237, 92, 92233720368, 92237
+		//	/*rpdata, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i,
+		//	(long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i, (long long)i*/);
 			//static constexpr const char fmt[] = "%llx%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld%lld";
 			//static constexpr const char fmt[] = "%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd%hhd";
 			//static constexpr const size_t size = sizeof(fmt);
@@ -2592,6 +2592,8 @@ int main() {
 	//	outBuf.done();
 	//}
 
+    TZ_LOG(pBuf, LogLevel::INFORMATION, "test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n", 'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr);
+	pBuf = buf;
 
 	}
 

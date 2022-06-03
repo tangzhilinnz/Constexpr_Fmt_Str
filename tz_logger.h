@@ -22,6 +22,7 @@
 #include <cstring>
 
 #include "constexpr_fmt.h"
+#include "runtime_logger.h"
 
 
 #define MAX_SIZE_OF_FORMAT_ARGS  64 * 1024
@@ -35,7 +36,7 @@ enum class LogLevel {
 
 	// Bad stuff that shouldn't happen. The system broke its contract to
 	// users in some way or some major assumption was violated.
-	ERROR,
+	ERR,
 
 	// Messages at the WARNING level indicate that, although something went
 	// wrong or something unexpected happened, it was transient and
@@ -86,7 +87,7 @@ struct StaticFmtInfo {
 	constexpr StaticFmtInfo(ConvertFn convertFN,
 		                    const char* filename,
 		                    const uint32_t lineNum,
-		                    const uint8_t severity,
+		                    const LogLevel severity,
 		                    const char* fmtString, 
 		                    const int numVarArgs)
 		: convertFN_(convertFN)
@@ -107,7 +108,7 @@ struct StaticFmtInfo {
 	const uint32_t lineNum_;
 
 	// LogLevel severity associated with the log invocation
-	const uint8_t severity_;
+	const LogLevel severity_;
 
 	// format string associated with the log invocation
 	const char* formatString_;
@@ -119,7 +120,7 @@ struct StaticFmtInfo {
 
 struct OneLogEntry {
     // Uniquely identifies a log message by its static format information
-	StaticFmtInfo* fmtId;
+	const StaticFmtInfo* fmtId;
 
     // Number of bytes for this header and the various runtime log arguments
 	// after it
@@ -561,6 +562,8 @@ struct LogEntryHandler {
 
 		char* pStrStorage = *storage + ARGS_SIZE;
 		storeArgs<0, SIs...>(storage, &pStrStorage, arr.data(), args...);
+
+		*storage = pStrStorage;
 	}
 
 };
@@ -575,9 +578,9 @@ struct LogEntryHandler {
  *      printf-like format string (must be literal)
  * \param ...
  *      Log arguments associated with the printf-like string. */
-#define TZ_LOG(severity, format, ...) do {                                     \
+#define TZ_LOG(pBuffer, severity, format, ...) do {                            \
 /* std::make_tuple: zero or more arguments to construct the tuple from */      \
-using this_tupe_t = decltype(std::make_tuple(##__VA_ARGS__));                  \
+using this_tupe_t = decltype(std::make_tuple(__VA_ARGS__));                    \
 constexpr int kNVSIs = countValidSpecInfos(format);                            \
 constexpr int kSS = squeezeSoundSize(format);                                  \
 /**
@@ -600,14 +603,130 @@ static constexpr auto kRTStr = kSS < sizeof(format) ? kfmtArr.data() : format; \
  * comply with c++ standard 14.3.2/1 */                                        \
 static constexpr auto kHandler =                                               \
     unpack<kNVSIs + 1, LogEntryHandler, &fmtRawStr>();                         \
+static constexpr auto pFormator =                                              \
+    kHandler.instFormator<&kRTStr>(this_tupe_t());                             \
+static constexpr StaticFmtInfo fmtInfo(pFormator, __FILE__, __USABLE_LINE__,   \
+	severity, kRTStr, kHandler.N);                                             \
 constexpr auto kArgsSize = kHandler.argsSize(this_tupe_t());                   \
-auto strSizeArr = kHandler.strSizeArray(##__VA_ARGS__);                        \
-auto bufSize = kArgsSize;                                                      \
+auto strSizeArr = kHandler.strSizeArray(__VA_ARGS__);                          \
+auto bufSize = kArgsSize + sizeof(OneLogEntry);                                \
 if (!strSizeArr.empty()) {                                                     \
     for (auto e : strSizeArr)                                                  \
 		bufSize += e;                                                          \
 }                                                                              \
+uint64_t timestamp = tscns.rdtsc();                                            \
+auto originalWritePos = pBuffer;                                               \
+OneLogEntry* oe = new(pBuffer) OneLogEntry();                                  \
+pBuffer += sizeof(OneLogEntry);                                                \
+(void)kHandler.dump<kArgsSize>(&pBuffer, strSizeArr, ##__VA_ARGS__);           \
+oe->fmtId = &fmtInfo;                                                          \
+oe->entrySize = static_cast<uint32_t>(bufSize);                                \
+oe->timestamp = timestamp;                                                     \
+assert(bufSize == static_cast<uint32_t>(pBuffer - originalWritePos));          \
 } while (0)
 
 
 #endif /* TZ_LOGGER_H__ */
+
+// Usual arithmetic conversions
+// Many operators that expect operands of arithmetic type cause conversions
+// and yield result types in a similar way. The purpose is to determine a
+// common real type for the operands and result.
+// The arguments of the following arithmetic operators undergo implicit 
+// conversions for the purpose of obtaining the common real type, which is the
+// type in which the calculation is performed:
+//     binary arithmetic *, /, %, +, -
+//     relational operators <, >, <=, >=, ==, !=
+//     binary bitwise arithmetic &, ^, |,
+//     the conditional operator ?:
+// 
+// 1) If one operand is long double, long double complex, or long double imaginary, 
+//    the other operand is implicitly converted as follows:
+//        integer or real floating type to long double
+//        complex type to long double complex
+//        imaginary type to long double imaginary
+// 2) Otherwise, if one operand is double, double complex, or double imaginary, 
+//    the other operand is implicitly converted as follows:
+//        integer or real floating type to double
+//        complex type to double complex
+//        imaginary type to double imaginary
+// 3) Otherwise, if one operand is float, float complex, or float imaginary, 
+//    the other operand is implicitly converted as follows:
+//        integer type to float (the only real type possible is float, which remains as-is)
+//        complex type remains float complex
+//        imaginary type remains float imaginary
+// 4) Otherwise, both operands are integers. Both operands undergo integer promotions
+//    (see below); then, after integer promotion, one of the following cases applies:
+//        If the types are the same, that type is the common type.
+//        Else, the types are different:
+//            If the types have the same signedness (both signed or both unsigned), 
+//            the operand whose type has the lesser conversion rank is implicitly 
+//            converted to the other type.
+//            Else, the operands have different signedness:
+//                If the unsigned type has conversion rank greater than or equal to the
+//                rank of the signed type, then the operand with the signed type is 
+//                implicitly converted to the unsigned type.
+//                Else, the unsigned type has conversion rank less than the signed type.
+//                    If the signed type can represent all values of the unsigned type, 
+//                    then the operand with the unsigned type is implicitly converted to 
+//                    the signed type.
+//                    Else, both operands undergo implicit conversion to the unsigned type
+//                    counterpart of the signed operand's type.
+
+// The result type is determined as follows:
+//     if both operands are complex, the result type is complex
+//     if both operands are imaginary, the result type is imaginary
+//     if both operands are real, the result type is real
+//     if the two floating - point operands have different type domains(complex vs real, 
+//     complex vs imaginary, or imaginary vs real), the result type is complex
+// As always, the result of a floating-point operator may have greater range and precision
+// than is indicated by its type
+
+// Note: real and imaginary operands are not implicitly converted to complex because doing 
+// so would require extra computation, while producing undesirable results in certain cases
+// involving infinities, NaNs and signed zeros.
+
+// Integer promotions
+// Integer promotion is the implicit conversion of a value of any integer type with rank 
+// less or equal to rank of int or of a bit field of type _Bool, int, signed int, 
+// unsigned int, to the value of type int or unsigned int
+// If int can represent the entire range of values of the original type (or the range of
+// values of the original bit field), the value is converted to type int. Otherwise the 
+// value is converted to unsigned int.
+// Integer promotions preserve the value, including the sign:
+
+// rank above is a property of every integer type and is defined as follows:
+//     1) the ranks of all signed integer types are different and increase with
+//        their precision: rank of signed char < rank of short < rank of int < 
+//        rank of long int < rank of long long int
+//     2) the ranks of all signed integer types equal the ranks of the corresponding
+//        unsigned integer types
+//     3) the rank of any standard integer type is greater than the rank of any 
+//        extended integer type of the same size(that is, 
+//        rank of __int64 < rank of long long int, but 
+//        rank of long long < rank of __int128 due to the rule(1))
+//     4) rank of char equals rank of signed char and rank of unsigned char
+//     5) the rank of _Bool is less than the rank of any other standard integer type
+//     6) the rank of any enumerated type equals the rank of its compatible integer type
+//     7) ranking is transitive : if rank of T1 < rank of T2and rank of T2 < rank of T3 
+//        then rank of T1 < rank of T3
+//     8) any aspects of relative ranking of extended integer types not covered above are
+//        implementation defined
+
+// Note: integer promotions are applied only
+//     as part of usual arithmetic conversions (see above)
+//     as part of default argument promotions (see above)
+//     to the operand of the unary arithmetic operators + and -
+//     to the operand of the unary bitwise operator ~
+//     to both operands of the shift operators << and >>
+
+// Notes:
+// Although signed integer overflow in any arithmetic operator is undefined
+// behavior, overflowing a signed integer type in an integer conversion is 
+// merely unspecified behavior.
+// On the other hand, although unsigned integer overflow in any arithmetic 
+// operator (and in integer conversion) is a well-defined operation and 
+// follows the rules of modulo arithmetic, overflowing an unsigned integer
+// in a floating-to-integer conversion is undefined behavior: the values 
+// of real floating type that can be converted to unsigned integer are the 
+// values from the open interval (-1; Unnn_MAX+1).
