@@ -145,7 +145,7 @@ int main() {
 	int j = 9999999;
 	auto start = system_clock::now();
 
-	for (int i = 0; i < 10000000; i++) {
+	for (int i = 0; i < 100000000; i++) {
 
 		//ret = std::to_chars(buf, buf + 100, pdata[i]);
 		//ret = std::to_chars(buf, buf + 100, pdata[(i + 1) % 10000000]);
