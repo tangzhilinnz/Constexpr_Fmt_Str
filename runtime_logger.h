@@ -34,6 +34,11 @@
 #include <sys/syscall.h>
 #endif
 
+// Determines the byte size of the per-thread StagingBuffer that decouples
+// the producer logging thread from the consumer background compression
+// thread. This value should be large enough to handle bursts of activity.
+#define STAGING_BUFFER_SIZE    1 << 20;
+
 
 class TSCNS {
 public:
@@ -144,5 +149,118 @@ private:
 extern TSCNS tscns;
 extern uint64_t midnight_ns;
 
+
+/**
+ * Implements a circular FIFO producer/consumer byte queue that is used
+ * to hold the dynamic information of a NanoLog log statement (producer)
+ * as it waits for compression via the NanoLog background thread
+ * (consumer). There exists a StagingBuffer for every thread that uses
+ * the NanoLog system.
+ */
+class StagingBuffer {
+public:
+    /**
+             * Attempt to reserve contiguous space for the producer without
+             * making it visible to the consumer. The caller should invoke
+             * finishReservation() before invoking reserveProducerSpace()
+             * again to make the bytes reserved visible to the consumer.
+             *
+             * This mechanism is in place to allow the producer to initialize
+             * the contents of the reservation before exposing it to the
+             * consumer. This function will block behind the consumer if
+             * there's not enough space.
+             *
+             * \param nbytes
+             *      Number of bytes to allocate
+             *
+             * \return
+             *      Pointer to at least nbytes of contiguous space
+             */
+    inline char* reserveProducerSpace(size_t nbytes) {
+        ++numAllocations;
+
+        // Fast in-line path
+        if (nbytes < minFreeSpace)
+            return producerPos;
+
+        // Slow allocation
+        return reserveSpaceInternal(nbytes);
+    }
+
+    inline void finishReservation() { varq.push(); }
+
+    MsgHeader* peek() { return varq.front(); }
+
+    inline void consume() { varq.pop(); }
+
+    void setName(const char* name_) { strncpy(name, name_, sizeof(name) - 1); }
+
+    const char* getName() { return name; }
+
+    /**
+     * Returns true if it's safe for the compression thread to delete
+     * the StagingBuffer and remove it from the global vector.
+     *
+     * \return
+     *      true if its safe to delete the StagingBuffer
+     */
+    bool checkCanDelete() { return shouldDeallocate; }
+
+    StagingBuffer()
+        : varq()
+        , shouldDeallocate(false) {
+        // Empty function, but causes the C++ runtime to instantiate the
+        // sbc thread_local (see documentation in function).
+        sbc.stagingBufferCreated();
+
+        uint32_t tid = static_cast<pid_t>(::syscall(SYS_gettid));
+        snprintf(name, sizeof(name), "%d", tid);
+    }
+
+    ~StagingBuffer() {}
+
+private:
+    SPSCVarQueueOPT<1 << 20> varq;
+
+    bool shouldDeallocate;
+
+    char name[16] = { 0 };
+
+    char* reserveSpaceInternal(size_t nbytes, bool blocking = true);
+
+    // Position within storage[] where the producer may place new data
+    char* producerPos;
+
+    // Marks the end of valid data for the consumer. Set by the producer
+    // on a roll-over
+    char* endOfRecordedSpace;
+
+    // Lower bound on the number of bytes the producer can allocate w/o
+    // rolling over the producerPos or stalling behind the consumer
+    uint64_t minFreeSpace;
+
+    // Position within the storage buffer where the consumer will consume
+    // the next bytes from. This value is only updated by the consumer.
+    char* volatile consumerPos;
+
+    // Indicates that the thread owning this StagingBuffer has been
+    // destructed (i.e. no more messages will be logged to it) and thus
+    // should be cleaned up once the buffer has been emptied by the
+    // compression thread.
+    bool shouldDeallocate;
+
+    // Uniquely identifies this StagingBuffer for this execution. It's
+    // similar to ThreadId, but is only assigned to threads that NANO_LOG).
+    uint32_t id;
+
+    // Backing store used to implement the circular queue
+    char storage[STAGING_BUFFER_SIZE];
+
+    StagingBuffer(const StagingBuffer&) = delete;
+    StagingBuffer& operator=(const StagingBuffer&) = delete;
+
+    friend RuntimeLogger;
+    friend StagingBufferDestroyer;
+};
 
 #endif /* RUNTIME_LOGGER_H_ */
