@@ -145,7 +145,7 @@ int main() {
 	int j = 9999999;
 	auto start = system_clock::now();
 
-	for (int i = 0; i < 100000000; i++) {
+	for (int i = 0; i < 10000000; i++) {
 
 		//ret = std::to_chars(buf, buf + 100, pdata[i]);
 		//ret = std::to_chars(buf, buf + 100, pdata[(i + 1) % 10000000]);
@@ -2641,7 +2641,7 @@ int main() {
 	////result = snprintf(buf, 5000, "%#.153g", dl);
 	////CFMT_STR(result1, buf1, 5000, "%#.153g", dl);
 
-	printf("%s\n", buf);
+	//printf("%s\n", buf);
 	//printf("%s\n", buf1);
 	//std::cout << "len: " << len << std::endl;
 	//std::cout << "ret: " << (ret.ptr - buf) << std::endl;

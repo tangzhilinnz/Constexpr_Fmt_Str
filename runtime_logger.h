@@ -20,6 +20,7 @@
 #include <chrono>
 
 #include <mutex>
+#include <atomic>
 #include <string>
 #include <thread>
 #include <vector>
@@ -238,7 +239,49 @@ public:
             return producerPos;
 
         // Slow allocation
-        return reserveSpaceInternal(nbytes);
+        const char* endOfBuffer = storage + STAGING_BUFFER_SIZE;
+
+        // There's a subtle point here, all the checks for remaining
+        // space are strictly < or >, not <= or => because if we allow
+        // the record and print positions to overlap, we can't tell
+        // if the buffer either completely full or completely empty.
+        // Doing this check here ensures that == means completely empty.
+        while (minFreeSpace <= nbytes) {
+            // Since consumerPos can be updated in a different thread, we
+            // save a consistent copy of it here to do calculations on
+            char* cachedConsumerPos = consumerPos;
+
+            if (cachedConsumerPos <= producerPos) {
+                minFreeSpace = endOfBuffer - producerPos;
+
+                if (minFreeSpace > nbytes)
+                    break;
+
+                // Not enough space at the end of the buffer; wrap around
+                endOfRecordedSpace = producerPos;
+
+                // Prevent the roll over if it overlaps the two positions because
+                // that would imply the buffer is completely empty when it's not.
+                // Doing this ensures that producerPos is always less than 
+                // cachedConsumerPos when rolled over to storage.
+                if (cachedConsumerPos != storage) { // storage < cachedConsumerPos
+                    // prevents producerPos from updating before endOfRecordedSpace
+                    Fence::sfence();
+                    producerPos = storage;
+                    minFreeSpace = cachedConsumerPos - producerPos;
+                }
+            }
+            else { // cachedConsumerPos > producerPos
+                minFreeSpace = cachedConsumerPos - producerPos;
+            }
+
+            // Needed to prevent infinite loops in tests
+            if (!blocking && minFreeSpace <= nbytes)
+                return nullptr;
+        }
+
+        // minFreeSpace > nbytes
+        return producerPos;
     }
 
     /**
@@ -265,13 +308,80 @@ public:
         // is used. 
     }
 
-    MsgHeader* peek() { return varq.front(); }
+    /**
+    * Peek at the data available for consumption within the stagingBuffer.
+    * The consumer should also invoke consume() to release space back
+    * to the producer. This can and should be done piece-wise where a
+    * large peek can be consume()-ed in smaller pieces to prevent blocking
+    * the producer.
+    *
+    * \param[out] bytesAvailable
+    *      Number of bytes consumable
+    * \return
+    *      Pointer to the consumable space
+    */
+    char* peek(uint64_t* bytesAvailable) {
+        // Save a consistent copy of producerPos
+        // char* cachedProducerPos = producerPos;
 
-    inline void consume() { varq.pop(); }
+        const auto currentConsumerPos =
+            _consumerPos.load(std::memory_order_relaxed);
 
-    void setName(const char* name_) { strncpy(name, name_, sizeof(name) - 1); }
+        const auto cachedProducerPos =
+            _producerPos.load(std::memory_order_acquire);
 
-    const char* getName() { return name; }
+        if (cachedProducerPos < currentConsumerPos) {
+            // Fence::lfence(); // Prevent reading new producerPos but old endOfRecordedSpace
+            //*bytesAvailable = endOfRecordedSpace - consumerPos;
+
+            *bytesAvailable = 
+                _endOfRecordedSpace.load(std::memory_order_relaxed)
+                - currentConsumerPos;
+
+            if (*bytesAvailable > 0)
+                //return consumerPos;
+                return storage + currentConsumerPos;
+
+            // Roll over (endOfRecordedSpace <= consumerPos)
+            //consumerPos = storage;
+            _consumerPos.store(0, std::memory_order_release);
+            currentConsumerPos = _consumerPos.load(std::memory_order_relaxed);
+        }
+
+        // cachedProducerPos >= consumerPos
+        // here ensures that == means consumable space is completely empty.
+        *bytesAvailable = cachedProducerPos - currentConsumerPos;
+        return storage + currentConsumerPos;
+    }
+
+    /**
+    * Consumes the next nbytes in the StagingBuffer and frees it back
+    * for the producer to reuse. nbytes must be less than what is
+    * returned by peek().
+    *
+    * \param nbytes
+    *      Number of bytes to return back to the producer
+    */
+    inline void consume(uint64_t nbytes) {
+        //Fence::lfence(); // Make sure consumer reads finish before bump
+        //consumerPos += nbytes;
+        // consumerPos += nbytes is divided into three steps, 
+        // each of which is atomic operation: 
+        // 1) read consumerPos
+        // 2) add nbytes to consumerPos
+        // 3) store the new value to consumerPos
+        // the brand new consumerPos is visible to producer thread 
+        // only when the third step is done, otherwise the stale value
+        // is used.
+        const auto currentConsumerPos = 
+            _consumerPos.load(std::memory_order_relaxed);
+        _consumerPos.store(currentConsumerPos + nbytes, std::memory_order_release);
+
+    }
+
+    void setName(const char* name) { strncpy(_name, name, sizeof(_name) - 1); }
+
+    const char* getName() { return _name; }
 
     /**
      * Returns true if it's safe for the compression thread to delete
@@ -282,22 +392,27 @@ public:
      */
     bool checkCanDelete() { return shouldDeallocate; }
 
+    bool isLockFree() const {
+        return (_producerPos.is_lock_free() && _endOfRecordedSpace.is_lock_free() 
+                && _consumerPos.is_lock_free());
+    }
+
     StagingBuffer()
-        : producerPos(storage)
-        , endOfRecordedSpace(storage + STAGING_BUFFER_SIZE)
-        , minFreeSpace(STAGING_BUFFER_SIZE)
-        , cacheLineSpacer()
-        , consumerPos(storage)
-        , shouldDeallocate(false)
-        , storage()
-        , shouldDeallocate(false) {
+        : _producerPos(/*storage*/0)
+        , _endOfRecordedSpace(/*storage + */STAGING_BUFFER_SIZE)
+        , _minFreeSpace(STAGING_BUFFER_SIZE)
+        , _cacheLineSpacer()
+        , _consumerPos(/*storage*/0)
+        , _shouldDeallocate(false)
+        , _storage()
+        , _shouldDeallocate(false) {
         // Empty function, but causes the C++ runtime to instantiate the
         // sbc thread_local (see documentation in function).
         sbc.stagingBufferCreated();
 
 #ifdef _WIN32
         unsigned long tid = static_cast<unsigned long>(GetCurrentThreadId());
-        snprintf(name, sizeof(name), "%lu", tid);
+        snprintf(_name, sizeof(_name), "%lu", tid);
 #else
         uint32_t tid = static_cast<pid_t>(::syscall(SYS_gettid));
         snprintf(name, sizeof(name), "%u", tid);
@@ -307,38 +422,41 @@ public:
     ~StagingBuffer() {}
 
 private:
-    char name[16] = { 0 };
+    char _name[16] = { 0 };
 
-    char* reserveSpaceInternal(size_t nbytes, bool blocking = true);
+    //char* reserveSpaceInternal(size_t nbytes, bool blocking = true);
 
     // Position within storage[] where the producer may place new data
-    char* producerPos;
+    // char* producerPos;
+    std::atomic <size_t> _producerPos;
 
     // Marks the end of valid data for the consumer. Set by the producer
     // on a roll-over
-    char* endOfRecordedSpace;
+    // char* endOfRecordedSpace;
+    std::atomic <size_t> _endOfRecordedSpace;
 
     // Lower bound on the number of bytes the producer can allocate w/o
     // rolling over the producerPos or stalling behind the consumer
-    uint64_t minFreeSpace;
+    uint64_t _minFreeSpace;
 
     // An extra cache-line to separate the variables that are primarily
     // updated/read by the producer (above) from the ones by the
     // consumer(below)
-    char cacheLineSpacer[BYTES_PER_CACHE_LINE];
+    char _cacheLineSpacer[BYTES_PER_CACHE_LINE];
 
     // Position within the storage buffer where the consumer will consume
     // the next bytes from. This value is only updated by the consumer.
-    char* volatile consumerPos;
+    // char* volatile consumerPos;
+    std::atomic <size_t> _consumerPos;
 
     // Indicates that the thread owning this StagingBuffer has been
     // destructed (i.e. no more messages will be logged to it) and thus
     // should be cleaned up once the buffer has been emptied by the
     // compression thread.
-    bool shouldDeallocate;
+    bool _shouldDeallocate;
 
     // Backing store used to implement the circular queue
-    char storage[STAGING_BUFFER_SIZE];
+    char _storage[STAGING_BUFFER_SIZE];
 
     friend RuntimeLogger;
     friend StagingBufferDestroyer;
@@ -348,3 +466,6 @@ private:
 };
 
 #endif /* RUNTIME_LOGGER_H_ */
+
+
+
