@@ -2,6 +2,12 @@
 
 #include "runtime_logger.h"
 
+
+// Define the static members of RuntimeLogger here
+ThreadLocal RuntimeLogger::StagingBuffer* RuntimeLogger::stagingBuffer = nullptr;
+thread_local RuntimeLogger::StagingBufferDestroyer RuntimeLogger::sbc;
+RuntimeLogger RuntimeLogger::tzLogSingleton;
+
 TSCNS tscns;
 uint64_t midnight_ns;
 
