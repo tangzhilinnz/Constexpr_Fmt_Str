@@ -35,11 +35,14 @@
 #include <sys/syscall.h>
 #endif
 
+#include "tz_logger.h"
+
 // Determines the byte size of the per-thread StagingBuffer that decouples
 // the producer logging thread from the consumer background compression
 // thread. This value should be large enough to handle bursts of activity.
-#define STAGING_BUFFER_SIZE    1 << 20
-#define BYTES_PER_CACHE_LINE   64
+#define STAGING_BUFFER_SIZE        1 << 20
+#define BYTES_PER_CACHE_LINE       64
+#define POLL_INTERVAL_NO_WORK_US   1
 
 #if __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
 #define ThreadLocal _Thread_local
@@ -56,7 +59,6 @@
 #define ThreadLocal __thread
 #else
 #error "Cannot define thread_local"
-#endif
 #endif
 
 /**
@@ -229,8 +231,7 @@ extern uint64_t midnight_ns;
  * uncompressed log messages and manage a background thread to compress the
  * log messages to an output file.
  */
-class RuntimeLogger
-{
+class RuntimeLogger {
 public:
     /**
      * Allocate thread-local space for the generated C++ code to store an
@@ -247,7 +248,7 @@ public:
      * \return
      *      pointer to the allocated space
      */
-    static inline MsgHeader* reserveAlloc(size_t nbytes) {
+    static inline char* reserveAlloc(size_t nbytes) {
         if (stagingBuffer == nullptr) 
             tzLogSingleton.ensureStagingBufferAllocated();
 
@@ -262,7 +263,9 @@ public:
      * \param nbytes
      *      Number of bytes to make visible
      */
-    static inline void finishAlloc() { stagingBuffer->finishReservation(); }
+    static inline void finishAlloc(size_t nbytes) { 
+        stagingBuffer->finishReservation(nbytes); 
+    }
 
     static void preallocate();
     static void setLogFile(const char* filename);
@@ -286,7 +289,7 @@ private:
     class StagingBufferDestroyer;
 
     // Storage for staging uncompressed log statements for compression
-    static __thread StagingBuffer* stagingBuffer;
+    static ThreadLocal StagingBuffer* stagingBuffer;
 
     // Destroys the __thread StagingBuffer upon its own destruction, which
     // is synchronized with thread death
@@ -299,8 +302,6 @@ private:
     RuntimeLogger();
 
     ~RuntimeLogger();
-
-    void compressionThreadMain();
 
     void setLogFile_internal(const char* filename);
 
@@ -335,6 +336,20 @@ private:
 
     // Protects reads and writes to threadBuffers
     std::mutex bufferMutex;
+
+    // Protects the condition variables below
+    std::mutex condMutex;
+
+    // Signal for when the poll thread should wakeup
+    std::condition_variable workAdded;
+
+    // Background thread that polls the various staging buffers and outputs it to
+    // a sink buffer.
+    std::thread bgThread;
+
+    // Flag signaling the bgThread to stop running. This is typically only set in
+    // testing or when the application is exiting.
+    bool compressionThreadShouldExit;
 
     FILE* outputFp;
 
@@ -380,12 +395,12 @@ private:
          *      Pointer to at least nbytes of contiguous space
          */
         inline char* reserveProducerSpace(size_t nbytes, bool blocking = true) {
-            const auto currentProducerPos =
+            auto currentProducerPos =
                 _producerPos.load(std::memory_order_relaxed);
 
             // Fast in-line path
             if (nbytes < _minFreeSpace)
-                return storage + currentProducerPos;
+                return _storage + currentProducerPos;
 
             // Slow allocation
             // There's a subtle point here, all the checks for remaining
@@ -432,7 +447,7 @@ private:
             }
 
             // minFreeSpace > nbytes
-            return storage + currentProducerPos;
+            return _storage + currentProducerPos;
         }
 
         /**
@@ -488,7 +503,7 @@ private:
             // cachedProducerPos >= currentConsumerPos
             // here ensures that == means consumable space is completely empty.
             *bytesAvailable = cachedProducerPos - currentConsumerPos;
-            return storage + currentConsumerPos;
+            return _storage + currentConsumerPos;
         }
 
         /**
@@ -518,7 +533,7 @@ private:
          * \return
          *      true if its safe to delete the StagingBuffer
          */
-        bool checkCanDelete() { return shouldDeallocate; }
+        bool checkCanDelete() { return _shouldDeallocate; }
 
         bool isLockFree() const {
             return (_producerPos.is_lock_free()
@@ -533,8 +548,7 @@ private:
             , _cacheLineSpacer()
             , _consumerPos(0)
             , _shouldDeallocate(false)
-            , _storage()
-            , _shouldDeallocate(false) {
+            , _storage() {
             // Empty function, but causes the C++ runtime to instantiate the
             // sbc thread_local (see documentation in function).
             sbc.stagingBufferCreated();
@@ -617,11 +631,12 @@ private:
 
         virtual ~StagingBufferDestroyer() {
             if (stagingBuffer != nullptr) {
-                stagingBuffer->shouldDeallocate = true;
+                stagingBuffer->_shouldDeallocate = true;
                 stagingBuffer = nullptr;
             }
         }
     };
+
 }; // RuntimeLogger
 
 #endif /* RUNTIME_LOGGER_H_ */
