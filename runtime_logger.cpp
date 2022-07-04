@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <iostream>
 
 #include "runtime_logger.h"
 
@@ -32,13 +33,13 @@ RuntimeLogger::RuntimeLogger()
     , condMutex()
     , workAdded()
     , bgThread()
-    , compressionThreadShouldExit(false)
+    , bgThreadShouldExit(false)
     , outputFp(nullptr)
-    , currentLogLevel(INFO)
+    , currentLogLevel(LogLevel::INFORMATION)
     , logCB(nullptr)
-    , maxCBLogLevel(WARNING)
+    , maxCBLogLevel(LogLevel::WARNING)
     , minCBPeriod(0) {
-    bgThread = std::thread(&RuntimeLogger::poll, this);
+    bgThread = std::thread(&RuntimeLogger::poll);
 }
 
 // RuntimeLogger destructor
@@ -51,12 +52,14 @@ RuntimeLogger::~RuntimeLogger() {
     // Stop the compression thread
     {
         std::lock_guard<std::mutex> lock(tzLogSingleton.condMutex);
-        tzLogSingleton.compressionThreadShouldExit = true;
+        tzLogSingleton.bgThreadShouldExit = true;
         tzLogSingleton.workAdded.notify_all();
     }
 
     if (tzLogSingleton.bgThread.joinable())
         tzLogSingleton.bgThread.join();
+
+    std::cout << "BG thread stopped!!!" << std::endl;
 }
 
 // See documentation in NanoLog.h
@@ -107,10 +110,10 @@ void RuntimeLogger::setLogFile(const char* filename) {
  *      LogLevel enum that specifies the minimum log level.
  */
 void RuntimeLogger::setLogLevel(LogLevel logLevel) {
-    if (logLevel < 0)
-        logLevel = static_cast<LogLevel>(0);
-    else if (logLevel >= NUM_LOG_LEVELS)
-        logLevel = static_cast<LogLevel>(NUM_LOG_LEVELS - 1);
+    //if (logLevel < 0)
+    //    logLevel = static_cast<LogLevel>(0);
+    //else if (logLevel >= LogLevel::NUM_LOG_LEVELS)
+    //    logLevel = static_cast<LogLevel>(LogLevel::NUM_LOG_LEVELS - 1);
     tzLogSingleton.currentLogLevel = logLevel;
 }
 
@@ -122,11 +125,12 @@ void RuntimeLogger::poll_() {
     char* pBuf = output_buf;
     size_t spaceLeft = 64 * 1024 * 1024;
     size_t bytesWritten = 0;
+    unsigned int count = 0;
 
     // Each iteration of this loop scans for uncompressed log messages in the
     // thread buffers, compresses as much as possible, and outputs it to a file.
     // The loop will run so long as it's not shutdown or there's outstanding I/O
-    while (!compressionThreadShouldExit) {
+    while (!bgThreadShouldExit) {
         bytesWritten = 0;
 
         {
@@ -151,6 +155,10 @@ void RuntimeLogger::poll_() {
 
                     bytesWritten += peekBytes;
 
+                    sb->consume(peekBytes);
+
+                    count = 0;
+
                     lock.lock();
                 }
                 else {
@@ -171,16 +179,20 @@ void RuntimeLogger::poll_() {
             }
         }
 
-        if (outputFp) {
-            fflush(outputFp);
-        }
+        //if (outputFp) {
+        //    fflush(outputFp);
+        //}
 
         // If there's no data to output, go to sleep.
         if (bytesWritten == 0) {
-            std::unique_lock<std::mutex> lock(condMutex);
+            if (++count >= 10000) {
+                //std::this_thread::sleep_for(std::chrono::microseconds(POLL_INTERVAL_NO_WORK_US));
 
-            workAdded.wait_for(lock, std::chrono::microseconds(
-                POLL_INTERVAL_NO_WORK_US));
+                std::unique_lock<std::mutex> lock(condMutex);
+                workAdded.wait_for(lock, std::chrono::microseconds(
+                    POLL_INTERVAL_NO_WORK_US));
+                //count = 0;
+            }
         }
     }
 }

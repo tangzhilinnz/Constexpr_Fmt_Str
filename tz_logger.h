@@ -28,34 +28,6 @@
 #define MAX_SIZE_OF_FORMAT_ARGS  64 * 1024
 
 /**
- * The levels of verbosity for messages logged with #TZ_LOG.
- */
-enum class LogLevel {
-	// Keep this in sync with logLevelNames
-	SILENT_LOG_LEVEL = 0,
-
-	// Bad stuff that shouldn't happen. The system broke its contract to
-	// users in some way or some major assumption was violated.
-	ERR,
-
-	// Messages at the WARNING level indicate that, although something went
-	// wrong or something unexpected happened, it was transient and
-	// recoverable.
-	WARNING,
-
-	// Somewhere in between WARNING and DEBUG...
-	INFORMATION,
-
-	// Messages at the DEBUG level don't necessarily indicate that anything
-	// went wrong, but they could be useful in diagnosing problems.
-	DEBUG,
-
-	// must be the last element in the enum
-	NUM_LOG_LEVELS
-};
-
-
-/**
  * Stores the static format information associated with a log invocation site.
  */
 struct StaticFmtInfo {
@@ -578,7 +550,7 @@ struct LogEntryHandler {
  *      printf-like format string (must be literal)
  * \param ...
  *      Log arguments associated with the printf-like string. */
-#define TZ_LOG(pBuffer, severity, format, ...) do {                            \
+#define TZ_LOG(severity, format, ...) do {                                     \
 /* std::make_tuple: zero or more arguments to construct the tuple from */      \
 using this_tupe_t = decltype(std::make_tuple(__VA_ARGS__));                    \
 constexpr int kNVSIs = countValidSpecInfos(format);                            \
@@ -615,14 +587,16 @@ if (!strSizeArr.empty()) {                                                     \
 		bufSize += e;                                                          \
 }                                                                              \
 uint64_t timestamp = tscns.rdtsc();                                            \
-auto originalWritePos = pBuffer;                                               \
-OneLogEntry* oe = new(pBuffer) OneLogEntry();                                  \
-pBuffer += sizeof(OneLogEntry);                                                \
-(void)kHandler.dump<kArgsSize>(&pBuffer, strSizeArr, ##__VA_ARGS__);           \
+char* writePos = RuntimeLogger::reserveAlloc(bufSize);                         \
+auto originalWritePos = writePos;                                              \
+OneLogEntry* oe = new(writePos) OneLogEntry();                                 \
+writePos += sizeof(OneLogEntry);                                               \
+(void)kHandler.dump<kArgsSize>(&writePos, strSizeArr, ##__VA_ARGS__);          \
 oe->fmtId = &fmtInfo;                                                          \
 oe->entrySize = static_cast<uint32_t>(bufSize);                                \
 oe->timestamp = timestamp;                                                     \
-assert(bufSize == static_cast<uint32_t>(pBuffer - originalWritePos));          \
+assert(bufSize == static_cast<uint32_t>(writePos - originalWritePos));         \
+RuntimeLogger::finishAlloc(bufSize);                                           \
 } while (0)
 
 
