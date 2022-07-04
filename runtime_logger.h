@@ -18,12 +18,14 @@
 
 #include <cassert>
 #include <chrono>
+#include <cstring>
 
 #include <mutex>
 #include <atomic>
 #include <string>
 #include <thread>
 #include <vector>
+#include <condition_variable>
 
 #include <stdint.h>
 
@@ -674,7 +676,7 @@ private:
             snprintf(_name, sizeof(_name), "%lu", tid);
 #else
             uint32_t tid = static_cast<pid_t>(::syscall(SYS_gettid));
-            snprintf(name, sizeof(name), "%u", tid);
+            snprintf(_name, sizeof(_name), "%u", tid);
 #endif
         }
 

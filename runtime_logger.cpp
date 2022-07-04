@@ -120,7 +120,8 @@ void RuntimeLogger::setLogLevel(LogLevel logLevel) {
 void RuntimeLogger::poll_() {
     //char compress_buf[1024 * 1024];
 
-    char output_buf[64 * 1024 * 1024];
+    //char output_buf[64 * 1024 * 1024];
+    char* output_buf = new char[64 * 1024 * 1024];
 
     char* pBuf = output_buf;
     size_t spaceLeft = 64 * 1024 * 1024;
@@ -136,6 +137,19 @@ void RuntimeLogger::poll_() {
         {
             std::unique_lock<std::mutex> lock(bufferMutex);
             for (int i = 0; i < threadBuffers.size(); i++) {
+
+                //std::cout << "" << "" << "" << "" << "" << "" << "" << "" << "" << "" << "" << "";
+                //std::cout << "" << "" << "" << "" << "" << "" << "" << "" << "" << "" << "" << "";
+
+                for (int j = 0; j < 32; j++) {
+                    std::cout << "";
+                }
+
+                //std::this_thread::sleep_for(std::chrono::microseconds(0));
+                //std::cout << "";
+                //std::cout << "";
+                //std::cout << "";
+
                 StagingBuffer* sb = threadBuffers[i];
 
                 uint64_t peekBytes = 0;
@@ -195,4 +209,6 @@ void RuntimeLogger::poll_() {
             }
         }
     }
+
+    delete[] output_buf;
 }
