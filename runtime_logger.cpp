@@ -31,6 +31,7 @@ RuntimeLogger::RuntimeLogger()
     : threadBuffers()
     , bufferMutex()
     , condMutex()
+    , condSmph(0)
     , workAdded()
     , bgThread()
     , bgThreadShouldExit(false)
@@ -55,6 +56,9 @@ RuntimeLogger::~RuntimeLogger() {
         tzLogSingleton.bgThreadShouldExit = true;
         tzLogSingleton.workAdded.notify_all();
     }
+
+    condSmph.release();
+    
 
     if (tzLogSingleton.bgThread.joinable())
         tzLogSingleton.bgThread.join();
@@ -142,7 +146,7 @@ void RuntimeLogger::poll_() {
                 //std::cout << "" << "" << "" << "" << "" << "" << "" << "" << "" << "" << "" << "";
 
                 for (int j = 0; j < 32; j++) {
-                    std::cout << "";
+                    std::cerr << "";
                 }
 
                 //std::this_thread::sleep_for(std::chrono::microseconds(0));
@@ -201,11 +205,13 @@ void RuntimeLogger::poll_() {
         if (bytesWritten == 0) {
             if (++count >= 10000) {
                 //std::this_thread::sleep_for(std::chrono::microseconds(POLL_INTERVAL_NO_WORK_US));
+                //std::cout << "sleep " << count << std::endl;
 
                 std::unique_lock<std::mutex> lock(condMutex);
                 workAdded.wait_for(lock, std::chrono::microseconds(
                     POLL_INTERVAL_NO_WORK_US));
                 //count = 0;
+                //bool res = condSmph.try_acquire_for(std::chrono::microseconds(POLL_INTERVAL_NO_WORK_US));
             }
         }
     }

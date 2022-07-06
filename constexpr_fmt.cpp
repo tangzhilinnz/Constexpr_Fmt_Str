@@ -142,10 +142,11 @@ int main() {
 	//(void)kHandler.dump<kArgsSize>(&pBuf, strSizeArr, 9999999, 1. / 3/*pstr*//*'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr*/);
 	//pBuf = buf;
 	// ==========================================================================================================================================
+	RuntimeLogger::setThreadName("test");
 	int j = 9999999;
 	auto start = system_clock::now();
 
-	for (int i = 0; i < 1000000; i++) {
+	for (int i = 0; i < 100000000; i++) {
 
 		//ret = std::to_chars(buf, buf + 100, pdata[i]);
 		//ret = std::to_chars(buf, buf + 100, pdata[(i + 1) % 10000000]);
@@ -2592,14 +2593,17 @@ int main() {
 	//	outBuf.done();
 	//}
 
-    //TZ_LOG(LogLevel::INFORMATION, "test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n", 'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr);
+    TZ_LOG(LogLevel::INFORMATION, "test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n", 'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr);
 	TZ_LOG(LogLevel::INFORMATION, "test %d", i);
+	//std::this_thread::sleep_for(std::chrono::nanoseconds(10));
 	//pBuf = buf;
 
 	}
 
 	auto end = system_clock::now();
 	auto duration = duration_cast<microseconds>(end - start);
+
+
 
 
 	//static const std::mbstate_t initial{};
@@ -2631,8 +2635,8 @@ int main() {
 	//}
 
 	
-	std::cout << "outbuf: " << buf_out << std::endl;
-	std::cout << j << std::endl;
+	//std::cout << "outbuf: " << buf_out << std::endl;
+	//std::cout << j << std::endl;
 
 	//char buf1[5000];
 	//int result1;
@@ -2659,7 +2663,7 @@ int main() {
 	//size_t sizeW = 9;
 	//const wchar_t* wcp = L"你好世界";
 
-
+	//std::this_thread::sleep_for(std::chrono::seconds(120));
 
 	//static const std::mbstate_t initial{};
 	//std::mbstate_t mbs{ initial };

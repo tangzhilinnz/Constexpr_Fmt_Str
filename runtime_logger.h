@@ -21,6 +21,7 @@
 #include <cstring>
 
 #include <mutex>
+#include <semaphore>
 #include <atomic>
 #include <string>
 #include <thread>
@@ -42,7 +43,7 @@
 // thread. This value should be large enough to handle bursts of activity.
 #define STAGING_BUFFER_SIZE        (1 << 20)
 #define BYTES_PER_CACHE_LINE       64
-#define POLL_INTERVAL_NO_WORK_US   100
+#define POLL_INTERVAL_NO_WORK_US   1
 
 #if __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
 #define ThreadLocal _Thread_local
@@ -315,6 +316,18 @@ public:
         return tzLogSingleton;
     }
 
+    inline void ensureStagingBufferAllocated() {
+        if (stagingBuffer == nullptr) {
+            std::unique_lock<std::mutex> guard(bufferMutex);
+            // Unlocked for the expensive StagingBuffer allocation
+            guard.unlock();
+            stagingBuffer = new StagingBuffer();
+            guard.lock();
+
+            threadBuffers.push_back(stagingBuffer);
+        }
+    }
+
 private:
     // Forward Declarations
     class StagingBuffer;
@@ -351,17 +364,17 @@ private:
      * log messages to and by the user if they wish to preallocate the data
      * structures on thread creation.
      */
-    inline void ensureStagingBufferAllocated() {
-        if (stagingBuffer == nullptr) {
-            std::unique_lock<std::mutex> guard(bufferMutex);
-            // Unlocked for the expensive StagingBuffer allocation
-            guard.unlock();
-            stagingBuffer = new StagingBuffer();
-            guard.lock();
+    //inline void ensureStagingBufferAllocated() {
+    //    if (stagingBuffer == nullptr) {
+    //        std::unique_lock<std::mutex> guard(bufferMutex);
+    //        // Unlocked for the expensive StagingBuffer allocation
+    //        guard.unlock();
+    //        stagingBuffer = new StagingBuffer();
+    //        guard.lock();
 
-            threadBuffers.push_back(stagingBuffer);
-        }
-    }
+    //        threadBuffers.push_back(stagingBuffer);
+    //    }
+    //}
 
     // Globally the thread-local stagingBuffers
     std::vector<StagingBuffer*> threadBuffers;
@@ -371,6 +384,7 @@ private:
 
     // Protects the condition variables below
     std::mutex condMutex;
+    std::binary_semaphore condSmph;
 
     // Signal for when the poll thread should wakeup
     std::condition_variable workAdded;
@@ -651,7 +665,7 @@ private:
          * \return
          *      true if its safe to delete the StagingBuffer
          */
-        bool checkCanDelete() { return _shouldDeallocate; }
+        bool checkCanDelete() { return _shouldDeallocate.load(); }
 
         //bool isLockFree() const {
         //    return (_producerPos.is_lock_free()
@@ -715,7 +729,7 @@ private:
         // destructed (i.e. no more messages will be logged to it) and thus
         // should be cleaned up once the buffer has been emptied by the
         // compression thread.
-        bool _shouldDeallocate;
+        std::atomic<bool> _shouldDeallocate;
 
         // Backing store used to implement the circular queue
         char _storage[STAGING_BUFFER_SIZE];
@@ -752,7 +766,7 @@ private:
 
         virtual ~StagingBufferDestroyer() {
             if (stagingBuffer != nullptr) {
-                stagingBuffer->_shouldDeallocate = true;
+                stagingBuffer->_shouldDeallocate.store(true);
                 stagingBuffer = nullptr;
             }
         }
