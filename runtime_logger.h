@@ -41,9 +41,10 @@
 // Determines the byte size of the per-thread StagingBuffer that decouples
 // the producer logging thread from the consumer background compression
 // thread. This value should be large enough to handle bursts of activity.
-#define STAGING_BUFFER_SIZE        (1 << 20)
-#define BYTES_PER_CACHE_LINE       64
-#define POLL_INTERVAL_NO_WORK_US   1
+#define STAGING_BUFFER_SIZE              (1 << 20)
+#define BYTES_PER_CACHE_LINE             64
+#define POLL_INTERVAL_NO_WORK_US         1000
+#define NUMBER_OF_CHECKS_WITH_EMPTY_BUF  100
 
 #if __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
 #define ThreadLocal _Thread_local
@@ -454,6 +455,7 @@ private:
             // the record and print positions to overlap, we can't tell
             // if the buffer either completely full or completely empty.
             // Doing this check here ensures that == means completely empty.
+            tzLogSingleton.workAdded.notify_all();
             while (_minFreeSpace <= nbytes) {
                 // Since _consumerPos can be updated in a different thread, we save
                 // a consistent copy of it here to do calculations on
@@ -494,59 +496,6 @@ private:
 
             // minFreeSpace > nbytes
             return _storage + currentProducerPos;
-
-            //// Fast in-line path
-            //if (nbytes < _minFreeSpace)
-            //    return _producerPos;
-
-            //// Slow allocation
-            //const char* endOfBuffer = _storage + STAGING_BUFFER_SIZE;
-
-            //// There's a subtle point here, all the checks for remaining
-            //// space are strictly < or >, not <= or => because if we allow
-            //// the record and print positions to overlap, we can't tell
-            //// if the buffer either completely full or completely empty.
-            //// Doing this check here ensures that == means completely empty.
-            //while (_minFreeSpace <= nbytes) {
-
-            //    std::cout << "";
-
-            //    //std::this_thread::sleep_for(std::chrono::nanoseconds(0));
-            //    // Since consumerPos can be updated in a different thread, we
-            //    // save a consistent copy of it here to do calculations on
-            //    char* cachedConsumerPos = _consumerPos;
-
-            //    if (cachedConsumerPos <= _producerPos) {
-            //        _minFreeSpace = endOfBuffer - _producerPos;
-
-            //        if (_minFreeSpace > nbytes)
-            //            break;
-
-            //        // Not enough space at the end of the buffer; wrap around
-            //        _endOfRecordedSpace = _producerPos;
-
-            //        // Prevent the roll over if it overlaps the two positions because
-            //        // that would imply the buffer is completely empty when it's not.
-            //        // Doing this ensures that producerPos is always less than 
-            //        // cachedConsumerPos when rolled over to storage.
-            //        if (cachedConsumerPos != _storage) { // storage < cachedConsumerPos
-            //            // prevents producerPos from updating before endOfRecordedSpace
-            //            Fence::sfence();
-            //            _producerPos = _storage;
-            //            _minFreeSpace = cachedConsumerPos - _producerPos;
-            //        }
-            //    }
-            //    else { // cachedConsumerPos > producerPos
-            //        _minFreeSpace = cachedConsumerPos - _producerPos;
-            //    }
-
-            //    // Needed to prevent infinite loops in tests
-            //    if (!blocking && _minFreeSpace <= nbytes)
-            //        return nullptr;
-            //}
-
-            //// minFreeSpace > nbytes
-            //return _producerPos;
         }
 
         /**
@@ -557,23 +506,15 @@ private:
          *      Number of bytes to expose to the consumer
          */
         inline void finishReservation(size_t nbytes) {
-            //assert(nbytes < _minFreeSpace);
+            assert(nbytes < _minFreeSpace);
             const auto currentProducerPos =
                 _producerPos.load(std::memory_order_relaxed);
 
             //std::cout << currentProducerPos /*+ nbytes*/ << std::endl;
-            //assert(currentProducerPos + nbytes < STAGING_BUFFER_SIZE);
+            assert(currentProducerPos + nbytes < STAGING_BUFFER_SIZE);
             _producerPos.store(currentProducerPos + nbytes,
                 std::memory_order_release);
             _minFreeSpace -= nbytes;
-
-            //assert(nbytes < _minFreeSpace);
-            //assert(_producerPos + nbytes < _storage + STAGING_BUFFER_SIZE);
-
-            ////std::cout << _storage + STAGING_BUFFER_SIZE - _producerPos - nbytes << std::endl;
-            //Fence::sfence(); // Ensures producer finishes writes before bump
-            //_minFreeSpace -= nbytes;
-            //_producerPos += nbytes;
         }
 
         /**
@@ -614,25 +555,6 @@ private:
             // here ensures that == means consumable space is completely empty.
             *bytesAvailable = cachedProducerPos - currentConsumerPos;
             return _storage + currentConsumerPos;
-
-            //// Save a consistent copy of producerPos
-            //char* cachedProducerPos = _producerPos;
-
-            //if (cachedProducerPos < _consumerPos) {
-            //    Fence::lfence(); // Prevent reading new producerPos but old endOfRecordedSpace
-            //    *bytesAvailable = _endOfRecordedSpace - _consumerPos;
-
-            //    if (*bytesAvailable > 0)
-            //        return _consumerPos;
-
-            //    // Roll over (endOfRecordedSpace <= consumerPos)
-            //    _consumerPos = _storage;
-            //}
-
-            //// cachedProducerPos >= consumerPos
-            //// here ensures that == means consumable space is completely empty.
-            //*bytesAvailable = cachedProducerPos - _consumerPos;
-            //return _consumerPos;
         }
 
         /**
@@ -649,9 +571,6 @@ private:
                 _consumerPos.load(std::memory_order_relaxed);
             _consumerPos.store(currentConsumerPos + nbytes,
                 std::memory_order_release);
-
-            //Fence::lfence(); // Make sure consumer reads finish before bump
-            //_consumerPos += nbytes;
         }
 
         void setName(const char* name) { strncpy(_name, name, sizeof(_name) - 1); }
@@ -667,11 +586,11 @@ private:
          */
         bool checkCanDelete() { return _shouldDeallocate.load(); }
 
-        //bool isLockFree() const {
-        //    return (_producerPos.is_lock_free()
-        //        && _endOfRecordedSpace.is_lock_free()
-        //        && _consumerPos.is_lock_free());
-        //}
+        bool isLockFree() const {
+            return (_producerPos.is_lock_free()
+                && _endOfRecordedSpace.is_lock_free()
+                && _consumerPos.is_lock_free());
+        }
 
         StagingBuffer()
             : _producerPos(0/*_storage*/)

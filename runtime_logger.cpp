@@ -149,11 +149,6 @@ void RuntimeLogger::poll_() {
                     std::cerr << "";
                 }
 
-                //std::this_thread::sleep_for(std::chrono::microseconds(0));
-                //std::cout << "";
-                //std::cout << "";
-                //std::cout << "";
-
                 StagingBuffer* sb = threadBuffers[i];
 
                 uint64_t peekBytes = 0;
@@ -197,22 +192,12 @@ void RuntimeLogger::poll_() {
             }
         }
 
-        //if (outputFp) {
-        //    fflush(outputFp);
-        //}
-
         // If there's no data to output, go to sleep.
-        if (bytesWritten == 0) {
-            if (++count >= 10000) {
-                //std::this_thread::sleep_for(std::chrono::microseconds(POLL_INTERVAL_NO_WORK_US));
-                //std::cout << "sleep " << count << std::endl;
-
-                std::unique_lock<std::mutex> lock(condMutex);
-                workAdded.wait_for(lock, std::chrono::microseconds(
-                    POLL_INTERVAL_NO_WORK_US));
-                //count = 0;
-                //bool res = condSmph.try_acquire_for(std::chrono::microseconds(POLL_INTERVAL_NO_WORK_US));
-            }
+        if (bytesWritten == 0 && ++count >= NUMBER_OF_CHECKS_WITH_EMPTY_BUF) {
+            std::unique_lock<std::mutex> lock(condMutex);
+            workAdded.wait_for(lock, std::chrono::microseconds(
+                POLL_INTERVAL_NO_WORK_US));
+            //count = 0;
         }
     }
 
