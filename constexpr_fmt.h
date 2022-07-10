@@ -149,6 +149,10 @@ struct OutbufArg {
 		return pBuf_;
 	}
 
+	char* bufBegin() {
+		return pBufBegind_;
+	}
+
 	void setBufPtr(size_t n) {
 		// check if sufficient free space remains in the buffer
 		// the last byte position is reserved for the terminating '\0' 
@@ -2075,6 +2079,50 @@ result = outbuf.getWrittenNum();                                              \
 outbuf.done(); /* null - terminate the string */                              \
 } while (0);
 
+
+/**
+ * CFMT_STR_OUTBUFARG macro used for caching format specifier infos at compile
+ * time.
+ *
+ * \param outBuf
+ *      OutbufArg object to write to formatted string
+ * \param format
+ *      printf-like format string (must be literal)
+ * \param ... (additional arguments)
+ *      Depending on the format string, the function may expect a sequence of
+ *      additional arguments, each containing a value to be used to replace a
+ *      format specifier in the format string (or a pointer to a storage
+ *      location, for specifier n). There should be at least as many of these
+ *      arguments as the number of valid format specifiers.
+ */
+#define CFMT_STR_OUTBUFARG(outbuf, format, ...) do {                           \
+constexpr int kNVSIs = countValidSpecInfos(format);                            \
+constexpr int kSS = squeezeSoundSize(format);                                  \
+static constexpr auto fmtRawStr = format;                                      \
+/**
+ * A static variable inside a scope or function is something different than
+ * a global static variable. Since there can be as many scoped statics with
+ * the same name as you like (provided they are all in different scopes),
+ * the compiler might have to change their names internally (incorporating
+ * the function's name or the line number or whatever), so that the linker
+ * can tell them apart.
+ * Adding the static keyword to the file scope version of variables doesn't
+ * change their extent, but it does change its visibility with respect to
+ * other translation units; the name is not exported to the linker, so it
+ * cannot be accessed by name from another translation unit. */               \
+/*static constexpr std::array<SpecInfo, kNVSIs + 1> kSIs */                   \
+	/*= analyzeFormatString<kNVSIs + 1>(format);*/                            \
+static constexpr auto kfmtArr = preprocessInvalidSpecs<kSS>(format);          \
+static constexpr auto kRTStr = kSS < sizeof(format)? kfmtArr.data() : format; \
+/** 
+ * use the address of the pointer to a string literal (&kRTStr) with static
+ * storage duration and internal linkage instead of a raw string literal to
+ * comply with c++ standard 14.3.2/1 */                                       \
+static constexpr auto kConverter =                                            \
+    unpack</*&kRTStr,*/ kNVSIs + 1, Converter, &fmtRawStr>();                 \
+kConverter.convert<&kRTStr>(outbuf, ##__VA_ARGS__);                           \
+outbuf.done(); /* null - terminate the string */                              \
+} while (0);
 
 /**
  * CFMT_STR_TUPLE macro used for caching format specifier infos at compile

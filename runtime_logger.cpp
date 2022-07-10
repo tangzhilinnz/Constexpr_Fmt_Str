@@ -9,6 +9,7 @@ ThreadLocal RuntimeLogger::StagingBuffer* RuntimeLogger::stagingBuffer = nullptr
 thread_local RuntimeLogger::StagingBufferDestroyer RuntimeLogger::sbc;
 RuntimeLogger RuntimeLogger::tzLogSingleton;
 
+
 TSCNS tscns;
 uint64_t midnight_ns;
 
@@ -25,6 +26,236 @@ public:
 
 static TimeIniter _;
 
+SinkLogger::SinkLogger(const std::string& basename,
+                       //off_t rollSize,
+                       int flushInterval)
+    : outputFp_(nullptr)
+    , flushInterval_(flushInterval)
+    , running_(false)
+    , basename_(basename)
+    //, rollSize_(rollSize)
+    , thread_()
+    //, latch_(1)
+    , mutex_()
+    , cond_()
+    , currentBuffer_(new Buffer)
+    , nextBuffer_(new Buffer)
+    , buffers_() {
+
+    outputFp_ = fopen(basename.c_str(), "a");
+    if (!outputFp_) {
+        std::string err = "Unable to open file new log file: '";
+        err.append(basename);
+        err.append("': ");
+        err.append(strerror(errno));
+        throw std::ios_base::failure(err);
+    }
+
+    running_ = true;
+    currentBuffer_->bzero();
+    nextBuffer_->bzero();
+    buffers_.reserve(16);
+    thread_ = std::thread(std::bind(&SinkLogger::threadFunc, this));
+}
+
+void SinkLogger::append(const char* logline, int len) {
+    //std::cout << "enter append" << std::endl;
+
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (currentBuffer_->avail() > len) {
+        currentBuffer_->append(logline, len);
+    }
+    else {
+        buffers_.push_back(std::move(currentBuffer_));
+
+        if (nextBuffer_) {
+            currentBuffer_ = std::move(nextBuffer_);
+        }
+        else {
+            currentBuffer_.reset(new Buffer); // Rarely happens
+        }
+        currentBuffer_->append(logline, len);
+        cond_.notify_all();
+    }
+}
+
+//void SinkLogger::writeLog(OutbufArg& fmtBuf, const char* logline, 
+//                          const size_t len) {
+//    static const char* logLevelNames[] = { "NAN", "ERR", "WRN", "INF", "DBG" };
+//    size_t remaining = len;
+//    const char* pos = logline;
+//    while (remaining > 0) {
+//        fmtBuf.reset();
+//        //int res;
+//        const OneLogEntry* pOE = reinterpret_cast<const OneLogEntry*>(pos);
+//        const StaticFmtInfo* pSMI = pOE->fmtId;
+//        uint64_t ns = tscns.tsc2ns(pOE->timestamp);
+//        uint64_t t = (ns - midnight_ns) / 1000;
+//        uint32_t us = t % 1000000;
+//        t /= 1000000;
+//        uint32_t s = t % 60;
+//        t /= 60;
+//        uint32_t m = t % 60;
+//        t /= 60;
+//        uint32_t h = t % 24;
+//
+//        const char* logLevel = 
+//            logLevelNames[static_cast<size_t>(pSMI->severity_)];
+//
+//        //pos += sizeof(OneLogEntry);
+//
+//        CFMT_STR_OUTBUFARG(fmtBuf, "%02d:%02d:%02d.%06d %s:%d %s: ",
+//                           h, m, s, us, pSMI->filename_, pSMI->lineNum_,
+//                           logLevel);
+//        pSMI->convertFN_(fmtBuf, (pos + sizeof OneLogEntry));
+//        CFMT_STR_OUTBUFARG(fmtBuf, "\n");
+//
+//        fwrite(fmtBuf.getBufPtr(), 1, fmtBuf.getWrittenNum(), outputFp);
+//
+//        pos += pOE->entrySize;
+//        remaining -= static_cast<size_t>(pOE->entrySize);
+//    }
+//}
+
+void SinkLogger::threadFunc() {
+    std::cout << "enter threadFunc" << std::endl;
+
+    assert(running_ == true);
+    //latch_.countDown();
+    //LogFile output(basename_, rollSize_, false);
+    BufferPtr newBuffer1(new Buffer);
+    BufferPtr newBuffer2(new Buffer);
+    newBuffer1->bzero();
+    newBuffer2->bzero();
+    BufferVector buffersToWrite;
+    buffersToWrite.reserve(16);
+    char* cahce = new char[1024 * 1024];
+    OutbufArg fmtBuf(cahce, 1024 * 1024);
+    static const char* logLevelNames[] = { "NAN", "ERR", "WRN", "INF", "DBG" };
+
+    while (running_) {
+        //std::cout << "enter sink thread" << std::endl;
+
+        assert(newBuffer1 && newBuffer1->length() == 0);
+        assert(newBuffer2 && newBuffer2->length() == 0);
+        assert(buffersToWrite.empty());
+        std::cv_status status = std::cv_status::no_timeout;
+        {
+            std::unique_lock<std::mutex> lock(mutex_);
+            if (buffers_.empty()) { // unusual usage!
+                status = cond_.wait_for(
+                    lock, std::chrono::seconds(flushInterval_));
+            }
+            if (std::cv_status::no_timeout == status) {
+                if (currentBuffer_->length() > 0.8 * currentBuffer_->bufferSize()) {
+                    buffers_.push_back(std::move(currentBuffer_));
+                    currentBuffer_ = std::move(newBuffer1);
+                }
+            }
+            else { // std::cv_status::timeout == status
+                if (currentBuffer_->length() > 0) {
+                    buffers_.push_back(std::move(currentBuffer_));
+                    currentBuffer_ = std::move(newBuffer1);
+                }
+            }
+            //std::cout << buffers_.size() << std::endl;
+
+            //buffers_.push_back(std::move(currentBuffer_));
+            //currentBuffer_ = std::move(newBuffer1);
+            buffersToWrite.swap(buffers_);
+            if (!nextBuffer_) {
+                nextBuffer_ = std::move(newBuffer2);
+            }
+        }
+
+        //std::cout << buffersToWrite.size() << std::endl;
+
+        if (buffersToWrite.empty()) continue;
+
+        assert(!buffersToWrite.empty());
+
+        if (buffersToWrite.size() > 25) {
+            //char buf[256];
+            //snprintf(buf, sizeof buf, "Dropped log messages at %s, %zd larger buffers\n",
+            //    Timestamp::now().toFormattedString().c_str(),
+            //    buffersToWrite.size() - 2);
+            //fputs(buf, stderr);
+            //output.append(buf, static_cast<int>(strlen(buf)));
+            //buffersToWrite.erase(buffersToWrite.begin() + 2, buffersToWrite.end());
+        }
+
+        for (const auto& buffer : buffersToWrite) {
+            // FIXME: use unbuffered stdio FILE ? or use ::writev ?
+            // output.append(buffer->data(), buffer->length());
+
+            //for (int i = 0; i < 24; i++)
+            //    std::cout << "";
+
+            //writeLog(fmtBuf, buffer->data(), buffer->length());
+             
+            int remaining = buffer->length();
+            const char* pos = buffer->data();
+            while (remaining > 0) {
+                fmtBuf.reset();
+                //int res;
+                const OneLogEntry* pOE = reinterpret_cast<const OneLogEntry*>(pos);
+                const StaticFmtInfo* pSMI = pOE->fmtId;
+                uint64_t ns = tscns.tsc2ns(pOE->timestamp);
+                uint64_t t = (ns - midnight_ns) / 1000;
+                uint32_t us = t % 1000000;
+                t /= 1000000;
+                uint32_t s = t % 60;
+                t /= 60;
+                uint32_t m = t % 60;
+                t /= 60;
+                uint32_t h = t % 24;
+
+                const char* logLevel =
+                    logLevelNames[static_cast<size_t>(pSMI->severity_)];
+
+                //pos += sizeof(OneLogEntry);
+
+                CFMT_STR_OUTBUFARG(fmtBuf, "%02d:%02d:%02d.%06d %s:%d %s: ",
+                    h, m, s, us, pSMI->filename_, pSMI->lineNum_,
+                    logLevel);
+                pSMI->convertFN_(fmtBuf, pos + sizeof(OneLogEntry));
+                CFMT_STR_OUTBUFARG(fmtBuf, "\n");
+
+                //std::cout << outputFp_ << std::endl;
+                fwrite(fmtBuf.bufBegin(), 1, fmtBuf.getWrittenNum(), outputFp_);
+                //std::cout << fmtBuf.bufBegin() << std::endl;
+
+                pos += pOE->entrySize;
+                remaining -= static_cast<int>(pOE->entrySize);
+            }
+        }
+
+        if (buffersToWrite.size() > 2) {
+            // drop non-bzero-ed buffers, avoid trashing
+            buffersToWrite.resize(2);
+        }
+
+        if (!newBuffer1) {
+            assert(!buffersToWrite.empty());
+            newBuffer1 = std::move(buffersToWrite.back());
+            buffersToWrite.pop_back();
+            newBuffer1->reset();
+        }
+
+        if (!newBuffer2) {
+            assert(!buffersToWrite.empty());
+            newBuffer2 = std::move(buffersToWrite.back());
+            buffersToWrite.pop_back();
+            newBuffer2->reset();
+        }
+
+        buffersToWrite.clear();
+        if (outputFp_) fflush(outputFp_);
+    }
+
+    if (outputFp_) fflush(outputFp_);
+    delete[] cahce;
+}
 
 // RuntimeLogger constructor
 RuntimeLogger::RuntimeLogger()
@@ -33,9 +264,9 @@ RuntimeLogger::RuntimeLogger()
     , condMutex()
     , condSmph(0)
     , workAdded()
+    , sink_("SinkLogger.txt")
     , bgThread()
     , bgThreadShouldExit(false)
-    , outputFp(nullptr)
     , currentLogLevel(LogLevel::INFORMATION)
     , logCB(nullptr)
     , maxCBLogLevel(LogLevel::WARNING)
@@ -45,11 +276,6 @@ RuntimeLogger::RuntimeLogger()
 
 // RuntimeLogger destructor
 RuntimeLogger::~RuntimeLogger() {
-    if (outputFp) {
-        fclose(outputFp);
-        outputFp = nullptr;
-    }
-
     // Stop the compression thread
     {
         std::lock_guard<std::mutex> lock(tzLogSingleton.condMutex);
@@ -73,23 +299,23 @@ void RuntimeLogger::preallocate() {
     // the user is already willing to invoke this up front cost.
 }
 
-void RuntimeLogger::setLogFile_internal(const char* filename) {
-    FILE* newFp = fopen(filename, "a");
-    if (!newFp) {
-        std::string err = "Unable to open file new log file: '";
-        err.append(filename);
-        err.append("': ");
-        err.append(strerror(errno));
-        throw std::ios_base::failure(err);
-    }
-
-    if (outputFp) fclose(outputFp);
-    outputFp = newFp;
-}
+//void RuntimeLogger::setLogFile_internal(const char* filename) {
+//    FILE* newFp = fopen(filename, "a");
+//    if (!newFp) {
+//        std::string err = "Unable to open file new log file: '";
+//        err.append(filename);
+//        err.append("': ");
+//        err.append(strerror(errno));
+//        throw std::ios_base::failure(err);
+//    }
+//
+//    if (outputFp) fclose(outputFp);
+//    outputFp = newFp;
+//}
 
 /**
- * Set where the NanoLog should output its compressed log. If a previous
- * log file was specified, NanoLog will attempt to sync() the remaining log
+ * Set where the NanoLog should output log. If a previous log file was 
+ * specified, TZLog will attempt to sync() the remaining log
  * entries before swapping files. For best practices, the output file shall
  * be set before the first invocation to log by the main thread as this
  * function is *not* thread safe.
@@ -102,9 +328,9 @@ void RuntimeLogger::setLogFile_internal(const char* filename) {
  * \throw is_base::failure
  *      if the file cannot be opened or crated
  */
-void RuntimeLogger::setLogFile(const char* filename) {
-    tzLogSingleton.setLogFile_internal(filename);
-}
+//void RuntimeLogger::setLogFile(const char* filename) {
+//    tzLogSingleton.setLogFile_internal(filename);
+//}
 
 /**
  * Sets the minimum log level new NANO_LOG messages will have to meet before
@@ -122,13 +348,10 @@ void RuntimeLogger::setLogLevel(LogLevel logLevel) {
 }
 
 void RuntimeLogger::poll_() {
-    //char compress_buf[1024 * 1024];
+    //char* output_buf = new char[64 * 1024 * 1024];
+    //char* pBuf = output_buf;
+    //size_t spaceLeft = 64 * 1024 * 1024;
 
-    //char output_buf[64 * 1024 * 1024];
-    char* output_buf = new char[64 * 1024 * 1024];
-
-    char* pBuf = output_buf;
-    size_t spaceLeft = 64 * 1024 * 1024;
     size_t bytesWritten = 0;
     unsigned int count = 0;
 
@@ -158,13 +381,14 @@ void RuntimeLogger::poll_() {
                 if (peekBytes > 0) {
                     lock.unlock();
 
-                    if (spaceLeft <= peekBytes) {
-                        pBuf = output_buf;
-                        spaceLeft = 64 * 1024 * 1024;
-                    }
+                    //if (spaceLeft <= peekBytes) {
+                    //    pBuf = output_buf;
+                    //    spaceLeft = 64 * 1024 * 1024;
+                    //}
 
-                    memcpy(pBuf, peekPosition, peekBytes);
-                    spaceLeft -= peekBytes;
+                    //memcpy(pBuf, peekPosition, peekBytes);
+                    //spaceLeft -= peekBytes;
+                    sink_.append(peekPosition, peekBytes);
 
                     bytesWritten += peekBytes;
 
@@ -195,11 +419,11 @@ void RuntimeLogger::poll_() {
         // If there's no data to output, go to sleep.
         if (bytesWritten == 0 && ++count >= NUMBER_OF_CHECKS_WITH_EMPTY_BUF) {
             std::unique_lock<std::mutex> lock(condMutex);
-            workAdded.wait_for(lock, std::chrono::microseconds(
+            workAdded.wait_for(lock, std::chrono::milliseconds(
                 POLL_INTERVAL_NO_WORK_US));
             //count = 0;
         }
     }
 
-    delete[] output_buf;
+    //delete[] output_buf;
 }

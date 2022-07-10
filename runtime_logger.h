@@ -20,6 +20,8 @@
 #include <chrono>
 #include <cstring>
 
+#include <memory>
+#include <functional>
 #include <mutex>
 #include <semaphore>
 #include <atomic>
@@ -38,13 +40,18 @@
 #include <sys/syscall.h>
 #endif
 
+#include "tz_type.h"
+
 // Determines the byte size of the per-thread StagingBuffer that decouples
 // the producer logging thread from the consumer background compression
 // thread. This value should be large enough to handle bursts of activity.
 #define STAGING_BUFFER_SIZE              (1 << 20)
 #define BYTES_PER_CACHE_LINE             64
-#define POLL_INTERVAL_NO_WORK_US         1000
+#define POLL_INTERVAL_NO_WORK_US         1
 #define NUMBER_OF_CHECKS_WITH_EMPTY_BUF  100
+
+#define SMALL_BUFFER  4000
+#define LARGE_BUFFER  (64 * 1024 * 1024)
 
 #if __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
 #define ThreadLocal _Thread_local
@@ -63,57 +70,120 @@
 #error "Cannot define thread_local"
 #endif
 
-/**
- * This class is used to restrict instruction reordering within a CPU in
- * order to maintain synchronization properties between threads.  Is a thin
- * wrapper around x86 "fence" instructions.  Note: getting fencing correct
- * is extremely tricky!  Whenever possible, use existing solutions that already
- * handle the fencing.
- */
-//class Fence {
-//public:
-//
-//    /**
-//     * This method creates a compiler level memory barrier forcing optimizer
-//     * to not re-order memory accesses across the barrier. It can not prevent
-//     * CPU reordering.
-//     */
-//    static void inline barrier() {
-//        __asm__ __volatile__("" ::: "memory");
-//    }
-//
-//    /**
-//     * This method creates a boundary across which load instructions cannot
-//     * migrate: if a memory read comes from code occurring before (after)
-//     * invoking this method, the read is guaranteed to complete before (after)
-//     * the method is invoked.
-//     */
-//    static void inline lfence() {
-//        __asm__ __volatile__("lfence" ::: "memory");
-//    }
-//
-//    /**
-//     * This method creates a boundary across which store instructions cannot
-//     * migrate: if a memory store comes from code occurring before (after)
-//     * invoking this method, the store is guaranteed to complete before (after)
-//     * the method is invoked.
-//     */
-//    static void inline sfence() {
-//        __asm__ __volatile__("sfence" ::: "memory");
-//    }
-//
-//    /**
-//     * This method creates a serializing operation on all load-from-memory and
-//     * store-to-memory instructions that were issued prior the mfence
-//     * instruction. This serializing operation guarantees that every load and
-//     * store instruction that precedes the mfence instruction in program order
-//     * becomes globally visible before any load or store instruction that
-//     * follows the mfence instruction. 
-//     */
-//    static void inline mfence() {
-//        __asm__ __volatile__("mfence" ::: "memory");
-//    }
-//};
+
+template<int SIZE>
+class SinkBuffer {
+public:
+    SinkBuffer(const SinkBuffer&) = delete;
+    void operator=(const SinkBuffer&) = delete;
+
+    SinkBuffer()
+        : cur_(data_)
+        , end_(data_ + sizeof data_) {
+        setCookie(cookieStart);
+    }
+
+    ~SinkBuffer() {
+        setCookie(cookieEnd);
+    }
+
+    void append(const char* buf, size_t len) {
+        // FIXME: append partially
+        assert(static_cast<size_t>(end_ - cur_) > len);
+        memcpy(cur_, buf, len);
+        cur_ += len;
+    }
+
+    const char* data() const { return data_; }
+    int length() const { return static_cast<int>(cur_ - data_); }
+    int bufferSize() const{ return static_cast<int>(SIZE); }
+
+    // write to data_ directly
+    char* current() { return cur_; }
+    int avail() const { return static_cast<int>(end_ - cur_); }
+    void add(size_t len) { cur_ += len; }
+
+    void reset() { cur_ = data_; }
+    void bzero() { std::memset(data_, 0, sizeof data_); }
+
+    // for used by GDB
+    const char* debugString() {
+        *cur_ = '\0';
+        return data_;
+    }
+    void setCookie(void (*cookie)()) { cookie_ = cookie; }
+    // for used by unit test
+    std::string toString() const { return std::string(data_, length()); }
+
+private:
+    const char* end() const { return end_; }
+    // Must be outline function for cookies.
+    static void cookieStart() {}
+    static void cookieEnd() {}
+
+    void (*cookie_)();
+    char data_[SIZE];
+    char* cur_;
+    char* end_;
+};
+
+
+class SinkLogger {
+public:
+    SinkLogger(const std::string& basename,
+        //off_t rollSize,
+        int flushInterval = 3);
+
+    ~SinkLogger() {
+        if (running_) {
+            stop();
+        }
+
+        if (outputFp_) {
+            fclose(outputFp_);
+            outputFp_ = nullptr;
+        }
+    }
+
+    void append(const char* logline, int len);
+
+    //void start() {
+    //    running_ = true;
+    //    thread_.start();
+    //    //latch_.wait();
+    //}
+
+    void stop() {
+        running_ = false;
+        cond_.notify_all();
+        if (thread_.joinable())
+            thread_.join();
+        std::cout << "sink thread stopped!!!" << std::endl;
+    }
+
+private:
+
+    void threadFunc();
+    //void writeLog(OutbufArg& fmtBuf, const char* logline,
+    //              const size_t len);
+
+    using Buffer = SinkBuffer<LARGE_BUFFER>;
+    using BufferVector = std::vector<std::unique_ptr<Buffer>>;
+    using BufferPtr = BufferVector::value_type;
+
+    FILE* outputFp_;
+    const int flushInterval_;
+    std::atomic<bool> running_;
+    const std::string basename_;
+    //const off_t rollSize_;
+    std::thread thread_;
+    //muduo::CountDownLatch latch_;
+    std::mutex mutex_;
+    std::condition_variable cond_;
+    BufferPtr currentBuffer_;
+    BufferPtr nextBuffer_;
+    BufferVector buffers_;
+};
 
 
 class TSCNS {
@@ -225,33 +295,6 @@ private:
 extern TSCNS tscns;
 extern uint64_t midnight_ns;
 
-/**
- * The levels of verbosity for messages logged with #TZ_LOG.
- */
-enum class LogLevel {
-    // Keep this in sync with logLevelNames
-    SILENT_LOG_LEVEL = 0,
-
-    // Bad stuff that shouldn't happen. The system broke its contract to
-    // users in some way or some major assumption was violated.
-    ERR,
-
-    // Messages at the WARNING level indicate that, although something went
-    // wrong or something unexpected happened, it was transient and
-    // recoverable.
-    WARNING,
-
-    // Somewhere in between WARNING and DEBUG...
-    INFORMATION,
-
-    // Messages at the DEBUG level don't necessarily indicate that anything
-    // went wrong, but they could be useful in diagnosing problems.
-    /*DEBUG*/DEB,
-
-    // must be the last element in the enum
-    NUM_LOG_LEVELS
-};
-
 typedef void (*LogCBFn)(uint64_t ns, LogLevel level, const char* msg, size_t msg_len);
 
 /**
@@ -298,35 +341,26 @@ public:
     }
 
     static void preallocate();
-    static void setLogFile(const char* filename);
+    //static void setLogFile(const char* filename);
     static void setLogLevel(LogLevel logLevel);
     static void poll() { tzLogSingleton.poll_(); }
 
-    static inline LogLevel getLogLevel() { return tzLogSingleton.currentLogLevel; }
+    static inline LogLevel getLogLevel() { 
+        return tzLogSingleton.currentLogLevel; 
+    }
 
     static void setThreadName(const char* name) {
         tzLogSingleton.ensureStagingBufferAllocated();
         stagingBuffer->setName(name);
     }
 
-    static void setLogCB(LogCBFn cb, LogLevel maxCBLogLevel, uint64_t minCBPeriodInSec) {
+    static void setLogCB(LogCBFn cb, LogLevel maxCBLogLevel, 
+                         uint64_t minCBPeriodInSec) {
         tzLogSingleton.setLogCB_(cb, maxCBLogLevel, minCBPeriodInSec);
     }
 
     static const RuntimeLogger& getTZLog() {
         return tzLogSingleton;
-    }
-
-    inline void ensureStagingBufferAllocated() {
-        if (stagingBuffer == nullptr) {
-            std::unique_lock<std::mutex> guard(bufferMutex);
-            // Unlocked for the expensive StagingBuffer allocation
-            guard.unlock();
-            stagingBuffer = new StagingBuffer();
-            guard.lock();
-
-            threadBuffers.push_back(stagingBuffer);
-        }
     }
 
 private:
@@ -349,11 +383,12 @@ private:
 
     ~RuntimeLogger();
 
-    void setLogFile_internal(const char* filename);
+    //void setLogFile_internal(const char* filename);
 
     void poll_();
 
-    void setLogCB_(LogCBFn cb, LogLevel maxCBLogLevel_, uint64_t minCBPeriodInSec) {
+    void setLogCB_(LogCBFn cb, LogLevel maxCBLogLevel_,
+                   uint64_t minCBPeriodInSec) {
         logCB = cb;
         maxCBLogLevel = maxCBLogLevel_;
         minCBPeriod = minCBPeriodInSec * 1000000000;
@@ -365,17 +400,17 @@ private:
      * log messages to and by the user if they wish to preallocate the data
      * structures on thread creation.
      */
-    //inline void ensureStagingBufferAllocated() {
-    //    if (stagingBuffer == nullptr) {
-    //        std::unique_lock<std::mutex> guard(bufferMutex);
-    //        // Unlocked for the expensive StagingBuffer allocation
-    //        guard.unlock();
-    //        stagingBuffer = new StagingBuffer();
-    //        guard.lock();
+    inline void ensureStagingBufferAllocated() {
+        if (stagingBuffer == nullptr) {
+            std::unique_lock<std::mutex> guard(bufferMutex);
+            // Unlocked for the expensive StagingBuffer allocation
+            guard.unlock();
+            stagingBuffer = new StagingBuffer();
+            guard.lock();
 
-    //        threadBuffers.push_back(stagingBuffer);
-    //    }
-    //}
+            threadBuffers.push_back(stagingBuffer);
+        }
+    }
 
     // Globally the thread-local stagingBuffers
     std::vector<StagingBuffer*> threadBuffers;
@@ -390,6 +425,8 @@ private:
     // Signal for when the poll thread should wakeup
     std::condition_variable workAdded;
 
+    SinkLogger sink_;
+
     // Background thread that polls the various staging buffers and outputs it to
     // a sink buffer.
     std::thread bgThread;
@@ -397,8 +434,6 @@ private:
     // Flag signaling the bgThread to stop running. This is typically only set in
     // testing or when the application is exiting.
     bool bgThreadShouldExit;
-
-    FILE* outputFp;
 
     // Minimum log level that RuntimeLogger will accept. Anything lower will
     // be dropped.
