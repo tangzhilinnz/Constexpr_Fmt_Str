@@ -47,7 +47,7 @@
 // thread. This value should be large enough to handle bursts of activity.
 #define STAGING_BUFFER_SIZE              (1 << 20)
 #define BYTES_PER_CACHE_LINE             64
-#define POLL_INTERVAL_NO_WORK_US         1
+#define POLL_INTERVAL_NO_WORK_MS         1
 #define NUMBER_OF_CHECKS_WITH_EMPTY_BUF  100
 
 #define SMALL_BUFFER  4000

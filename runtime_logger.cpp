@@ -419,9 +419,8 @@ void RuntimeLogger::poll_() {
         // If there's no data to output, go to sleep.
         if (bytesWritten == 0 && ++count >= NUMBER_OF_CHECKS_WITH_EMPTY_BUF) {
             std::unique_lock<std::mutex> lock(condMutex);
-            workAdded.wait_for(lock, std::chrono::milliseconds(
-                POLL_INTERVAL_NO_WORK_US));
-            //count = 0;
+            workAdded.wait_for(
+                lock, std::chrono::milliseconds(POLL_INTERVAL_NO_WORK_MS));
         }
     }
 

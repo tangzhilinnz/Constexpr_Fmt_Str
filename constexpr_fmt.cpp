@@ -37,7 +37,7 @@ int main() {
 	std::default_random_engine eng(rd());
 	std::uniform_int_distribution<int> distr(0, (std::numeric_limits<int>::max)()/*1000*/);
 	int* pdata = new int[10000000];
-	for (int i = 0; i < 10000000; i++) {
+	for (int i = 0; i < 1000000; i++) {
 		pdata[i] = distr(eng);
 	}
 
@@ -64,7 +64,8 @@ int main() {
 	auto start = system_clock::now();
 
 	for (int i = 0; i < 100000; i++) {
-		TZ_LOG(LogLevel::INFORMATION, "test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n", 'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr);
+		//TZ_LOG(LogLevel::INFORMATION, "test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n", 'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr);
+		//TZ_LOG(LogLevel::INFORMATION, "test %d", i);
 		TZ_LOG(LogLevel::INFORMATION, "test %d", i);
 		//std::this_thread::sleep_for(std::chrono::nanoseconds(10));
 		//pBuf = buf;
