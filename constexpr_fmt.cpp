@@ -19,6 +19,20 @@
 using namespace std;
 using namespace chrono;
 
+// Protects the condition variables below
+std::mutex m_mutex;
+
+// Signal for when the poll thread should wakeup
+std::condition_variable condi;
+
+void thdFunc() {
+	for (int i = 0; i < 500000; i++) {		
+		TZ_LOG(LogLevel::INFORMATION, "test %d", i);
+	}
+}
+
+
+
 int main() {
 
 	std::to_chars_result ret;
@@ -58,29 +72,35 @@ int main() {
 	char* pBuf = buf;
 	wchar_t pwstr[] = L"tang zhilin";
 
+	//std::thread t1(thdFunc);
 
 	RuntimeLogger::setThreadName("test");
-	int j = 9999999;
 	auto start = system_clock::now();
 
-	for (int i = 0; i < 100000; i++) {
+	//std::thread t1(thdFunc);
+	//std::thread t2(thdFunc);
+	//t1.join();
+	//t2.join();
+
+	for (int i = 0; i < 1000; i++) {
 		//TZ_LOG(LogLevel::INFORMATION, "test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n", 'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr);
 		//TZ_LOG(LogLevel::INFORMATION, "test %d", i);
+		//Sleep(1);
+		
 		TZ_LOG(LogLevel::INFORMATION, "test %d", i);
-		//std::this_thread::sleep_for(std::chrono::nanoseconds(10));
-		//pBuf = buf;
 
+		//std::this_thread::sleep_for(std::chrono::nanoseconds(10));
+		//condi.notify_all();
 	}
 
 	auto end = system_clock::now();
 	auto duration = duration_cast<microseconds>(end - start);
-
-
 	std::cout << "cost: "
 		<< double(duration.count()) * microseconds::period::num / microseconds::period::den << "seconds" << std::endl;
 
 
 	std::this_thread::sleep_for(std::chrono::seconds(30));
+	//t1.join();
 }
 
 

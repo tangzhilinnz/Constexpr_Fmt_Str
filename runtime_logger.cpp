@@ -26,9 +26,9 @@ public:
 
 static TimeIniter _;
 
-SinkLogger::SinkLogger(const std::string& basename,
-                       //off_t rollSize,
-                       int flushInterval)
+RuntimeLogger::SinkLogger::SinkLogger(const std::string& basename,
+                                      //off_t rollSize,
+                                      int flushInterval)
     : outputFp_(nullptr)
     , flushInterval_(flushInterval)
     , running_(false)
@@ -58,7 +58,7 @@ SinkLogger::SinkLogger(const std::string& basename,
     thread_ = std::thread(std::bind(&SinkLogger::threadFunc, this));
 }
 
-void SinkLogger::append(const char* logline, int len) {
+void RuntimeLogger::SinkLogger::append(const char* logline, int len) {
     //std::cout << "enter append" << std::endl;
 
     std::lock_guard<std::mutex> lock(mutex_);
@@ -75,6 +75,42 @@ void SinkLogger::append(const char* logline, int len) {
             currentBuffer_.reset(new Buffer); // Rarely happens
         }
         currentBuffer_->append(logline, len);
+        cond_.notify_all();
+    }
+}
+
+void RuntimeLogger::SinkLogger::appendNibble(const char* logline, int len,
+                                             StagingBuffer* sb) {
+
+    auto append = [&]() {
+        uint64_t remaining = len;
+        while (remaining > 0) {
+            auto bytesToCopy =
+                (static_cast<uint64_t>(RELEASE_THRESHOLD)
+                    < remaining) ? RELEASE_THRESHOLD : remaining;
+            currentBuffer_->append(logline, bytesToCopy);
+            logline += bytesToCopy;
+            remaining -= bytesToCopy;
+            sb->consume(bytesToCopy);
+        } 
+    };
+
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (currentBuffer_->avail() > len) {
+        //currentBuffer_->append(logline, len);
+        append();
+    }
+    else {
+        buffers_.push_back(std::move(currentBuffer_));
+
+        if (nextBuffer_) {
+            currentBuffer_ = std::move(nextBuffer_);
+        }
+        else {
+            currentBuffer_.reset(new Buffer); // Rarely happens
+        }
+        //currentBuffer_->append(logline, len);
+        append();
         cond_.notify_all();
     }
 }
@@ -117,7 +153,7 @@ void SinkLogger::append(const char* logline, int len) {
 //    }
 //}
 
-void SinkLogger::threadFunc() {
+void RuntimeLogger::SinkLogger::threadFunc() {
     std::cout << "enter threadFunc" << std::endl;
 
     assert(running_ == true);
@@ -348,9 +384,6 @@ void RuntimeLogger::setLogLevel(LogLevel logLevel) {
 }
 
 void RuntimeLogger::poll_() {
-    //char* output_buf = new char[64 * 1024 * 1024];
-    //char* pBuf = output_buf;
-    //size_t spaceLeft = 64 * 1024 * 1024;
 
     size_t bytesWritten = 0;
     unsigned int count = 0;
@@ -379,22 +412,26 @@ void RuntimeLogger::poll_() {
 
                 // If there's work, unlock to perform it
                 if (peekBytes > 0) {
+                    count = 0;
+
                     lock.unlock();
 
-                    //if (spaceLeft <= peekBytes) {
-                    //    pBuf = output_buf;
-                    //    spaceLeft = 64 * 1024 * 1024;
+                    //uint64_t remaining = peekBytes;
+                    //while (remaining > 0) {
+                    //    auto bytesToEncode =
+                    //        (static_cast<uint64_t>(RELEASE_THRESHOLD)
+                    //            < remaining) ? RELEASE_THRESHOLD : remaining;
+                    //    sink_.append(peekPosition, bytesToEncode);
+                    //    peekPosition += bytesToEncode;
+                    //    remaining -= bytesToEncode;
+                    //    sb->consume(bytesToEncode);
                     //}
 
-                    //memcpy(pBuf, peekPosition, peekBytes);
-                    //spaceLeft -= peekBytes;
-                    sink_.append(peekPosition, peekBytes);
+                    //sink_.append(peekPosition, peekBytes);
+                    //sb->consume(peekBytes);
+                    sink_.appendNibble(peekPosition, peekBytes, sb);
 
                     bytesWritten += peekBytes;
-
-                    sb->consume(peekBytes);
-
-                    count = 0;
 
                     lock.lock();
                 }
@@ -421,8 +458,8 @@ void RuntimeLogger::poll_() {
             std::unique_lock<std::mutex> lock(condMutex);
             workAdded.wait_for(
                 lock, std::chrono::milliseconds(POLL_INTERVAL_NO_WORK_MS));
+            //std::cout << "wait_for" << std::endl;
+            count = 0;
         }
     }
-
-    //delete[] output_buf;
 }
