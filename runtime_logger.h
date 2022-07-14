@@ -57,7 +57,7 @@
 #define RELEASE_THRESHOLD                STAGING_BUFFER_SIZE >> 4
 
 #define SMALL_BUFFER  4000
-#define LARGE_BUFFER  (64 * 1024 * 1024)
+#define LARGE_BUFFER  (128 * 1024 * 1024)
 
 #if __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
 #define ThreadLocal _Thread_local

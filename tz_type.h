@@ -1,6 +1,7 @@
 #ifndef TZ_TYPE_H__
 #define TZ_TYPE_H__
 
+#include <stdint.h>
 #include "constexpr_fmt.h"
 
 /**
@@ -108,6 +109,17 @@ struct OneLogEntry {
 	// After this header are the runtime arguments required by the original 
 	// format string
 	char argData[0];
+};
+
+
+struct ThreadCheckPoint {
+	// thread name provided by operating system or users (maximum 16 bytes are
+	// allowed)
+	char name_[20];
+
+	// Number of bytes for a chunk of non-formatted logs that belonged to the
+	// same thread after this check point header
+	int blockSize_;
 };
 
 

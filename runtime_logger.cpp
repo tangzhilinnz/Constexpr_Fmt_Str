@@ -83,6 +83,12 @@ void RuntimeLogger::SinkLogger::appendNibble(const char* logline, int len,
                                              StagingBuffer* sb) {
 
     auto append = [&]() {
+        ThreadCheckPoint* pTCP = 
+            reinterpret_cast<ThreadCheckPoint*>(currentBuffer_->current());
+        std::strcpy(pTCP->name_, sb->getName());
+        pTCP->blockSize_ = len;
+        currentBuffer_->add(sizeof(ThreadCheckPoint));
+
         uint64_t remaining = len;
         while (remaining > 0) {
             auto bytesToCopy =
@@ -96,8 +102,7 @@ void RuntimeLogger::SinkLogger::appendNibble(const char* logline, int len,
     };
 
     std::lock_guard<std::mutex> lock(mutex_);
-    if (currentBuffer_->avail() > len) {
-        //currentBuffer_->append(logline, len);
+    if (currentBuffer_->avail() > (len + sizeof(ThreadCheckPoint))) {
         append();
     }
     else {
@@ -109,7 +114,6 @@ void RuntimeLogger::SinkLogger::appendNibble(const char* logline, int len,
         else {
             currentBuffer_.reset(new Buffer); // Rarely happens
         }
-        //currentBuffer_->append(logline, len);
         append();
         cond_.notify_all();
     }
@@ -194,7 +198,6 @@ void RuntimeLogger::SinkLogger::threadFunc() {
                     currentBuffer_ = std::move(newBuffer1);
                 }
             }
-            //std::cout << buffers_.size() << std::endl;
 
             //buffers_.push_back(std::move(currentBuffer_));
             //currentBuffer_ = std::move(newBuffer1);
@@ -229,40 +232,52 @@ void RuntimeLogger::SinkLogger::threadFunc() {
 
             //writeLog(fmtBuf, buffer->data(), buffer->length());
              
-            int remaining = buffer->length();
+            int bufLen = buffer->length();
             const char* pos = buffer->data();
-            while (remaining > 0) {
-                fmtBuf.reset();
-                //int res;
-                const OneLogEntry* pOE = reinterpret_cast<const OneLogEntry*>(pos);
-                const StaticFmtInfo* pSMI = pOE->fmtId;
-                uint64_t ns = tscns.tsc2ns(pOE->timestamp);
-                uint64_t t = (ns - midnight_ns) / 1000;
-                uint32_t us = t % 1000000;
-                t /= 1000000;
-                uint32_t s = t % 60;
-                t /= 60;
-                uint32_t m = t % 60;
-                t /= 60;
-                uint32_t h = t % 24;
+            while (bufLen > 0) {
+                const ThreadCheckPoint* pTCP = 
+                    reinterpret_cast<const ThreadCheckPoint*>(pos);
 
-                const char* logLevel =
-                    logLevelNames[static_cast<size_t>(pSMI->severity_)];
+                int remaining = pTCP->blockSize_;
+                pos += sizeof(ThreadCheckPoint);
 
-                //pos += sizeof(OneLogEntry);
+                while (remaining > 0) {
 
-                CFMT_STR_OUTBUFARG(fmtBuf, "%02d:%02d:%02d.%06d %s:%d %s: ",
-                    h, m, s, us, pSMI->filename_, pSMI->lineNum_,
-                    logLevel);
-                pSMI->convertFN_(fmtBuf, pos + sizeof(OneLogEntry));
-                CFMT_STR_OUTBUFARG(fmtBuf, "\n");
+                    fmtBuf.reset();
+                    //int res;
+                    const OneLogEntry* pOE = 
+                        reinterpret_cast<const OneLogEntry*>(pos);
+                    const StaticFmtInfo* pSMI = pOE->fmtId;
+                    uint64_t ns = tscns.tsc2ns(pOE->timestamp);
+                    uint64_t t = (ns - midnight_ns) / 1000;
+                    uint32_t us = t % 1000000;
+                    t /= 1000000;
+                    uint32_t s = t % 60;
+                    t /= 60;
+                    uint32_t m = t % 60;
+                    t /= 60;
+                    uint32_t h = t % 24;
 
-                //std::cout << outputFp_ << std::endl;
-                fwrite(fmtBuf.bufBegin(), 1, fmtBuf.getWrittenNum(), outputFp_);
-                //std::cout << fmtBuf.bufBegin() << std::endl;
+                    const char* logLevel =
+                        logLevelNames[static_cast<size_t>(pSMI->severity_)];
 
-                pos += pOE->entrySize;
-                remaining -= static_cast<int>(pOE->entrySize);
+                    //pos += sizeof(OneLogEntry);
+
+                    CFMT_STR_OUTBUFARG(fmtBuf, "%02d:%02d:%02d.%06d %s:%d %s[%s]: ",
+                        h, m, s, us, pSMI->filename_, pSMI->lineNum_,
+                        logLevel, pTCP->name_);
+                    pSMI->convertFN_(fmtBuf, pos + sizeof(OneLogEntry));
+                    CFMT_STR_OUTBUFARG(fmtBuf, "\n");
+
+                    //std::cout << outputFp_ << std::endl;
+                    fwrite(fmtBuf.bufBegin(), 1, fmtBuf.getWrittenNum(), outputFp_);
+                    //std::cout << fmtBuf.bufBegin() << std::endl;
+
+                    pos += pOE->entrySize;
+                    remaining -= static_cast<int>(pOE->entrySize);
+                }
+
+                bufLen -= (pTCP->blockSize_ + sizeof(ThreadCheckPoint));
             }
         }
 
@@ -396,12 +411,13 @@ void RuntimeLogger::poll_() {
 
         {
             std::unique_lock<std::mutex> lock(bufferMutex);
+            const int size = 32 / max(threadBuffers.size() / 8, 1);
             for (int i = 0; i < threadBuffers.size(); i++) {
 
                 //std::cout << "" << "" << "" << "" << "" << "" << "" << "" << "" << "" << "" << "";
                 //std::cout << "" << "" << "" << "" << "" << "" << "" << "" << "" << "" << "" << "";
 
-                for (int j = 0; j < 32; j++) {
+                for (int j = 0; j < size; j++) {
                     std::cerr << "";
                 }
 

@@ -8,6 +8,7 @@
 #include <tuple>
 #include <random>
 #include <cuchar>
+#include <thread>
 
 #include <clocale>
 #include <string>
@@ -25,13 +26,15 @@ std::mutex m_mutex;
 // Signal for when the poll thread should wakeup
 std::condition_variable condi;
 
+const int thdnum = 2;
+
 void thdFunc() {
-	for (int i = 0; i < 500000; i++) {		
-		TZ_LOG(LogLevel::INFORMATION, "test %d", i);
+	for (int i = 0; i < 1000000 / thdnum; i++) {		
+		TZ_LOG(LogLevel::INFORMATION, "%d", i);
 	}
 }
 
-
+std::thread thds[thdnum];
 
 int main() {
 
@@ -82,15 +85,23 @@ int main() {
 	//t1.join();
 	//t2.join();
 
-	for (int i = 0; i < 1000; i++) {
-		//TZ_LOG(LogLevel::INFORMATION, "test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n", 'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr);
-		//TZ_LOG(LogLevel::INFORMATION, "test %d", i);
-		//Sleep(1);
-		
-		TZ_LOG(LogLevel::INFORMATION, "test %d", i);
+	//for (int i = 0; i < 1000000; i++) {
+	//	//TZ_LOG(LogLevel::INFORMATION, "test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n", 'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr);
+	//	//TZ_LOG(LogLevel::INFORMATION, "test %d", i);
+	//	//Sleep(1);
+	//	
+	//	TZ_LOG(LogLevel::INFORMATION, "test %d", i);
 
-		//std::this_thread::sleep_for(std::chrono::nanoseconds(10));
-		//condi.notify_all();
+	//	//std::this_thread::sleep_for(std::chrono::nanoseconds(10));
+	//	//condi.notify_all();
+	//}
+
+	for (int i = 0; i < thdnum; i++) {
+		thds[i] = std::thread(thdFunc);
+	}
+
+	for (int i = 0; i < thdnum; i++) {
+		thds[i].join();
 	}
 
 	auto end = system_clock::now();
@@ -99,7 +110,7 @@ int main() {
 		<< double(duration.count()) * microseconds::period::num / microseconds::period::den << "seconds" << std::endl;
 
 
-	std::this_thread::sleep_for(std::chrono::seconds(30));
+	std::this_thread::sleep_for(std::chrono::seconds(10));
 	//t1.join();
 }
 
