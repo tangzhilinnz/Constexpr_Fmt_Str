@@ -20,6 +20,8 @@
 
 #include <cwchar>
 #include <cstring>
+#include <ctime>
+
 
 #include "constexpr_fmt.h"
 #include "runtime_logger.h"
@@ -499,8 +501,9 @@ static constexpr auto kHandler =                                               \
     unpack<kNVSIs + 1, LogEntryHandler, &fmtRawStr>();                         \
 static constexpr auto pFormator =                                              \
     kHandler.instFormator<&kRTStr>(this_tupe_t());                             \
-static constexpr StaticFmtInfo fmtInfo(pFormator, __FILE__, __USABLE_LINE__,   \
-	severity, kRTStr, kHandler.N);                                             \
+static constexpr StaticFmtInfo fmtInfo(                                        \
+	pFormator, __FILE__, __FUNCTION__, __USABLE_LINE__, severity, kRTStr,      \
+	kHandler.N);                                                               \
 constexpr auto kArgsSize = kHandler.argsSize(this_tupe_t());                   \
 auto strSizeArr = kHandler.strSizeArray(__VA_ARGS__);                          \
 auto bufSize = kArgsSize + sizeof(OneLogEntry);                                \

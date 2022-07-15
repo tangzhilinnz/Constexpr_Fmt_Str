@@ -63,12 +63,14 @@ struct StaticFmtInfo {
 	//   Calling any constructors, Converting any expressions to data member types
 	constexpr StaticFmtInfo(ConvertFn convertFN,
 		const char* filename,
+		const char* funcname,
 		const uint32_t lineNum,
 		const LogLevel severity,
 		const char* fmtString,
 		const int numVarArgs)
 		: convertFN_(convertFN)
 		, filename_(filename)
+		, funcname_(funcname)
 		, lineNum_(lineNum)
 		, severity_(severity)
 		, formatString_(fmtString)
@@ -80,6 +82,9 @@ struct StaticFmtInfo {
 
 	// File where the log invocation is invoked
 	const char* filename_;
+
+	// Function in the file where for the log invocation
+	const char* funcname_;
 
 	// Line number in the file for the invocation
 	const uint32_t lineNum_;
@@ -113,12 +118,11 @@ struct OneLogEntry {
 
 
 struct ThreadCheckPoint {
-	// thread name provided by operating system or users (maximum 16 bytes are
-	// allowed)
+	// thread name (provided by operating system or users)
 	char name_[20];
 
-	// Number of bytes for a chunk of non-formatted logs that belonged to the
-	// same thread after this check point header
+	// Number of bytes for a chunk of non-formatted logs that belonged to the same
+	// thread after this check point header
 	int blockSize_;
 };
 

@@ -26,10 +26,10 @@ std::mutex m_mutex;
 // Signal for when the poll thread should wakeup
 std::condition_variable condi;
 
-const int thdnum = 2;
+const int thdnum = 10;
 
 void thdFunc() {
-	for (int i = 0; i < 1000000 / thdnum; i++) {		
+	for (int i = 0; i < 100000 / thdnum; i++) {		
 		TZ_LOG(LogLevel::INFORMATION, "%d", i);
 	}
 }
@@ -77,7 +77,7 @@ int main() {
 
 	//std::thread t1(thdFunc);
 
-	RuntimeLogger::setThreadName("test");
+	RuntimeLogger::setThreadName("zoe snail");
 	auto start = system_clock::now();
 
 	//std::thread t1(thdFunc);
@@ -85,24 +85,24 @@ int main() {
 	//t1.join();
 	//t2.join();
 
-	//for (int i = 0; i < 1000000; i++) {
-	//	//TZ_LOG(LogLevel::INFORMATION, "test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n", 'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr);
-	//	//TZ_LOG(LogLevel::INFORMATION, "test %d", i);
-	//	//Sleep(1);
-	//	
-	//	TZ_LOG(LogLevel::INFORMATION, "test %d", i);
+	for (int i = 0; i < 10000000; i++) {
+		//TZ_LOG(LogLevel::INFORMATION, "test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n", 'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr);
+		//TZ_LOG(LogLevel::INFORMATION, "test %d", i);
+		//Sleep(1);
+		
+		TZ_LOG(LogLevel::INFORMATION, "test %d", i);
 
-	//	//std::this_thread::sleep_for(std::chrono::nanoseconds(10));
-	//	//condi.notify_all();
+		//std::this_thread::sleep_for(std::chrono::nanoseconds(10));
+		//condi.notify_all();
+	}
+
+	//for (int i = 0; i < thdnum; i++) {
+	//	thds[i] = std::thread(thdFunc);
 	//}
 
-	for (int i = 0; i < thdnum; i++) {
-		thds[i] = std::thread(thdFunc);
-	}
-
-	for (int i = 0; i < thdnum; i++) {
-		thds[i].join();
-	}
+	//for (int i = 0; i < thdnum; i++) {
+	//	thds[i].join();
+	//}
 
 	auto end = system_clock::now();
 	auto duration = duration_cast<microseconds>(end - start);

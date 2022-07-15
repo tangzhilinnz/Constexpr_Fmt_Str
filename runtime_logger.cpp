@@ -249,23 +249,29 @@ void RuntimeLogger::SinkLogger::threadFunc() {
                         reinterpret_cast<const OneLogEntry*>(pos);
                     const StaticFmtInfo* pSMI = pOE->fmtId;
                     uint64_t ns = tscns.tsc2ns(pOE->timestamp);
+                    std::time_t timer = static_cast<time_t>(ns / 1000000000);
+                    std::tm* now = std::localtime(&timer);
                     uint64_t t = (ns - midnight_ns) / 1000;
                     uint32_t us = t % 1000000;
-                    t /= 1000000;
-                    uint32_t s = t % 60;
-                    t /= 60;
-                    uint32_t m = t % 60;
-                    t /= 60;
-                    uint32_t h = t % 24;
+                    //t /= 1000000;
+                    //uint32_t s = t % 60;
+                    //t /= 60;
+                    //uint32_t m = t % 60;
+                    //t /= 60;
+                    //uint32_t h = t % 24;
 
                     const char* logLevel =
                         logLevelNames[static_cast<size_t>(pSMI->severity_)];
 
                     //pos += sizeof(OneLogEntry);
 
-                    CFMT_STR_OUTBUFARG(fmtBuf, "%02d:%02d:%02d.%06d %s:%d %s[%s]: ",
-                        h, m, s, us, pSMI->filename_, pSMI->lineNum_,
-                        logLevel, pTCP->name_);
+                    CFMT_STR_OUTBUFARG(
+                        fmtBuf, 
+                        "%04d-%02d-%02d %02d:%02d:%02d,%06d %s %s %s->%s:%d] ",
+                        now->tm_year + 1900, now->tm_mon + 1, now->tm_mday,
+                        now->tm_hour, now->tm_min, now->tm_sec, us, 
+                        logLevel, pTCP->name_, pSMI->filename_, 
+                        pSMI->funcname_, pSMI->lineNum_);
                     pSMI->convertFN_(fmtBuf, pos + sizeof(OneLogEntry));
                     CFMT_STR_OUTBUFARG(fmtBuf, "\n");
 
@@ -313,15 +319,14 @@ RuntimeLogger::RuntimeLogger()
     : threadBuffers()
     , bufferMutex()
     , condMutex()
-    , condSmph(0)
     , workAdded()
-    , sink_("SinkLogger.txt")
     , bgThread()
     , bgThreadShouldExit(false)
     , currentLogLevel(LogLevel::INFORMATION)
     , logCB(nullptr)
     , maxCBLogLevel(LogLevel::WARNING)
-    , minCBPeriod(0) {
+    , minCBPeriod(0)
+    , sink_("SinkLogger.txt") {
     bgThread = std::thread(&RuntimeLogger::poll);
 }
 
@@ -333,9 +338,6 @@ RuntimeLogger::~RuntimeLogger() {
         tzLogSingleton.bgThreadShouldExit = true;
         tzLogSingleton.workAdded.notify_all();
     }
-
-    condSmph.release();
-    
 
     if (tzLogSingleton.bgThread.joinable())
         tzLogSingleton.bgThread.join();
