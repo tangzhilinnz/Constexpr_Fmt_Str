@@ -249,7 +249,7 @@ inline void store_D_D_A_Args(char** storage, char** storage2, size_t* arr,
 	if constexpr (SI.terminal_ == 's')
 		storeArgs<IDX + 1, SIs...>(storage, storage2, arr, (rest)...);
 	else
-		storeArgs<IDX, SIs...>(storage, arr, storage2, (rest)...);
+		storeArgs<IDX, SIs...>(storage, storage2, arr, (rest)...);
 }
 
 /**

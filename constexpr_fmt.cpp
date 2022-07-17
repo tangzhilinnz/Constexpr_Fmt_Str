@@ -17,6 +17,10 @@
 #include "constexpr_fmt.h"
 #include "tz_logger.h"
 
+//#include "mimalloc-new-delete.h"
+//#include "mimalloc-override.h"
+//#include "mimalloc.h"
+
 using namespace std;
 using namespace chrono;
 
@@ -85,12 +89,13 @@ int main() {
 	//t1.join();
 	//t2.join();
 
-	for (int i = 0; i < 100000000; i++) {
+	for (int i = 0; i < 10000000; i++) {
 		//TZ_LOG(LogLevel::INFORMATION, "test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n", 'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr);
 		//TZ_LOG(LogLevel::INFORMATION, "test %d", i);
 		//Sleep(1);
 		
-		TZ_LOG(LogLevel::INFORMATION, "%d", i);
+		TZ_LOG(LogLevel::INFORMATION, "%s %d %*.*f", "tangzhilin test", i, 20, 10, i / 117.);
+		//TZ_LOG(LogLevel::INFORMATION, "%d", i);
 
 		//std::this_thread::sleep_for(std::chrono::nanoseconds(10));
 		//condi.notify_all();
@@ -110,7 +115,7 @@ int main() {
 		<< double(duration.count()) * microseconds::period::num / microseconds::period::den << "seconds" << std::endl;
 
 
-	//std::this_thread::sleep_for(std::chrono::seconds(10));
+	std::this_thread::sleep_for(std::chrono::seconds(10));
 	//t1.join();
 }
 

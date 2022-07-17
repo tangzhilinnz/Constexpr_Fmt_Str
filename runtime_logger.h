@@ -54,10 +54,10 @@
 // of the producer when it runs out of space, a low value will incur more
 // more blocking but at a shorter duration, whereas a high value will have
 // the opposite effect.
-#define RELEASE_THRESHOLD                (STAGING_BUFFER_SIZE >> 4)
+#define RELEASE_THRESHOLD                (STAGING_BUFFER_SIZE >> 2)
 
 #define SMALL_BUFFER  4000
-#define LARGE_BUFFER  (64 * 1024 * 1024)
+#define LARGE_BUFFER  (128 * 1024 * 1024)
 
 #if __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
 #define ThreadLocal _Thread_local
