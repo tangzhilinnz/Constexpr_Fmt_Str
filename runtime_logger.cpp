@@ -413,13 +413,15 @@ void RuntimeLogger::poll_() {
 
         {
             std::unique_lock<std::mutex> lock(bufferMutex);
-            const int size = 32 / max(threadBuffers.size() / 8, 1);
+            //const int size = 32 / max(threadBuffers.size() / 8, 1);
+            const auto size1 = threadBuffers.size() / 8;
+            const auto size2 = 32 / (size1 > 1 ? size1 : 1);
             for (int i = 0; i < threadBuffers.size(); i++) {
 
                 //std::cout << "" << "" << "" << "" << "" << "" << "" << "" << "" << "" << "" << "";
                 //std::cout << "" << "" << "" << "" << "" << "" << "" << "" << "" << "" << "" << "";
 
-                for (int j = 0; j < size; j++) {
+                for (int j = 0; j < size2; j++) {
                     std::cerr << "";
                 }
 

@@ -29,7 +29,7 @@ std::condition_variable condi;
 const int thdnum = 10;
 
 void thdFunc() {
-	for (int i = 0; i < 100000 / thdnum; i++) {		
+	for (int i = 0; i < 1000000 / thdnum; i++) {		
 		TZ_LOG(LogLevel::INFORMATION, "%d", i);
 	}
 }
@@ -85,12 +85,12 @@ int main() {
 	//t1.join();
 	//t2.join();
 
-	for (int i = 0; i < 10000000; i++) {
+	for (int i = 0; i < 100000000; i++) {
 		//TZ_LOG(LogLevel::INFORMATION, "test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n", 'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr);
 		//TZ_LOG(LogLevel::INFORMATION, "test %d", i);
 		//Sleep(1);
 		
-		TZ_LOG(LogLevel::INFORMATION, "test %d", i);
+		TZ_LOG(LogLevel::INFORMATION, "%d", i);
 
 		//std::this_thread::sleep_for(std::chrono::nanoseconds(10));
 		//condi.notify_all();
@@ -110,7 +110,7 @@ int main() {
 		<< double(duration.count()) * microseconds::period::num / microseconds::period::den << "seconds" << std::endl;
 
 
-	std::this_thread::sleep_for(std::chrono::seconds(10));
+	//std::this_thread::sleep_for(std::chrono::seconds(10));
 	//t1.join();
 }
 

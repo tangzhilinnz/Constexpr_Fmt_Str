@@ -512,6 +512,7 @@ if (!strSizeArr.empty()) {                                                     \
 		bufSize += e;                                                          \
 }                                                                              \
 uint64_t timestamp = tscns.rdtsc();                                            \
+/*auto timestamp1 = std::chrono::high_resolution_clock::now();*/                   \
 char* writePos = RuntimeLogger::reserveAlloc(bufSize);                         \
 auto originalWritePos = writePos;                                              \
 OneLogEntry* oe = new(writePos) OneLogEntry();                                 \
