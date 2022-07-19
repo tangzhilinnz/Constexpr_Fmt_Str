@@ -1385,61 +1385,64 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 	}
 
 	if constexpr (SI.terminal_ == 's') {
-		if constexpr ((SI.flags_ & __FLAG_LONGINT) == __FLAG_LONGINT) {
+		if constexpr (std::is_same_v<T, std::nullptr_t>) {
+			cp = "(null)";
+		}
+		else if constexpr ((SI.flags_ & __FLAG_LONGINT) == __FLAG_LONGINT) {
 			if constexpr (std::is_convertible_v<T, const wchar_t*>) {
 				// wchar_t string is 2 bytes UTF-16 on Windows, 
 				// 4 bytes UTF-32 (gcc/g++ and XCode) on Linux and OS,
 				// and 2 bytes UTF-16 on Cygwin (cygwin uses Windows APIs)
 				const wchar_t* wcp = static_cast<const wchar_t*>(arg);
 
-				if (nullptr == wcp)
-					cp = "(null)";
-				else {
-					static const mbstate_t initial{};
-					std::mbstate_t mbs{ initial };
+				//if (nullptr == wcp)
+				//	cp = "(null)";
+				//else {
+				static const mbstate_t initial{};
+				std::mbstate_t mbs{ initial };
 
 #if defined(STACK_MEMORY_FOR_WIDE_STRING_FORMAT)
-					/* Allocate space for the maximum number of bytes we could output. */
-					if (P < 0)
-						size = static_cast<size_t>(STACK_MEMORY_SIZE);
-					else
-						size = P > static_cast<size_t>(STACK_MEMORY_SIZE) 
-						    ? static_cast<size_t>(STACK_MEMORY_SIZE) : P;
+				/* Allocate space for the maximum number of bytes we could output. */
+				if (P < 0)
+					size = static_cast<size_t>(STACK_MEMORY_SIZE);
+				else
+					size = P > static_cast<size_t>(STACK_MEMORY_SIZE)
+					? static_cast<size_t>(STACK_MEMORY_SIZE) : P;
 
-					/* Fill the output buffer. */
-					if ((size = std::wcsrtombs(buf, &wcp, size, &mbs))
-						== static_cast<size_t>(-1)) {
-						outbuf.write("(ER)", sizeof("(ER)") - 1);
-						return;
-					}
-					buf[size] = '\0';
-					cp = buf;
-#else
-					/* Allocate space for the maximum number of bytes we could output. */
-					if (P < 0)
-						size = wcslen(wcp) * MB_CUR_MAX;
-					else
-						size = P;
-
-					//std::cout << size << std::endl;
-					convbuf = (char*)malloc(size + 1);
-
-					if (convbuf == nullptr) {
-						outbuf.write("(ER)", sizeof("(ER)") - 1);
-						return;
-					}
-
-					/* Fill the output buffer. */
-					if ((size = std::wcsrtombs(convbuf, &wcp, size, &mbs))
-						== static_cast<size_t>(-1)) {
-						free(convbuf);
-						outbuf.write("(ER)", sizeof("(ER)") - 1);
-						return;
-					}
-					convbuf[size] = '\0';
-					cp = convbuf;
-#endif
+				/* Fill the output buffer. */
+				if ((size = std::wcsrtombs(buf, &wcp, size, &mbs))
+					== static_cast<size_t>(-1)) {
+					outbuf.write("(ER)", sizeof("(ER)") - 1);
+					return;
 				}
+				buf[size] = '\0';
+				cp = buf;
+#else
+				/* Allocate space for the maximum number of bytes we could output. */
+				if (P < 0)
+					size = wcslen(wcp) * MB_CUR_MAX;
+				else
+					size = P;
+
+				//std::cout << size << std::endl;
+				convbuf = (char*)malloc(size + 1);
+
+				if (convbuf == nullptr) {
+					outbuf.write("(ER)", sizeof("(ER)") - 1);
+					return;
+				}
+
+				/* Fill the output buffer. */
+				if ((size = std::wcsrtombs(convbuf, &wcp, size, &mbs))
+					== static_cast<size_t>(-1)) {
+					free(convbuf);
+					outbuf.write("(ER)", sizeof("(ER)") - 1);
+					return;
+				}
+				convbuf[size] = '\0';
+				cp = convbuf;
+#endif
+				//}
 			}
 			else {
 				outbuf.write("(ER)", sizeof("(ER)") - 1);
@@ -1450,8 +1453,8 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 			if constexpr (std::is_convertible_v<T, const char*>) {
 				cp = static_cast<const char*>(arg);
 
-				if (nullptr == cp)
-					cp = "(null)";
+				//if (nullptr == cp)
+				//	cp = "(null)";
 			}
 			else {
 				outbuf.write("(ER)", sizeof("(ER)") - 1);

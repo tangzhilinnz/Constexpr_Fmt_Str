@@ -83,7 +83,7 @@ void RuntimeLogger::SinkLogger::appendNibble(const char* logline, int len,
                                              StagingBuffer* sb) {
 
     auto append = [&]() {
-        ThreadCheckPoint* pTCP = 
+        ThreadCheckPoint* pTCP =
             reinterpret_cast<ThreadCheckPoint*>(currentBuffer_->current());
         std::strcpy(pTCP->name_, sb->getName());
         pTCP->blockSize_ = len;
@@ -91,6 +91,7 @@ void RuntimeLogger::SinkLogger::appendNibble(const char* logline, int len,
 
         uint64_t remaining = len;
         while (remaining > 0) {
+
             auto bytesToCopy =
                 (static_cast<uint64_t>(RELEASE_THRESHOLD)
                     < remaining) ? RELEASE_THRESHOLD : remaining;
@@ -98,7 +99,7 @@ void RuntimeLogger::SinkLogger::appendNibble(const char* logline, int len,
             logline += bytesToCopy;
             remaining -= bytesToCopy;
             sb->consume(bytesToCopy);
-        } 
+        }
     };
 
     std::lock_guard<std::mutex> lock(mutex_);

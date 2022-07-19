@@ -34,7 +34,8 @@ const int thdnum = 10;
 
 void thdFunc() {
 	for (int i = 0; i < 1000000 / thdnum; i++) {		
-		TZ_LOG(LogLevel::INFORMATION, "%d", i);
+		//TZ_LOG(LogLevel::INFORMATION, "%d", i);
+		TZ_LOG(LogLevel::INFORMATION, "%*.*ls %d %*.*f", 20, 14, L"zß水🍌", i, 20, 10, i / 117.);
 	}
 }
 
@@ -79,9 +80,10 @@ int main() {
 	char* pBuf = buf;
 	wchar_t pwstr[] = L"tang zhilin";
 
-	//std::thread t1(thdFunc);
-
-	RuntimeLogger::setThreadName("zoe snail");
+	char name[20] = { 0 };
+	unsigned long tid = static_cast<unsigned long>(GetCurrentThreadId());
+	snprintf(name, sizeof(name), "%lu", tid);
+	RuntimeLogger::setThreadName(name);
 	auto start = system_clock::now();
 
 	//std::thread t1(thdFunc);
@@ -89,25 +91,25 @@ int main() {
 	//t1.join();
 	//t2.join();
 
-	for (int i = 0; i < 10000000; i++) {
-		//TZ_LOG(LogLevel::INFORMATION, "test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n", 'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr);
-		//TZ_LOG(LogLevel::INFORMATION, "test %d", i);
-		//Sleep(1);
-		
-		TZ_LOG(LogLevel::INFORMATION, "%s %d %*.*f", "tangzhilin test", i, 20, 10, i / 117.);
-		//TZ_LOG(LogLevel::INFORMATION, "%d", i);
+	//for (int i = 0; i < 10000000; i++) {
+	//	//TZ_LOG(LogLevel::INFORMATION, "test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n", 'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr);
+	//	//TZ_LOG(LogLevel::INFORMATION, "test %d", i);
+	//	//Sleep(1);
+	//	
+	//	//TZ_LOG(LogLevel::INFORMATION, "%s %d %*.*f", "tangzhilin test", i, 20, 10, i / 117.);
+	//	TZ_LOG(LogLevel::INFORMATION, "%d", i);
 
-		//std::this_thread::sleep_for(std::chrono::nanoseconds(10));
-		//condi.notify_all();
+	//	//std::this_thread::sleep_for(std::chrono::nanoseconds(10));
+	//	//condi.notify_all();
+	//}
+
+	for (int i = 0; i < thdnum; i++) {
+		thds[i] = std::thread(thdFunc);
 	}
 
-	//for (int i = 0; i < thdnum; i++) {
-	//	thds[i] = std::thread(thdFunc);
-	//}
-
-	//for (int i = 0; i < thdnum; i++) {
-	//	thds[i].join();
-	//}
+	for (int i = 0; i < thdnum; i++) {
+		thds[i].join();
+	}
 
 	auto end = system_clock::now();
 	auto duration = duration_cast<microseconds>(end - start);
@@ -115,7 +117,7 @@ int main() {
 		<< double(duration.count()) * microseconds::period::num / microseconds::period::den << "seconds" << std::endl;
 
 
-	std::this_thread::sleep_for(std::chrono::seconds(10));
+	std::this_thread::sleep_for(std::chrono::seconds(15));
 	//t1.join();
 }
 
