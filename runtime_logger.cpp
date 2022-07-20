@@ -170,8 +170,8 @@ void RuntimeLogger::SinkLogger::threadFunc() {
     newBuffer2->bzero();
     BufferVector buffersToWrite;
     buffersToWrite.reserve(16);
-    char* cahce = new char[1024 * 1024];
-    OutbufArg fmtBuf(cahce, 1024 * 1024);
+    char* cahce = new char[FORMAT_BUFFER_SIZE];
+    OutbufArg fmtBuf(cahce, FORMAT_BUFFER_SIZE);
     static const char* logLevelNames[] = { "NAN", "ERR", "WRN", "INF", "DBG" };
 
     while (running_) {
@@ -277,7 +277,10 @@ void RuntimeLogger::SinkLogger::threadFunc() {
                     CFMT_STR_OUTBUFARG(fmtBuf, "\n");
 
                     //std::cout << outputFp_ << std::endl;
-                    fwrite(fmtBuf.bufBegin(), 1, fmtBuf.getWrittenNum(), outputFp_);
+                    size_t size = 
+                        fmtBuf.getWrittenNum() < (FORMAT_BUFFER_SIZE - 1) 
+                        ? fmtBuf.getWrittenNum() : (FORMAT_BUFFER_SIZE - 1);
+                    fwrite(fmtBuf.bufBegin(), 1, size, outputFp_);
                     //std::cout << fmtBuf.bufBegin() << std::endl;
 
                     pos += pOE->entrySize;

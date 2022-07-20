@@ -48,6 +48,7 @@
 #define BYTES_PER_CACHE_LINE             64
 #define POLL_INTERVAL_NO_WORK_MS         1
 #define NUMBER_OF_CHECKS_WITH_EMPTY_BUF  100
+#define FORMAT_BUFFER_SIZE               STAGING_BUFFER_SIZE
 // The threshold at which the consumer should release space back to the
 // producer in the thread-local StagingBuffer. Due to the blocking nature
 // of the producer when it runs out of space, a low value will incur more
