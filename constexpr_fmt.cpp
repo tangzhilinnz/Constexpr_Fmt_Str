@@ -35,7 +35,7 @@ const int thdnum = 10;
 void thdFunc() {
 	for (int i = 0; i < 1000000 / thdnum; i++) {		
 		//TZ_LOG(LogLevel::INFORMATION, "%d", i);
-		TZ_LOG(LogLevel::INFORMATION, "%*.*ls %d %*.*f", 20, 14, L"zß水🍌", i, 20, 10, i / 117.);
+		TZ_LOG(LogLevel::INFORMATION, "%c,%lc, %*.*ls %#+ 0*.*20.*d %*.*f", 'a', U'🍌', 20, 14, L"zß水🍌", 10, i, 20, 10, i / 117.);
 	}
 }
 
@@ -119,6 +119,8 @@ int main() {
 
 	std::this_thread::sleep_for(std::chrono::seconds(15));
 	//t1.join();
+
+	printf("%+020.*d", 10, 999999);
 }
 
 

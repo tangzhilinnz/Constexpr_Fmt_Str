@@ -77,9 +77,6 @@ inline void getSizeForTerminal_s(size_t* arr, T arg) {
 			// 4 bytes UTF-32 (gcc/g++ and XCode) on Linux and OS,
 			// and 2 bytes UTF-16 on Cygwin (cygwin uses Windows APIs)
 			const wchar_t* wcp = static_cast<const wchar_t*>(arg);
-			//if (nullptr == wcp)
-			//	arr[IDX] = 0;
-			//else
 			arr[IDX] = (std::wcslen(wcp) + 1) * MARKUP_SIZEOFWCHAR;
 		}
 		else // T is not const wchar_t* type
@@ -88,9 +85,6 @@ inline void getSizeForTerminal_s(size_t* arr, T arg) {
 	else { // '%s'
 		if constexpr (std::is_convertible_v<T, const char*>) {
 			const char* cp = static_cast<const char*>(arg);
-			//if (/*nullptr == cp*/)
-			//	arr[IDX] = 0;
-			//else
 			arr[IDX] = std::strlen(cp) + 1;
 		}
 		else // T is not const char* type
@@ -168,12 +162,6 @@ inline void storeArg(char** storage, char** storage2, size_t* arr, T arg) {
 				// wchar_t string is 2 bytes UTF-16 on Windows, 
 				// 4 bytes UTF-32 (gcc/g++ and XCode) on Linux and OS,
 				// and 2 bytes UTF-16 on Cygwin (cygwin uses Windows APIs)
-				/*const wchar_t* wcp = static_cast<const wchar_t*>(arg);
-				if (nullptr == wcp) {
-					*reinterpret_cast<wchar_t**>(*storage) = nullptr;
-					*storage += sizeof(wchar_t*);
-				}*/
-				//else {
 				const wchar_t* wcp = static_cast<const wchar_t*>(arg);
 				size_t size = arr[IDX] - MARKUP_SIZEOFWCHAR;
 				const char* cp = reinterpret_cast<const char*>(wcp);
@@ -185,7 +173,6 @@ inline void storeArg(char** storage, char** storage2, size_t* arr, T arg) {
 					reinterpret_cast<wchar_t*>(*storage2 - *storage);
 				*storage += sizeof(wchar_t*);
 				*storage2 += arr[IDX];
-				//}
 			}
 			else {
 				*reinterpret_cast<T*>(*storage) = arg;
@@ -194,12 +181,6 @@ inline void storeArg(char** storage, char** storage2, size_t* arr, T arg) {
 		}
 		else {
 			if constexpr (std::is_convertible_v<T, const char*>) {
-				/*const char* cp = static_cast<const char*>(arg);*/
-				//if constexpr (/*nullptr == cp*/std::is_same_v<T, std::nullptr_t>) {
-				//	*reinterpret_cast<char**>(*storage) = nullptr;
-				//	*storage += sizeof(char*);
-				//}
-				//else {
 				const char* cp = static_cast<const char*>(arg);
 				size_t size = arr[IDX] - 1;
 				std::memcpy(*storage2, cp, size);
@@ -209,7 +190,6 @@ inline void storeArg(char** storage, char** storage2, size_t* arr, T arg) {
 					reinterpret_cast<char*>(*storage2 - *storage);
 				*storage += sizeof(char*);
 				*storage2 += arr[IDX];
-				//}
 			}
 			else {
 				*reinterpret_cast<T*>(*storage) = arg;
@@ -309,10 +289,8 @@ inline void storeArgs(char** storage, char** storage2, size_t* arr, Ts ...args) 
 
 
 template<SpecInfo SI, typename T>
-inline T argExtract(const char* input) {
+inline T _ARG(const char* input) {
 	T val = *reinterpret_cast<const T*>(input);
-	//input += sizeof(T);
-
 	if constexpr ('s' == SI.terminal_
 		&& !std::is_same_v<T, std::nullptr_t>
 		&& (std::is_convertible_v<T, const char*>
@@ -320,10 +298,8 @@ inline T argExtract(const char* input) {
 		val = reinterpret_cast<T>(
 			const_cast<char*>(input + reinterpret_cast<size_t>(val)));
 	}
-
 	return val;
 }
-
 
 // forward declaration of template storeArgs
 template<size_t IDX, const char* const* FmtStr, typename TUPLE, SpecInfo... SIs>
@@ -332,18 +308,7 @@ inline void formator(OutbufArg& outbuf, /*char***/const char* input);
 template<size_t IDX, const char* const* FmtStr, typename TUPLE, SpecInfo SI, SpecInfo... SIs>
 inline void formator_A_args(OutbufArg& outbuf, /*char***/const char* input) {
 	using T = std::tuple_element_t<IDX, TUPLE>;
-
-	//T val = *reinterpret_cast<const T*>(input);
-	////input += sizeof(T);
-
-	//if constexpr ('s' == SI.terminal_
-	//	          && !std::is_same_v<T, std::nullptr_t>
-	//	          && (std::is_convertible_v<T, const char*>
-	//		          || std::is_convertible_v<T, const wchar_t*>)) {
-	//	val = reinterpret_cast<T>(
-	//		const_cast<char*>(input + reinterpret_cast<size_t>(val)));
-	//}
-	T val = argExtract<SI, T>(input);
+	T val = _ARG<SI, T>(input);
 	input += sizeof(T);
 	converter_single<FmtStr, SI, T>(outbuf, val);
 	formator<IDX + 1, FmtStr, TUPLE, SIs...>(outbuf, input);
@@ -359,17 +324,7 @@ inline void formator_D_A_args(OutbufArg& outbuf, /*char***/const char* input) {
 		if constexpr (std::is_integral_v<std::remove_reference_t<D>>)
 			d = static_cast<int>(*reinterpret_cast<const D*>(input));
 		input += sizeof(D);
-
-		//T val = *reinterpret_cast<const T*>(input);
-		//if constexpr ('s' == SI.terminal_
-		//	          && !std::is_same_v<T, std::nullptr_t>
-		//	          && (std::is_convertible_v<T, const char*>
-		//		          || std::is_convertible_v<T, const wchar_t*>)) {
-		//	val = reinterpret_cast<T>(
-		//		const_cast<char*>(input + reinterpret_cast<size_t>(val)));
-		//}
-		//input += sizeof(T);
-		T val = argExtract<SI, T>(input);
+		T val = _ARG<SI, T>(input);
 		input += sizeof(T);
 		converter_single<FmtStr, SI, T>(outbuf, val, d, -1);
 	}
@@ -378,17 +333,7 @@ inline void formator_D_A_args(OutbufArg& outbuf, /*char***/const char* input) {
 		if constexpr (std::is_integral_v<std::remove_reference_t<D>>)
 			d = static_cast<int>(*reinterpret_cast<const D*>(input));
 		input += sizeof(D);
-
-		//T val = *reinterpret_cast<const T*>(input);
-		//if constexpr ('s' == SI.terminal_
-		//	          && !std::is_same_v<T, std::nullptr_t>
-		//	          && (std::is_convertible_v<T, const char*>
-		//		          || std::is_convertible_v<T, const wchar_t*>)) {
-		//	val = reinterpret_cast<T>(
-		//		const_cast<char*>(input + reinterpret_cast<size_t>(val)));
-		//}
-		//input += sizeof(T);
-		T val = argExtract<SI, T>(input);
+		T val = _ARG<SI, T>(input);
 		input += sizeof(T);
 		converter_single<FmtStr, SI, T>(outbuf, val, 0, d);
 	}
@@ -413,17 +358,7 @@ inline void formator_D_D_A_args(OutbufArg& outbuf, /*char***/const char* input) 
 		if constexpr (std::is_integral_v<std::remove_reference_t<D2>>)
 			d2 = static_cast<int>(*reinterpret_cast<const D2*>(input));
 		input += sizeof(D2);
-
-		//T val = *reinterpret_cast<const T*>(input);
-		//if constexpr ('s' == SI.terminal_
-		//	          && !std::is_same_v<T, std::nullptr_t>
-		//	          && (std::is_convertible_v<T, const char*>
-		//		          || std::is_convertible_v<T, const wchar_t*>)) {
-		//	val = reinterpret_cast<T>(
-		//		const_cast<char*>(input + reinterpret_cast<size_t>(val)));
-		//}
-		//input += sizeof(T);
-		T val = argExtract<SI, T>(input);
+		T val = _ARG<SI, T>(input);
 		input += sizeof(T);
 		converter_single<FmtStr, SI, T>(outbuf, val, d1, d2);
 	}
@@ -435,17 +370,7 @@ inline void formator_D_D_A_args(OutbufArg& outbuf, /*char***/const char* input) 
 		if constexpr (std::is_integral_v<std::remove_reference_t<D2>>)
 			d2 = static_cast<int>(*reinterpret_cast<const D2*>(input));
 		input += sizeof(D2);
-
-		//T val = *reinterpret_cast<const T*>(input);
-		//if constexpr ('s' == SI.terminal_
-		//	          && !std::is_same_v<T, std::nullptr_t>
-		//	          && (std::is_convertible_v<T, const char*>
-		//		          || std::is_convertible_v<T, const wchar_t*>)) {
-		//	val = reinterpret_cast<T>(
-		//		const_cast<char*>(input + reinterpret_cast<size_t>(val)));
-		//}
-		//input += sizeof(T);
-		T val = argExtract<SI, T>(input);
+		T val = _ARG<SI, T>(input);
 		input += sizeof(T);
 		converter_single<FmtStr, SI, T>(outbuf, val, d2, d1);
 	}

@@ -1275,7 +1275,7 @@ inline constexpr size_t fitBufferSize() {
 		if ((flags & __FLAG_LONGINT) == __FLAG_LONGINT) //ls
 			return static_cast<size_t>(BUFSIZE_lS);
 		else // s
-			return static_cast<size_t>(BUFSIZE_S);
+			return static_cast<size_t>(BUFSIZE_S); // useless
 	}
 	else // [ll l h hh j t z]iduoxX p c lc
 		return static_cast<size_t>(BUFSIZE_INT);
