@@ -2124,7 +2124,7 @@ static constexpr auto kRTStr = kSS < sizeof(format)? kfmtArr.data() : format; \
 static constexpr auto kConverter =                                            \
     unpack</*&kRTStr,*/ kNVSIs + 1, Converter, &fmtRawStr>();                 \
 kConverter.convert<&kRTStr>(outbuf, ##__VA_ARGS__);                           \
-outbuf.done(); /* null - terminate the string */                              \
+/*outbuf.done();*/ /* null - terminate the string */                          \
 } while (0);
 
 /**
