@@ -510,16 +510,34 @@ if (!strSizeArr.empty()) {                                                     \
 		bufSize += e;                                                          \
 }                                                                              \
 uint64_t timestamp = tscns.rdtsc();                                            \
-char* writePos = RuntimeLogger::reserveAlloc(bufSize);                         \
-auto originalWritePos = writePos;                                              \
-OneLogEntry* oe = new(writePos) OneLogEntry();                                 \
-writePos += sizeof(OneLogEntry);                                               \
-(void)kHandler.dump<kArgsSize>(&writePos, strSizeArr, ##__VA_ARGS__);          \
-oe->fmtId = &fmtInfo;                                                          \
-oe->entrySize = static_cast<uint32_t>(bufSize);                                \
-oe->timestamp = timestamp;                                                     \
-assert(bufSize == static_cast<uint32_t>(writePos - originalWritePos));         \
-RuntimeLogger::finishAlloc(bufSize);                                           \
+if (bufSize <= FORMAT_ARGS_MAXIMUM_SIZE) [[likely]] {                          \
+	char* writePos = RuntimeLogger::reserveAlloc(bufSize);                     \
+	auto originalWritePos = writePos;                                          \
+	OneLogEntry* oe = new(writePos) OneLogEntry();                             \
+	writePos += sizeof(OneLogEntry);                                           \
+	(void)kHandler.dump<kArgsSize>(&writePos, strSizeArr, ##__VA_ARGS__);      \
+	oe->fmtId = &fmtInfo;                                                      \
+	oe->entrySize = static_cast<uint32_t>(bufSize);                            \
+	oe->status = internal::LogEntryStatus::NORMAL;                             \
+	oe->timestamp = timestamp;                                                 \
+	assert(bufSize == static_cast<uint32_t>(writePos - originalWritePos));     \
+	RuntimeLogger::finishAlloc(bufSize);                                       \
+}                                                                              \
+else [[unlikely]] {                                                            \
+    size_t size = sizeof(OneLogEntry) + sizeof(size_t);                        \
+	char* writePos = RuntimeLogger::reserveAlloc(size);                        \
+	auto originalWritePos = writePos;                                          \
+	OneLogEntry* oe = new(writePos) OneLogEntry();                             \
+	writePos += sizeof(OneLogEntry);                                           \
+	*reinterpret_cast<size_t*>(writePos) = bufSize;                            \
+	writePos += sizeof(size_t);                                                \
+	oe->fmtId = nullptr;                                                       \
+	oe->entrySize = static_cast<uint32_t>(size);                               \
+	oe->status = internal::LogEntryStatus::ILLEGAL_ARGS_SIZE;                  \
+	oe->timestamp = timestamp;                                                 \
+	assert(size == static_cast<uint32_t>(writePos - originalWritePos));        \
+	RuntimeLogger::finishAlloc(size);                                          \
+}                                                                              \
 } while (0)
 
 

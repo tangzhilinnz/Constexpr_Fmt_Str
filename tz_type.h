@@ -4,6 +4,18 @@
 #include <stdint.h>
 #include "constexpr_fmt.h"
 
+
+namespace internal {
+	enum class LogEntryStatus : uint8_t {
+		NORMAL = 0,
+		ILLEGAL_ARGS_SIZE,
+		CONTRACT,
+		FATAL_SIGNAL,
+		FATAL_EXCEPTION,
+		NUM_MSG_STATUS
+	};
+}
+
 /**
  * The levels of verbosity for messages logged with #TZ_LOG.
  */
@@ -25,7 +37,7 @@ enum class LogLevel {
 
 	// Messages at the DEBUG level don't necessarily indicate that anything
 	// went wrong, but they could be useful in diagnosing problems.
-	/*DEBUG*/DEB,
+	/*DEBUG*/DBG,
 
 	// must be the last element in the enum
 	NUM_LOG_LEVELS
@@ -107,6 +119,11 @@ struct OneLogEntry {
 	// Number of bytes for this header and the various runtime log arguments
 	// after it
 	uint32_t entrySize;
+
+	// Specifies the status of each log enrty to direct the SinkLogger thread
+	// to do the corresponding operations.
+	// TODO - map all the status and corresponding operations
+	internal::LogEntryStatus status;
 
 	// Stores the rdtsc() value at the time of the log function invocation
 	uint64_t timestamp;

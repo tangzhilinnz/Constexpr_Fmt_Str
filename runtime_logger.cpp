@@ -273,15 +273,29 @@ void RuntimeLogger::SinkLogger::threadFunc() {
                         now->tm_hour, now->tm_min, now->tm_sec, us, 
                         logLevel, pTCP->name_, pSMI->filename_, 
                         pSMI->funcname_, pSMI->lineNum_);
-                    pSMI->convertFN_(fmtBuf, pos + sizeof(OneLogEntry));
-                    CFMT_STR_OUTBUFARG(fmtBuf, "\n");
 
-                    //std::cout << outputFp_ << std::endl;
+                    if (internal::LogEntryStatus::NORMAL
+                        == pOE->status) [[likely]] {
+                        pSMI->convertFN_(fmtBuf, pos + sizeof(OneLogEntry));
+                        CFMT_STR_OUTBUFARG(fmtBuf, "\n");
+                    }
+                    else if (internal::LogEntryStatus::ILLEGAL_ARGS_SIZE
+                        == pOE->status) [[unlikely]] {
+                        auto argSize = *reinterpret_cast<const size_t*>(
+                            pos + sizeof(OneLogEntry));
+                        CFMT_STR_OUTBUFARG(
+                            fmtBuf, 
+                            "<ILLEGAL_ARGS_SIZE>"
+                            "\n\tThe total size of the arguments to be formatted by TZLog is [%u]"
+                            ", exceeding the maximum value allowed [%d], "
+                            "please check the log input!!!\n", 
+                            static_cast<uint32_t>(argSize), FORMAT_ARGS_MAXIMUM_SIZE);
+                    }
+
                     size_t size = 
                         fmtBuf.getWrittenNum() < (FORMAT_BUFFER_SIZE - 1) 
                         ? fmtBuf.getWrittenNum() : (FORMAT_BUFFER_SIZE - 1);
                     fwrite(fmtBuf.bufBegin(), 1, size, outputFp_);
-                    //std::cout << fmtBuf.bufBegin() << std::endl;
 
                     pos += pOE->entrySize;
                     remaining -= static_cast<int>(pOE->entrySize);

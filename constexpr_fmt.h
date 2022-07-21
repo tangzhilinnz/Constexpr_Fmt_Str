@@ -1623,9 +1623,9 @@ inline void converter_single(OutbufArg& outbuf, T/*&&*/ arg, width_t W = 0,
 		if constexpr (std::is_floating_point_v<std::remove_reference_t<T>>) {
 			auto stat = std::fpclassify(arg);
 			switch (/*auto stat = std::fpclassify(arg)*/stat) {
-			case FP_NORMAL:
-			case FP_SUBNORMAL:
-			case FP_ZERO:
+			case FP_ZERO: [[fallthrough]];
+			case FP_SUBNORMAL: [[fallthrough]];
+			[[likely]] case FP_NORMAL :
 				if (arg < 0.0) {
 					arg = std::abs(arg);
 					sign = '-';

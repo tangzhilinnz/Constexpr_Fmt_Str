@@ -30,11 +30,13 @@ std::mutex m_mutex;
 // Signal for when the poll thread should wakeup
 std::condition_variable condi;
 
-const int thdnum = 10;
+const int thdnum = 4;
+
+char* pLargeStr = new char[1024 * 1024];
 
 void thdFunc() {
 	for (int i = 0; i < 1000000 / thdnum; i++) {		
-		//TZ_LOG(LogLevel::INFORMATION, "%d", i);
+		//TZ_LOG(LogLevel::INFORMATION, "%s", pLargeStr);
 		TZ_LOG(LogLevel::INFORMATION, "%c,%lc, %*.*ls %#+ 0*.*20.*d %*.*f", 'a', U'🍌', 20, 14, L"zß水🍌", 10, i, 20, 10, i / 117.);
 	}
 }
@@ -42,6 +44,10 @@ void thdFunc() {
 std::thread thds[thdnum];
 
 int main() {
+
+	for (int i = 0; i < 1024 * 1024; i++) {
+		pLargeStr[i] = 'a';
+	}
 
 	std::to_chars_result ret;
 	char buf[5000];
@@ -117,10 +123,12 @@ int main() {
 		<< double(duration.count()) * microseconds::period::num / microseconds::period::den << "seconds" << std::endl;
 
 
-	std::this_thread::sleep_for(std::chrono::seconds(15));
+	std::this_thread::sleep_for(std::chrono::seconds(4));
 	//t1.join();
 
 	printf("%+020.*d", 10, 999999);
+
+	delete[] pLargeStr;
 }
 
 
