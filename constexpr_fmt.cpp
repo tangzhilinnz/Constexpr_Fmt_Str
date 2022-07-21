@@ -30,12 +30,14 @@ std::mutex m_mutex;
 // Signal for when the poll thread should wakeup
 std::condition_variable condi;
 
-const int thdnum = 4;
+const int thdnum = 1;
 
-char* pLargeStr = new char[1024 * 1024];
+const int kSize = 1024;
+
+char* pLargeStr = new char[kSize];
 
 void thdFunc() {
-	for (int i = 0; i < 1000000 / thdnum; i++) {		
+	for (int i = 0; i < 10000000 / thdnum; i++) {		
 		//TZ_LOG(LogLevel::INFORMATION, "%s", pLargeStr);
 		TZ_LOG(LogLevel::INFORMATION, "%c,%lc, %*.*ls %#+ 0*.*20.*d %*.*f", 'a', U'🍌', 20, 14, L"zß水🍌", 10, i, 20, 10, i / 117.);
 	}
@@ -45,9 +47,14 @@ std::thread thds[thdnum];
 
 int main() {
 
-	for (int i = 0; i < 1024 * 1024; i++) {
+	for (int i = 0; i < kSize - 1; i++) {
+		//if (i % 2 == 0)
+		//    pLargeStr[i] = 'a';
+		//else 
+		//	pLargeStr[i] = ' ';
 		pLargeStr[i] = 'a';
 	}
+	pLargeStr[kSize - 1] = '\0';
 
 	std::to_chars_result ret;
 	char buf[5000];
@@ -87,9 +94,9 @@ int main() {
 	wchar_t pwstr[] = L"tang zhilin";
 
 	char name[20] = { 0 };
-	unsigned long tid = static_cast<unsigned long>(GetCurrentThreadId());
-	snprintf(name, sizeof(name), "%lu", tid);
-	RuntimeLogger::setThreadName(name);
+	//unsigned long tid = static_cast<unsigned long>(GetCurrentThreadId());
+	//snprintf(name, sizeof(name), "%lu", tid);
+	RuntimeLogger::setThreadName("zoe snail");
 	auto start = system_clock::now();
 
 	//std::thread t1(thdFunc);

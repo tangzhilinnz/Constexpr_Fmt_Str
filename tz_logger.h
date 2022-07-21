@@ -531,7 +531,7 @@ else [[unlikely]] {                                                            \
 	writePos += sizeof(OneLogEntry);                                           \
 	*reinterpret_cast<size_t*>(writePos) = bufSize;                            \
 	writePos += sizeof(size_t);                                                \
-	oe->fmtId = nullptr;                                                       \
+	oe->fmtId = &fmtInfo;                                                      \
 	oe->entrySize = static_cast<uint32_t>(size);                               \
 	oe->status = internal::LogEntryStatus::ILLEGAL_ARGS_SIZE;                  \
 	oe->timestamp = timestamp;                                                 \
