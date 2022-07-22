@@ -83,8 +83,10 @@ void RuntimeLogger::SinkLogger::appendNibble(const char* logline, int len,
                                              StagingBuffer* sb) {
 
     auto append = [&]() {
-        ThreadCheckPoint* pTCP =
-            reinterpret_cast<ThreadCheckPoint*>(currentBuffer_->current());
+        ThreadCheckPoint* pTCP = 
+            new(currentBuffer_->current()) ThreadCheckPoint();
+        //ThreadCheckPoint* pTCP =
+        //    reinterpret_cast<ThreadCheckPoint*>(currentBuffer_->current());
         std::strcpy(pTCP->name_, sb->getName());
         pTCP->blockSize_ = len;
         currentBuffer_->add(sizeof(ThreadCheckPoint));
@@ -110,10 +112,13 @@ void RuntimeLogger::SinkLogger::appendNibble(const char* logline, int len,
         buffers_.push_back(std::move(currentBuffer_));
 
         if (nextBuffer_) {
+            //buffers_.push_back(std::move(currentBuffer_));
             currentBuffer_ = std::move(nextBuffer_);
         }
         else {
             currentBuffer_.reset(new Buffer); // Rarely happens
+            //sb->consume(len);
+            //return;
         }
         append();
         cond_.notify_all();
