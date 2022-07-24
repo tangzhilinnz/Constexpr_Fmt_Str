@@ -31,6 +31,7 @@ RuntimeLogger::SinkLogger::SinkLogger(const std::string& basename,
                                       int flushInterval)
     : outputFp_(nullptr)
     , flushInterval_(flushInterval)
+    , newBornSinkbufSize_(0)
     , running_(false)
     , basename_(basename)
     //, rollSize_(rollSize)
@@ -58,71 +59,89 @@ RuntimeLogger::SinkLogger::SinkLogger(const std::string& basename,
     thread_ = std::thread(std::bind(&SinkLogger::threadFunc, this));
 }
 
-void RuntimeLogger::SinkLogger::append(const char* logline, int len) {
-    //std::cout << "enter append" << std::endl;
+void RuntimeLogger::SinkLogger::appendInternal(const char* logline, int len,
+                                               StagingBuffer* sb) {
+    ThreadCheckPoint* pTCP =
+        new(currentBuffer_->current()) ThreadCheckPoint();
+    //ThreadCheckPoint* pTCP =
+    //    reinterpret_cast<ThreadCheckPoint*>(currentBuffer_->current());
+    std::strcpy(pTCP->name_, sb->getName());
+    pTCP->blockSize_ = len;
+    currentBuffer_->add(sizeof(ThreadCheckPoint));
 
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (currentBuffer_->avail() > len) {
-        currentBuffer_->append(logline, len);
-    }
-    else {
-        buffers_.push_back(std::move(currentBuffer_));
-
-        if (nextBuffer_) {
-            currentBuffer_ = std::move(nextBuffer_);
-        }
-        else {
-            currentBuffer_.reset(new Buffer); // Rarely happens
-        }
-        currentBuffer_->append(logline, len);
-        cond_.notify_all();
+    uint64_t remaining = len;
+    while (remaining > 0) {
+        auto bytesToCopy =
+            (static_cast<uint64_t>(RELEASE_THRESHOLD)
+                < remaining) ? RELEASE_THRESHOLD : remaining;
+        currentBuffer_->append(logline, bytesToCopy);
+        logline += bytesToCopy;
+        remaining -= bytesToCopy;
+        sb->consume(bytesToCopy);
     }
 }
 
-void RuntimeLogger::SinkLogger::appendNibble(const char* logline, int len,
-                                             StagingBuffer* sb) {
+void RuntimeLogger::SinkLogger::append(const char* logline, int len,
+                                       StagingBuffer* sb, bool blocking) {
 
-    auto append = [&]() {
-        ThreadCheckPoint* pTCP = 
-            new(currentBuffer_->current()) ThreadCheckPoint();
-        //ThreadCheckPoint* pTCP =
-        //    reinterpret_cast<ThreadCheckPoint*>(currentBuffer_->current());
-        std::strcpy(pTCP->name_, sb->getName());
-        pTCP->blockSize_ = len;
-        currentBuffer_->add(sizeof(ThreadCheckPoint));
+    //auto append = [&]() {
+    //    ThreadCheckPoint* pTCP = 
+    //        new(currentBuffer_->current()) ThreadCheckPoint();
+    //    //ThreadCheckPoint* pTCP =
+    //    //    reinterpret_cast<ThreadCheckPoint*>(currentBuffer_->current());
+    //    std::strcpy(pTCP->name_, sb->getName());
+    //    pTCP->blockSize_ = len;
+    //    currentBuffer_->add(sizeof(ThreadCheckPoint));
 
-        uint64_t remaining = len;
-        while (remaining > 0) {
+    //    uint64_t remaining = len;
+    //    while (remaining > 0) {
 
-            auto bytesToCopy =
-                (static_cast<uint64_t>(RELEASE_THRESHOLD)
-                    < remaining) ? RELEASE_THRESHOLD : remaining;
-            currentBuffer_->append(logline, bytesToCopy);
-            logline += bytesToCopy;
-            remaining -= bytesToCopy;
-            sb->consume(bytesToCopy);
-        }
-    };
-
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (currentBuffer_->avail() > (len + sizeof(ThreadCheckPoint))) {
-        append();
-    }
-    else {
-        buffers_.push_back(std::move(currentBuffer_));
-
-        if (nextBuffer_) {
-            //buffers_.push_back(std::move(currentBuffer_));
-            currentBuffer_ = std::move(nextBuffer_);
+    //        auto bytesToCopy =
+    //            (static_cast<uint64_t>(RELEASE_THRESHOLD)
+    //                < remaining) ? RELEASE_THRESHOLD : remaining;
+    //        currentBuffer_->append(logline, bytesToCopy);
+    //        logline += bytesToCopy;
+    //        remaining -= bytesToCopy;
+    //        sb->consume(bytesToCopy);
+    //    }
+    //};
+    do {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (currentBuffer_->avail() > (len + sizeof(ThreadCheckPoint))) {
+            appendInternal(logline, len, sb);
         }
         else {
-            currentBuffer_.reset(new Buffer); // Rarely happens
-            //sb->consume(len);
-            //return;
+            // buffers_.push_back(std::move(currentBuffer_));
+            if (nextBuffer_) {
+                buffers_.push_back(std::move(currentBuffer_));
+                currentBuffer_ = std::move(nextBuffer_);
+            }
+            else { // Rarely happens
+                //if (newBornSinkbufSize_.load(std::memory_order_relaxed)
+                //    < SUPPLEMENTARY_SINKBUFFER_MAXIMUM_SIZE) {
+                //    buffers_.push_back(std::move(currentBuffer_));
+                //    currentBuffer_.reset(new Buffer);
+                //    ++newBornSinkbufSize_;
+                //}
+                //else {
+                //    //std::cout << newBornSinkbufSize_.load(std::memory_order_relaxed) << std::endl;
+                //    if (!blocking)
+                //        sb->consume(len);
+                //    continue;
+                //}
+                buffers_.push_back(std::move(currentBuffer_));
+                currentBuffer_.reset(new Buffer);
+            }
+            appendInternal(logline, len, sb);
+            cond_.notify_all();
         }
-        append();
-        cond_.notify_all();
-    }
+        blocking = false;
+    } while (blocking && [](std::condition_variable& cond) {
+                             cond.notify_all();
+                             std::this_thread::sleep_for(
+                                 std::chrono::milliseconds(1000));
+                             return true; 
+                         }(cond_));
 }
 
 //void SinkLogger::writeLog(OutbufArg& fmtBuf, const char* logline, 
@@ -314,6 +333,7 @@ void RuntimeLogger::SinkLogger::threadFunc() {
             // drop non-bzero-ed buffers, avoid trashing
             buffersToWrite.resize(2);
         }
+        newBornSinkbufSize_.store(0, std::memory_order_relaxed);
 
         if (!newBuffer1) {
             assert(!buffersToWrite.empty());
@@ -472,7 +492,7 @@ void RuntimeLogger::poll_() {
 
                     //sink_.append(peekPosition, peekBytes);
                     //sb->consume(peekBytes);
-                    sink_.appendNibble(peekPosition, peekBytes, sb);
+                    sink_.append(peekPosition, peekBytes, sb, false);
 
                     bytesWritten += peekBytes;
 

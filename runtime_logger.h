@@ -44,12 +44,13 @@
 // Determines the byte size of the per-thread StagingBuffer that decouples
 // the producer logging thread from the consumer background compression
 // thread. This value should be large enough to handle bursts of activity.
-#define STAGING_BUFFER_SIZE              (1 << 20)
-#define BYTES_PER_CACHE_LINE             64
-#define POLL_INTERVAL_NO_WORK_MS         1
-#define NUMBER_OF_CHECKS_WITH_EMPTY_BUF  100
-#define FORMAT_ARGS_MAXIMUM_SIZE         (STAGING_BUFFER_SIZE >> 1)
-#define FORMAT_BUFFER_SIZE               STAGING_BUFFER_SIZE
+#define STAGING_BUFFER_SIZE                      (1 << 20)
+#define BYTES_PER_CACHE_LINE                     64
+#define POLL_INTERVAL_NO_WORK_MS                 1
+#define NUMBER_OF_CHECKS_WITH_EMPTY_BUF          100
+#define FORMAT_ARGS_MAXIMUM_SIZE                 (STAGING_BUFFER_SIZE >> 1)
+#define FORMAT_BUFFER_SIZE                       STAGING_BUFFER_SIZE
+#define SUPPLEMENTARY_SINKBUFFER_MAXIMUM_SIZE    10
 // The threshold at which the consumer should release space back to the
 // producer in the thread-local StagingBuffer. Due to the blocking nature
 // of the producer when it runs out of space, a low value will incur more
@@ -694,9 +695,8 @@ private:
             }
         }
 
-        void append(const char* logline, int len);
-
-        void appendNibble(const char* logline, int len, StagingBuffer* sb);
+        void append(const char* logline, int len, StagingBuffer* sb, 
+                    bool blocking = true);
 
         //void start() {
         //    running_ = true;
@@ -713,6 +713,7 @@ private:
         }
 
     private:
+        void appendInternal(const char* logline, int len, StagingBuffer* sb);
 
         void threadFunc();
         //void writeLog(OutbufArg& fmtBuf, const char* logline,
@@ -724,6 +725,7 @@ private:
 
         FILE* outputFp_;
         const int flushInterval_;
+        std::atomic<size_t> newBornSinkbufSize_;
         std::atomic<bool> running_;
         const std::string basename_;
         //const off_t rollSize_;
