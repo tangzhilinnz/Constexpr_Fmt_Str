@@ -117,20 +117,20 @@ void RuntimeLogger::SinkLogger::append(const char* logline, int len,
                 currentBuffer_ = std::move(nextBuffer_);
             }
             else { // Rarely happens
-                //if (newBornSinkbufSize_.load(std::memory_order_relaxed)
-                //    < SUPPLEMENTARY_SINKBUFFER_MAXIMUM_SIZE) {
-                //    buffers_.push_back(std::move(currentBuffer_));
-                //    currentBuffer_.reset(new Buffer);
-                //    ++newBornSinkbufSize_;
-                //}
-                //else {
-                //    //std::cout << newBornSinkbufSize_.load(std::memory_order_relaxed) << std::endl;
-                //    if (!blocking)
-                //        sb->consume(len);
-                //    continue;
-                //}
-                buffers_.push_back(std::move(currentBuffer_));
-                currentBuffer_.reset(new Buffer);
+                if (newBornSinkbufSize_.load(std::memory_order_relaxed)
+                    < SUPPLEMENTARY_SINKBUFFER_MAXIMUM_SIZE) {
+                    buffers_.push_back(std::move(currentBuffer_));
+                    currentBuffer_.reset(new Buffer);
+                    ++newBornSinkbufSize_;
+                }
+                else {
+                    //std::cout << newBornSinkbufSize_.load(std::memory_order_relaxed) << std::endl;
+                    if (!blocking)
+                        sb->consume(len);
+                    continue;
+                }
+                //buffers_.push_back(std::move(currentBuffer_));
+                //currentBuffer_.reset(new Buffer);
             }
             appendInternal(logline, len, sb);
             cond_.notify_all();
@@ -139,7 +139,7 @@ void RuntimeLogger::SinkLogger::append(const char* logline, int len,
     } while (blocking && [](std::condition_variable& cond) {
                              cond.notify_all();
                              std::this_thread::sleep_for(
-                                 std::chrono::milliseconds(1000));
+                                 std::chrono::milliseconds(1));
                              return true; 
                          }(cond_));
 }
@@ -238,15 +238,15 @@ void RuntimeLogger::SinkLogger::threadFunc() {
 
         assert(!buffersToWrite.empty());
 
-        if (buffersToWrite.size() > 25) {
-            //char buf[256];
-            //snprintf(buf, sizeof buf, "Dropped log messages at %s, %zd larger buffers\n",
-            //    Timestamp::now().toFormattedString().c_str(),
-            //    buffersToWrite.size() - 2);
-            //fputs(buf, stderr);
-            //output.append(buf, static_cast<int>(strlen(buf)));
-            //buffersToWrite.erase(buffersToWrite.begin() + 2, buffersToWrite.end());
-        }
+        //if (buffersToWrite.size() > 25) {
+        //    char buf[256];
+        //    snprintf(buf, sizeof buf, "Dropped log messages at %s, %zd larger buffers\n",
+        //        Timestamp::now().toFormattedString().c_str(),
+        //        buffersToWrite.size() - 2);
+        //    fputs(buf, stderr);
+        //    output.append(buf, static_cast<int>(strlen(buf)));
+        //    buffersToWrite.erase(buffersToWrite.begin() + 2, buffersToWrite.end());
+        //}
 
         for (const auto& buffer : buffersToWrite) {
             // FIXME: use unbuffered stdio FILE ? or use ::writev ?
@@ -256,11 +256,11 @@ void RuntimeLogger::SinkLogger::threadFunc() {
             //    std::cout << "";
 
             //writeLog(fmtBuf, buffer->data(), buffer->length());
-             
+
             int bufLen = buffer->length();
             const char* pos = buffer->data();
             while (bufLen > 0) {
-                const ThreadCheckPoint* pTCP = 
+                const ThreadCheckPoint* pTCP =
                     reinterpret_cast<const ThreadCheckPoint*>(pos);
 
                 int remaining = pTCP->blockSize_;
@@ -270,7 +270,7 @@ void RuntimeLogger::SinkLogger::threadFunc() {
 
                     fmtBuf.reset();
                     //int res;
-                    const OneLogEntry* pOE = 
+                    const OneLogEntry* pOE =
                         reinterpret_cast<const OneLogEntry*>(pos);
                     const StaticFmtInfo* pSMI = pOE->fmtId;
                     uint64_t ns = tscns.tsc2ns(pOE->timestamp);
@@ -291,11 +291,11 @@ void RuntimeLogger::SinkLogger::threadFunc() {
                     //pos += sizeof(OneLogEntry);
 
                     CFMT_STR_OUTBUFARG(
-                        fmtBuf, 
+                        fmtBuf,
                         "%04d-%02d-%02d %02d:%02d:%02d,%06d %s %s %s->%s:%d] ",
                         now->tm_year + 1900, now->tm_mon + 1, now->tm_mday,
-                        now->tm_hour, now->tm_min, now->tm_sec, us, 
-                        logLevel, pTCP->name_, pSMI->filename_, 
+                        now->tm_hour, now->tm_min, now->tm_sec, us,
+                        logLevel, pTCP->name_, pSMI->filename_,
                         pSMI->funcname_, pSMI->lineNum_);
 
                     if (internal::LogEntryStatus::NORMAL
@@ -308,16 +308,16 @@ void RuntimeLogger::SinkLogger::threadFunc() {
                         auto argSize = *reinterpret_cast<const size_t*>(
                             pos + sizeof(OneLogEntry));
                         CFMT_STR_OUTBUFARG(
-                            fmtBuf, 
+                            fmtBuf,
                             "<ILLEGAL_ARGS_SIZE>"
                             "\n\tThe total size of the arguments to be formatted by TZLog is [%u]"
                             ", exceeding the maximum value allowed [%d], "
-                            "please check the log input!!!\n", 
+                            "please check the log input!!!\n",
                             static_cast<uint32_t>(argSize), FORMAT_ARGS_MAXIMUM_SIZE);
                     }
 
-                    size_t size = 
-                        fmtBuf.getWrittenNum() < (FORMAT_BUFFER_SIZE - 1) 
+                        size_t size =
+                        fmtBuf.getWrittenNum() < (FORMAT_BUFFER_SIZE - 1)
                         ? fmtBuf.getWrittenNum() : (FORMAT_BUFFER_SIZE - 1);
                     fwrite(fmtBuf.bufBegin(), 1, size, outputFp_);
 
@@ -327,6 +327,27 @@ void RuntimeLogger::SinkLogger::threadFunc() {
 
                 bufLen -= (pTCP->blockSize_ + sizeof(ThreadCheckPoint));
             }
+
+
+            //if (!newBuffer1) {
+            //    newBuffer1 = std::move(buffer);
+            //    newBuffer1->reset();
+            //}
+            //else if (!newBuffer2) {
+            //    newBuffer2 = std::move(buffer);
+            //    newBuffer2->reset();
+            //}
+            //else {
+            //    std::lock_guard<std::mutex> lock(mutex_);
+            //    if (!nextBuffer_) {
+            //        nextBuffer_ = std::move(buffer);
+            //        nextBuffer_->reset();
+            //    }
+            //    else {
+            //        --newBornSinkbufSize_;
+            //        buffer.reset();
+            //    }
+            //}
         }
 
         if (buffersToWrite.size() > 2) {
@@ -492,7 +513,7 @@ void RuntimeLogger::poll_() {
 
                     //sink_.append(peekPosition, peekBytes);
                     //sb->consume(peekBytes);
-                    sink_.append(peekPosition, peekBytes, sb, false);
+                    sink_.append(peekPosition, peekBytes, sb);
 
                     bytesWritten += peekBytes;
 

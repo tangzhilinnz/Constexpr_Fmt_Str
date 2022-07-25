@@ -39,7 +39,8 @@ char* pLargeStr = new char[kSize];
 void thdFunc() {
 	for (int i = 0; i < 100000000 / thdnum; i++) {		
 		//TZ_LOG(LogLevel::INFORMATION, "%s", pLargeStr);
-		TZ_LOG(LogLevel::INFORMATION, "%c,%lc, %*.*ls %#+ 0*.*20.*d %*.*f", 'a', U'🍌', 20, 14, L"zß水🍌", 10, i, 20, 10, i / 117.);
+		//TZ_LOG(LogLevel::INFORMATION, "%c,%lc, %*.*ls %#+ 0*.*20.*d %*.*f", 'a', U'🍌', 20, 14, L"zß水🍌", 10, i, 20, 10, i / 117.);
+		TZ_LOG(LogLevel::INFORMATION, "%d", i);
 	}
 }
 
