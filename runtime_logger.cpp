@@ -31,7 +31,7 @@ RuntimeLogger::SinkLogger::SinkLogger(const std::string& basename,
                                       int flushInterval)
     : outputFp_(nullptr)
     , flushInterval_(flushInterval)
-    , newBornSinkbufSize_(0)
+    , newBufferCount_(0)
     , running_(false)
     , basename_(basename)
     //, rollSize_(rollSize)
@@ -41,7 +41,8 @@ RuntimeLogger::SinkLogger::SinkLogger(const std::string& basename,
     , cond_()
     , currentBuffer_(new Buffer)
     , nextBuffer_(new Buffer)
-    , buffers_() {
+    , buffers_() 
+    , newBuffers_() {
 
     outputFp_ = fopen(basename.c_str(), "a");
     if (!outputFp_) {
@@ -56,6 +57,7 @@ RuntimeLogger::SinkLogger::SinkLogger(const std::string& basename,
     currentBuffer_->bzero();
     nextBuffer_->bzero();
     buffers_.reserve(16);
+    newBuffers_.reserve(SUPPLEMENTARY_SINKBUFFER_MAXIMUM_SIZE);
     thread_ = std::thread(std::bind(&SinkLogger::threadFunc, this));
 }
 
@@ -116,15 +118,18 @@ void RuntimeLogger::SinkLogger::append(const char* logline, int len,
                 buffers_.push_back(std::move(currentBuffer_));
                 currentBuffer_ = std::move(nextBuffer_);
             }
+            else if () {
+
+            }
             else { // Rarely happens
-                if (newBornSinkbufSize_.load(std::memory_order_relaxed)
-                    < SUPPLEMENTARY_SINKBUFFER_MAXIMUM_SIZE) {
+                if (newBufferCount_ < SUPPLEMENTARY_SINKBUFFER_MAXIMUM_SIZE) {
                     buffers_.push_back(std::move(currentBuffer_));
                     currentBuffer_.reset(new Buffer);
-                    ++newBornSinkbufSize_;
+                    ++newBufferCount_;
+                    //std::cout << newBufferCount_ << std::endl;
                 }
                 else {
-                    //std::cout << newBornSinkbufSize_.load(std::memory_order_relaxed) << std::endl;
+                    //std::cout << newBufferCount_ << std::endl;
                     if (!blocking)
                         sb->consume(len);
                     continue;
@@ -136,12 +141,11 @@ void RuntimeLogger::SinkLogger::append(const char* logline, int len,
             cond_.notify_all();
         }
         blocking = false;
-    } while (blocking && [](std::condition_variable& cond) {
-                             cond.notify_all();
-                             std::this_thread::sleep_for(
-                                 std::chrono::milliseconds(1));
-                             return true; 
-                         }(cond_));
+    } while (blocking && 
+             [](std::condition_variable& cond) {
+                 cond.notify_all();
+                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                 return true; }(cond_));
 }
 
 //void SinkLogger::writeLog(OutbufArg& fmtBuf, const char* logline, 
@@ -344,7 +348,7 @@ void RuntimeLogger::SinkLogger::threadFunc() {
             //        nextBuffer_->reset();
             //    }
             //    else {
-            //        --newBornSinkbufSize_;
+            //        --newBufferCount_;
             //        buffer.reset();
             //    }
             //}
@@ -354,7 +358,7 @@ void RuntimeLogger::SinkLogger::threadFunc() {
             // drop non-bzero-ed buffers, avoid trashing
             buffersToWrite.resize(2);
         }
-        newBornSinkbufSize_.store(0, std::memory_order_relaxed);
+        //newBufferCount_ = 0;
 
         if (!newBuffer1) {
             assert(!buffersToWrite.empty());
