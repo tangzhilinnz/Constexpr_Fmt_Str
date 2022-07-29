@@ -27,6 +27,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <list>
 #include <condition_variable>
 
 #include <stdint.h>
@@ -50,7 +51,7 @@
 #define NUMBER_OF_CHECKS_WITH_EMPTY_BUF          100
 #define FORMAT_ARGS_MAXIMUM_SIZE                 (STAGING_BUFFER_SIZE >> 1)
 #define FORMAT_BUFFER_SIZE                       STAGING_BUFFER_SIZE
-#define SUPPLEMENTARY_SINKBUFFER_MAXIMUM_SIZE    100
+#define SUPPLEMENTARY_SINKBUFFER_MAXIMUM_SIZE    4
 // The threshold at which the consumer should release space back to the
 // producer in the thread-local StagingBuffer. Due to the blocking nature
 // of the producer when it runs out of space, a low value will incur more
@@ -59,7 +60,7 @@
 #define RELEASE_THRESHOLD                (STAGING_BUFFER_SIZE >> 4)
 
 #define SMALL_BUFFER  4000
-#define LARGE_BUFFER  (64 * 1024 * 1024)
+#define LARGE_BUFFER  (128 * 1024 * 1024)
 
 #if __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
 #define ThreadLocal _Thread_local
@@ -720,8 +721,10 @@ private:
         //              const size_t len);
 
         using Buffer = SinkBuffer<LARGE_BUFFER>;
+        using BufferPtr = std::unique_ptr<Buffer>;
         using BufferVector = std::vector<std::unique_ptr<Buffer>>;
-        using BufferPtr = BufferVector::value_type;
+        //using BufferPtr = BufferVector::value_type;
+        using BufferList = std::list<std::unique_ptr<Buffer>>;
 
         FILE* outputFp_;
         const int flushInterval_;
@@ -736,7 +739,8 @@ private:
         BufferPtr currentBuffer_;
         BufferPtr nextBuffer_;
         BufferVector buffers_;
-        BufferVector newBuffers_;
+        BufferList newBufferCachePool_;
+        //BufferVector newBuffers_;
     };
 
     SinkLogger sink_;

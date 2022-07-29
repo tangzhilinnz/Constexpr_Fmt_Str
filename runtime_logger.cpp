@@ -43,7 +43,8 @@ RuntimeLogger::SinkLogger::SinkLogger(const std::string& basename,
     , currentBuffer_(new Buffer)
     , nextBuffer_(new Buffer)
     , buffers_() 
-    , newBuffers_() {
+    //, newBuffers_() 
+    , newBufferCachePool_() {
 
     outputFp_ = fopen(basename.c_str(), "a");
     if (!outputFp_) {
@@ -58,7 +59,7 @@ RuntimeLogger::SinkLogger::SinkLogger(const std::string& basename,
     currentBuffer_->bzero();
     nextBuffer_->bzero();
     buffers_.reserve(16);
-    newBuffers_.reserve(SUPPLEMENTARY_SINKBUFFER_MAXIMUM_SIZE);
+    //newBuffers_.reserve(SUPPLEMENTARY_SINKBUFFER_MAXIMUM_SIZE);
     thread_ = std::thread(std::bind(&SinkLogger::threadFunc, this));
 }
 
@@ -97,12 +98,12 @@ void RuntimeLogger::SinkLogger::append(const char* logline, int len,
                 currentBuffer_ = std::move(nextBuffer_);
             }
             // Rarely happens
-            //else if (!newBuffers_.empty()) {
-            //    //std::cout << newBuffers_.size() << std::endl;
-            //    buffers_.push_back(std::move(currentBuffer_));
-            //    currentBuffer_ = std::move(newBuffers_.back());
-            //    newBuffers_.pop_back();
-            //}
+            else if (!newBufferCachePool_.empty()) {
+                std::cout << newBufferCachePool_.size() << std::endl;
+                buffers_.push_back(std::move(currentBuffer_));
+                currentBuffer_ = std::move(newBufferCachePool_.back());
+                newBufferCachePool_.pop_back();
+            }
             else {
                 if (newBufferCount_.load(std::memory_order_relaxed) 
                     < SUPPLEMENTARY_SINKBUFFER_MAXIMUM_SIZE) {
@@ -124,7 +125,7 @@ void RuntimeLogger::SinkLogger::append(const char* logline, int len,
     } while (blocking &&
              [](std::condition_variable& cond) {
                  cond.notify_all();
-                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
                  return true; }(cond_));
 }
 
@@ -177,6 +178,7 @@ void RuntimeLogger::SinkLogger::threadFunc() {
     newBuffer1->bzero();
     newBuffer2->bzero();
     BufferVector buffersToWrite;
+    BufferList buffersToCache;
     buffersToWrite.reserve(16);
     char* cahce = new char[FORMAT_BUFFER_SIZE];
     OutbufArg fmtBuf(cahce, FORMAT_BUFFER_SIZE);
@@ -196,16 +198,19 @@ void RuntimeLogger::SinkLogger::threadFunc() {
                     lock, std::chrono::seconds(flushInterval_));
             }
             if (std::cv_status::no_timeout == status) {
-                if (currentBuffer_->length() > 0.8 * currentBuffer_->bufferSize()) {
+                if (currentBuffer_->length() > 
+                    0.8 * currentBuffer_->bufferSize()) {
                     buffers_.push_back(std::move(currentBuffer_));
                     currentBuffer_ = std::move(newBuffer1);
                 }
             }
             else { // std::cv_status::timeout == status
-                //if (!newBuffers_.empty()) {
-                //    newBufferCount_ -= newBuffers_.size();
-                //    newBuffers_.clear();
-                //}
+                if (!newBufferCachePool_.empty()) {
+                    //newBufferCount_ -= newBufferCachePool_.size();
+                    newBufferCount_.fetch_sub(
+                        newBufferCachePool_.size(), std::memory_order_relaxed);
+                    newBufferCachePool_.clear();
+                }
                 if (currentBuffer_->length() > 0) {
                     buffers_.push_back(std::move(currentBuffer_));
                     currentBuffer_ = std::move(newBuffer1);
@@ -217,6 +222,10 @@ void RuntimeLogger::SinkLogger::threadFunc() {
             buffersToWrite.swap(buffers_);
             if (!nextBuffer_) {
                 nextBuffer_ = std::move(newBuffer2);
+            }
+            if (!buffersToCache.empty()) {
+                newBufferCachePool_.splice(
+                    newBufferCachePool_.end(), buffersToCache);
             }
         }
 
@@ -317,13 +326,13 @@ void RuntimeLogger::SinkLogger::threadFunc() {
             }
         }
 
-        if (buffersToWrite.size() > 2) {
-            // drop non-bzero-ed buffers, avoid trashing
-            buffersToWrite.resize(2);
-        }
+        //if (buffersToWrite.size() > 2) {
+        //    // drop non-bzero-ed buffers, avoid trashing
+        //    buffersToWrite.resize(2);
+        //}
 
         //newBufferCount_ = 0;
-        newBufferCount_.store(0, std::memory_order_relaxed);
+        //newBufferCount_.store(0, std::memory_order_relaxed);
 
         if (!newBuffer1) {
             assert(!buffersToWrite.empty());
@@ -339,14 +348,15 @@ void RuntimeLogger::SinkLogger::threadFunc() {
             newBuffer2->reset();
         }
 
-        //if (!buffersToWrite.empty()) {
-        //    for (const auto& buffer : buffersToWrite) {
-        //        buffer->reset();
-        //    }
-        //    std::lock_guard<std::mutex> lock(mutex_);
-        //    std::move(std::begin(buffersToWrite), std::end(buffersToWrite), 
-        //              std::back_inserter(newBuffers_));
-        //}
+        if (!buffersToWrite.empty()) {
+            assert(buffersToCache.size() == 0);
+            for (auto& buffer : buffersToWrite) {
+                buffer->reset();
+                buffersToCache.push_back(std::move(buffer));
+            }
+            //std::move(std::begin(buffersToWrite), std::end(buffersToWrite), 
+            //          std::back_inserter(newBuffers_));
+        }
 
         buffersToWrite.clear();
         if (outputFp_) fflush(outputFp_);

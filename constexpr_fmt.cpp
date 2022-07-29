@@ -105,14 +105,14 @@ int main() {
 	//t1.join();
 	//t2.join();
 
-	for (int i = 0; i < 1000000; i++) {
+	for (int i = 0; i < 100000000; i++) {
 		//TZ_LOG(LogLevel::INFORMATION, "test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n", 'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr);
 		//TZ_LOG(LogLevel::INFORMATION, "test %d", i);
 		//Sleep(1);
 		
 		//TZ_LOG(LogLevel::INFORMATION, "%s %d %*.*f", "tangzhilin test", i, 20, 10, i / 117.);
-		//TZ_LOG(LogLevel::INFORMATION, "%d", i);
-		TZ_LOG(LogLevel::INFORMATION, "%c,%lc, %*.*ls %#+ 0*.*20.*d %*.*f", 'a', U'🍌', 20, 14, L"zß水🍌", 10, i, 20, 10, i / 117.);
+		TZ_LOG(LogLevel::INFORMATION, "%d", i);
+		//TZ_LOG(LogLevel::INFORMATION, "%c,%lc, %*.*ls %#+ 0*.*20.*d %*.*f", 'a', U'🍌', 20, 14, L"zß水🍌", 10, i, 20, 10, i / 117.);
 
 		//std::this_thread::sleep_for(std::chrono::nanoseconds(10));
 		//condi.notify_all();
