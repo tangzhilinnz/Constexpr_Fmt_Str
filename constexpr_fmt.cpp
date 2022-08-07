@@ -9,10 +9,13 @@
 #include <random>
 #include <cuchar>
 #include <thread>
+#include <stdlib.h>
 
 #include <clocale>
 #include <string>
 #include <cwchar>
+#include <time.h>
+#include <iomanip>
 
 #include "constexpr_fmt.h"
 #include "tz_logger.h"
@@ -47,6 +50,13 @@ void thdFunc() {
 std::thread thds[thdnum];
 
 int main() {
+
+	time_t rawtime;
+	struct tm* timeinfo;
+	char buffer[80];
+
+	time(&rawtime);
+	timeinfo = localtime(&rawtime);
 
 	for (int i = 0; i < kSize - 1; i++) {
 		//if (i % 2 == 0)
@@ -98,13 +108,16 @@ int main() {
 	//unsigned long tid = static_cast<unsigned long>(GetCurrentThreadId());
 	//snprintf(name, sizeof(name), "%lu", tid);
 	RuntimeLogger::setThreadName("zoe snail");
+
 	auto start = system_clock::now();
+
 
 	//std::thread t1(thdFunc);
 	//std::thread t2(thdFunc);
 	//t1.join();
 	//t2.join();
 
+	//time_t lastTime;
 	for (int i = 0; i < 100000000; i++) {
 		//TZ_LOG(LogLevel::INFORMATION, "test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n", 'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr);
 		//TZ_LOG(LogLevel::INFORMATION, "test %d", i);
@@ -116,6 +129,12 @@ int main() {
 
 		//std::this_thread::sleep_for(std::chrono::nanoseconds(10));
 		//condi.notify_all();
+
+		//strftime(buffer, 80, "%r.", timeinfo);
+		//if (rawtime != lastTime) {
+		//	timeinfo = localtime(&rawtime);
+		//	lastTime = rawtime;
+		//}
 	}
 
 	//for (int i = 0; i < thdnum; i++) {
@@ -131,11 +150,12 @@ int main() {
 	std::cout << "cost: "
 		<< double(duration.count()) * microseconds::period::num / microseconds::period::den << "seconds" << std::endl;
 
-
-	std::this_thread::sleep_for(std::chrono::seconds(120));
-	//t1.join();
+	std::this_thread::sleep_for(std::chrono::seconds(60));
+	//abort();
 
 	printf("%+020.*d", 10, 999999);
+
+	//puts(buffer);
 
 	delete[] pLargeStr;
 }
