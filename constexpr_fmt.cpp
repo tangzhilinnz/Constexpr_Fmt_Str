@@ -150,8 +150,8 @@ int main() {
 	std::cout << "cost: "
 		<< double(duration.count()) * microseconds::period::num / microseconds::period::den << "seconds" << std::endl;
 
-	std::this_thread::sleep_for(std::chrono::seconds(60));
-	//abort();
+	std::this_thread::sleep_for(std::chrono::seconds(120));
+	abort();
 
 	printf("%+020.*d", 10, 999999);
 

@@ -1,6 +1,8 @@
 #include <stdint.h>
 #include <iostream>
 #include <iterator>
+#include <ctime>
+#include <locale>
 
 #include "runtime_logger.h"
 
@@ -186,6 +188,7 @@ void RuntimeLogger::SinkLogger::threadFunc() {
     static const char* logLevelNames[] = { "NAN", "ERR", "WRN", "INF", "DBG" };
 
     std::time_t lastTimer = static_cast<time_t>(0);
+    char dateCache[100];
     std::tm* last = nullptr;
 
     while (running_) {
@@ -283,6 +286,12 @@ void RuntimeLogger::SinkLogger::threadFunc() {
                         now = std::localtime(&timer);
                         last = now;
                         lastTimer = timer;
+                        /*std::size_t count = std::strftime(
+                            dateCache, sizeof(dateCache), "%Y-%m-%d %H:%M:%S",
+                            std::localtime(&timer));
+                        if (0 == count) {
+                            std::strcpy(dateCache, "illegal date string length");
+                        }*/
                     }
 
                     uint64_t t = (ns - midnight_ns) / 1000;
@@ -303,8 +312,10 @@ void RuntimeLogger::SinkLogger::threadFunc() {
                         fmtBuf,
                         "%04d-%02d-%02d %02d:%02d:%02d,%06d %s %s %s->%s:%d] ",
                         now->tm_year + 1900, now->tm_mon + 1, now->tm_mday,
-                        now->tm_hour, now->tm_min, now->tm_sec, us,
-                        logLevel, pTCP->name_, pSMI->filename_,
+                        now->tm_hour, now->tm_min, now->tm_sec,
+                        /*"%s,%06d %s %s %s->%s:%d] ",
+                        dateCache,*/
+                        us, logLevel, pTCP->name_, pSMI->filename_,
                         pSMI->funcname_, pSMI->lineNum_);
 
                     if (internal::LogEntryStatus::NORMAL
@@ -328,7 +339,7 @@ void RuntimeLogger::SinkLogger::threadFunc() {
                     size_t size = 
                         fmtBuf.getWrittenNum() < (FORMAT_BUFFER_SIZE - 1) 
                         ? fmtBuf.getWrittenNum() : (FORMAT_BUFFER_SIZE - 1);
-                    fwrite(fmtBuf.bufBegin(), 1, size, outputFp_);
+                    //fwrite(fmtBuf.bufBegin(), 1, size, outputFp_);
 
                     pos += pOE->entrySize;
                     remaining -= static_cast<int>(pOE->entrySize);
