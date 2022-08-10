@@ -118,7 +118,7 @@ int main() {
 	//t2.join();
 
 	//time_t lastTime;
-	for (int i = 0; i < 100000000; i++) {
+	for (int i = 0; i < 100000; i++) {
 		//TZ_LOG(LogLevel::INFORMATION, "test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n", 'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr);
 		//TZ_LOG(LogLevel::INFORMATION, "test %d", i);
 		//Sleep(1);
@@ -127,7 +127,7 @@ int main() {
 		TZ_LOG(LogLevel::INFORMATION, "%d", i);
 		//TZ_LOG(LogLevel::INFORMATION, "%c,%lc, %*.*ls %#+ 0*.*20.*d %*.*f", 'a', U'🍌', 20, 14, L"zß水🍌", 10, i, 20, 10, i / 117.);
 
-		//std::this_thread::sleep_for(std::chrono::nanoseconds(10));
+		//std::this_thread::sleep_for(std::chrono::seconds(1));
 		//condi.notify_all();
 
 		//strftime(buffer, 80, "%r.", timeinfo);
@@ -150,10 +150,10 @@ int main() {
 	std::cout << "cost: "
 		<< double(duration.count()) * microseconds::period::num / microseconds::period::den << "seconds" << std::endl;
 
-	std::this_thread::sleep_for(std::chrono::seconds(120));
-	abort();
+	std::this_thread::sleep_for(std::chrono::seconds(1));
+	//abort();
 
-	printf("%+020.*d", 10, 999999);
+	//printf("%+020.*d", 10, 999999);
 
 	//puts(buffer);
 

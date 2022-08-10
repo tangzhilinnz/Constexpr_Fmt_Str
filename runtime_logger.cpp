@@ -183,8 +183,10 @@ void RuntimeLogger::SinkLogger::threadFunc() {
     BufferVector buffersToWrite;
     BufferList buffersToCache;
     buffersToWrite.reserve(16);
-    char* cahce = new char[FORMAT_BUFFER_SIZE];
-    OutbufArg fmtBuf(cahce, FORMAT_BUFFER_SIZE);
+    //char* cahce = new char[FORMAT_BUFFER_SIZE];
+    //OutbufArg fmtBuf(cahce, FORMAT_BUFFER_SIZE);
+    auto uptrBuf = std::make_unique<char[]>(FORMAT_BUFFER_SIZE);
+    OutbufArg fmtBuf(uptrBuf.get(), FORMAT_BUFFER_SIZE);
     static const char* logLevelNames[] = { "NAN", "ERR", "WRN", "INF", "DBG" };
 
     std::time_t lastTimer = static_cast<time_t>(0);
@@ -281,17 +283,17 @@ void RuntimeLogger::SinkLogger::threadFunc() {
                     std::time_t timer = static_cast<time_t>(ns / 1000000000);
 
                     //std::tm* now = std::localtime(&timer);
-                    std::tm* now = last;
+                    //std::tm* now = last;
                     if (timer != lastTimer) {
-                        now = std::localtime(&timer);
-                        last = now;
+                        //now = std::localtime(&timer);
+                        //last = now;
                         lastTimer = timer;
-                        /*std::size_t count = std::strftime(
+                        std::size_t count = std::strftime(
                             dateCache, sizeof(dateCache), "%Y-%m-%d %H:%M:%S",
                             std::localtime(&timer));
                         if (0 == count) {
                             std::strcpy(dateCache, "illegal date string length");
-                        }*/
+                        }
                     }
 
                     uint64_t t = (ns - midnight_ns) / 1000;
@@ -310,11 +312,11 @@ void RuntimeLogger::SinkLogger::threadFunc() {
 
                     CFMT_STR_OUTBUFARG(
                         fmtBuf,
-                        "%04d-%02d-%02d %02d:%02d:%02d,%06d %s %s %s->%s:%d] ",
+                        /*"%04d-%02d-%02d %02d:%02d:%02d,%06d %s %s %s->%s:%d] ",
                         now->tm_year + 1900, now->tm_mon + 1, now->tm_mday,
-                        now->tm_hour, now->tm_min, now->tm_sec,
-                        /*"%s,%06d %s %s %s->%s:%d] ",
-                        dateCache,*/
+                        now->tm_hour, now->tm_min, now->tm_sec,*/
+                        "%s,%06d %s %s %s->%s:%d] ",
+                        dateCache,
                         us, logLevel, pTCP->name_, pSMI->filename_,
                         pSMI->funcname_, pSMI->lineNum_);
 
@@ -339,7 +341,7 @@ void RuntimeLogger::SinkLogger::threadFunc() {
                     size_t size = 
                         fmtBuf.getWrittenNum() < (FORMAT_BUFFER_SIZE - 1) 
                         ? fmtBuf.getWrittenNum() : (FORMAT_BUFFER_SIZE - 1);
-                    //fwrite(fmtBuf.bufBegin(), 1, size, outputFp_);
+                    fwrite(fmtBuf.bufBegin(), 1, size, outputFp_);
 
                     pos += pOE->entrySize;
                     remaining -= static_cast<int>(pOE->entrySize);
@@ -386,7 +388,7 @@ void RuntimeLogger::SinkLogger::threadFunc() {
     }
 
     if (outputFp_) fflush(outputFp_);
-    delete[] cahce;
+    //delete[] cahce;
 }
 
 // RuntimeLogger constructor
