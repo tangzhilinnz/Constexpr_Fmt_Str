@@ -9,6 +9,7 @@
 
 #include <string>
 #include <iostream>
+#include <sstream>      // std::ostringstream
 #include <array>
 #include <cstring>
 #include <cassert>
@@ -20,7 +21,8 @@
 #include <cmath>
 #include <system_error>
 
-#include "Portability.h"
+#include "portability.h"
+#include "tz_error.h"         // for TZ_THROW, TzError
 
 //#undef _MSC_VER
 //#define __GNUC__
@@ -898,7 +900,7 @@ getOneSpec(/*const char(&fmt)[N]*/const char* fmt, int num = 0) {
 			break;
 
 		default: /* should never happen */
-			abort();
+			TZ_THROW(tz::TzError{ "A format specifier required" });
 			break;
 		}
 
@@ -1928,9 +1930,7 @@ inline void converter_D_args(OutbufArg& outbuf, D/*&&*/ d, T/*&&*/ arg, Ts/*&&*/
 		converter_single<fmt, SI>(outbuf, /*std::forward<T>*/(arg), 0,
 			formattedPrec(/*std::forward<D>*/(d)));
 	}
-	else { /* should never happen */
-		abort();
-	}
+
 	converter_impl<fmt, SIs...>(outbuf, /*std::forward<Ts>*/(rest)...);
 }
 
@@ -1994,17 +1994,13 @@ struct Converter {
 	template <const char* const* pRTStr, typename... Ts>
 	void convert(OutbufArg& outbuf, Ts/*&&*/... args) const {
 		constexpr auto numArgsReuqired = countArgsRequired<SIs...>();
-		if constexpr (static_cast<uint32_t>(numArgsReuqired) > 
-			static_cast<uint32_t>(sizeof...(Ts))) {
-			std::cerr << "CFMT: forced abort due to illegal number of variadic"
-				" arguments passed to CFMT_STR for converting\n"
-				"(Required: " << numArgsReuqired << " ---- " <<
-				"Passed: " << (sizeof...(Ts)) << ")";
-			abort();
-		}
-		else {
-			converter_impl</*fmt*/pRTStr, SIs...>(outbuf, /*std::forward<Ts>*/(args)...);
-		}
+		static_assert(static_cast<uint32_t>(numArgsReuqired)
+			<= static_cast<uint32_t>(sizeof...(Ts)),
+			"The minimum number of arguments required by SpecInfo pack must be"
+			" less than or equal to the number of elements in the parameter"
+			" pack in CFMT_STR");
+
+		converter_impl</*fmt*/pRTStr, SIs...>(outbuf, /*std::forward<Ts>*/(args)...);
 	}
 
 };

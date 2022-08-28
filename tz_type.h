@@ -144,4 +144,13 @@ struct ThreadCheckPoint {
 };
 
 
+/**
+ * Enum to select a timezone
+ */
+enum class Timezone : uint8_t {
+	LocalTime,
+	GmtTime
+};
+
+
 #endif // TZ_TYPE_H__

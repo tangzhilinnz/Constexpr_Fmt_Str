@@ -337,9 +337,6 @@ inline void formator_D_A_args(OutbufArg& outbuf, /*char***/const char* input) {
 		input += sizeof(T);
 		converter_single<FmtStr, SI, T>(outbuf, val, 0, d);
 	}
-	else { /* should never happen */
-		abort();
-	}
 
 	formator<IDX + 2, FmtStr, TUPLE, SIs...>(outbuf, input);
 }

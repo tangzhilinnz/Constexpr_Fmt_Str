@@ -1,6 +1,13 @@
 #ifndef PORTABILITY_H__
 #define PORTABILITY_H__
 
+#include <cstdint> // for uint32_t, uint16_t
+#include <cstdio>  // for FILE
+#include <ctime>   // for size_t, time_t
+#include <string>  // for string
+#include <utility> // for pair
+#include <vector>
+
 #ifdef _MSC_VER
 #define CFMT_ALWAYS_INLINE __forceinline
 #elif defined(__GNUC__)
@@ -84,6 +91,130 @@
 #define CFMT_PRINTF_FORMAT
 #define CFMT_PRINTF_FORMAT_ATTR(string_index, first_to_check)
 #endif
+
+namespace tz {
+namespace detail {
+#if defined(_WIN32)
+/**
+ * Convert a string to wstring
+ * @param str input string
+ * @return the value of input string as wide string
+ */
+std::wstring s2ws(const std::string& str);
+
+/**
+ * wstring to string
+ * @param wstr input wide string
+ * @return the value of input wide string as string
+ */
+std::string ws2s(const std::wstring& wstr);
+#endif
+
+ /**
+ * Portable gmtime_r or _s per operating system
+ * @param timer to a time_t object to convert
+ * @param buf to a struct tm object to store the result
+ * @return copy of the buf pointer, or throws on error
+ * @throws std::system_error
+ */
+std::tm* gmtime_rs(time_t const* timer, std::tm* buf);
+
+/**
+ * Portable localtime_r or _s per operating system
+ * @param timer to a time_t object to convert
+ * @param buf to a struct tm object to store the result
+ * @return copy of the buf pointer, or throws on error
+ * @throws std::system_error
+ */
+std::tm* localtime_rs(time_t const* timer, std::tm* buf);
+
+/**
+ * Sets the cpu affinity of the caller thread to the given cpu id
+ * @param cpu_id the cpu_id to pin the caller thread
+ * @note: cpu_id starts from zero
+ * @throws if fails to set cpu affinity
+ */
+void set_cpu_affinity(uint16_t cpu_id);
+
+/**
+ * Sets the name of the caller thread
+ * @param name the name of the thread
+ * @throws std::runtime_error if it fails to set cpu affinity
+ */
+void set_thread_name(char const* name);
+
+/**
+ * Returns the name of the thread. By default, each thread is unnamed.
+ * If set_thread_name has not been used to set the name of the specified thread,
+ * a null string is retrieved into name.
+ * @return the thread name
+ */
+std::string get_thread_name();
+
+/**
+ * Returns the os assigned ID of the thread
+ * @return the thread ID of the calling thread
+ */
+uint32_t get_thread_id() noexcept;
+
+/**
+ * Returns the os assigned ID of the process
+ * @return the process ID of the calling process
+ */
+uint32_t get_process_id() noexcept;
+
+/**
+ * Gets the page size
+ * @return the size of the page
+ */
+size_t get_page_size() noexcept;
+
+/**
+ * Aligned alloc
+ * @param alignment specifies the alignment. Must be a valid alignment supported by the implementation.
+ * @param size number of bytes to allocate. An integral multiple of alignment
+ * @return On success, returns the pointer to the beginning of newly allocated memory.
+ * To avoid a memory leak, the returned pointer must be deallocated with aligned_free().
+ * @throws  std::system_error on failure
+ */
+void* aligned_alloc(size_t alignment, size_t size);
+
+/**
+ * Free aligned memory allocated with aligned_alloc
+ * @param ptr address to aligned memory
+ */
+void aligned_free(void* ptr) noexcept;
+
+/**
+ * inverses of gmtime
+ * @param tm struct tm to convert
+ * @throws on invalid input
+ */
+time_t timegm(struct tm* tm);
+
+/**
+ * Check if the terminal supports colours
+ * @return true if the terminate supports colours
+ */
+bool is_colour_terminal() noexcept;
+
+/**
+ * Check if file descriptor is attached to terminal
+ * @param file the file handler
+ * @return true if the file is attached to terminal
+ */
+bool is_in_terminal(FILE* file) noexcept;
+
+/**
+ * Calls strftime and returns a null terminated vector of chars
+ * @param format_string The format string to pass to strftime
+ * @param time_info_ptr The pointer to tm struct
+ * @return the formatted string as vector of characters
+ */
+std::vector<char> safe_strftime(char const* format_string, const std::tm* time_info_ptr);
+
+} // namespace detail
+} // namespace tz
 
 #endif /* PORTABILITY_H__ */
 

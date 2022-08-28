@@ -41,6 +41,7 @@
 #endif
 
 #include "tz_type.h"
+#include "timestamp_formatter.h"
 
 // Determines the byte size of the per-thread StagingBuffer that decouples
 // the producer logging thread from the consumer background compression
@@ -740,6 +741,7 @@ private:
         BufferPtr nextBuffer_;
         BufferVector buffers_;
         BufferList newBufferCachePool_;
+        tz::detail::TimestampFormatter timeFmt_;
         //BufferVector newBuffers_;
     };
 

@@ -19,6 +19,7 @@
 
 #include "constexpr_fmt.h"
 #include "tz_logger.h"
+#include "timestamp_formatter.h"
 
 //#include "mimalloc-new-delete.h"
 //#include "mimalloc-override.h"
@@ -109,7 +110,14 @@ int main() {
 	//snprintf(name, sizeof(name), "%lu", tid);
 	RuntimeLogger::setThreadName("zoe snail");
 
+	const std::chrono::nanoseconds timestamp{ 1587161887987654321 };
+	tz::detail::TimestampFormatter tf(std::string("%Y-%m-%d %H:%M:%S,%Qus"));
+
+	
+
 	auto start = system_clock::now();
+
+	//std::string_view sv;
 
 
 	//std::thread t1(thdFunc);
@@ -129,8 +137,9 @@ int main() {
 
 		//std::this_thread::sleep_for(std::chrono::seconds(1));
 		//condi.notify_all();
-
-		//strftime(buffer, 80, "%r.", timeinfo);
+		//CFMT_STR(result, buf, 800, "%s", "");
+		//std::strftime(buffer, 80, /*"%Y-%m-%d %H:%M:%S"*/"sdsdsdsd", timeinfo);
+		//sv = tf.format_timestamp(timestamp);
 		//if (rawtime != lastTime) {
 		//	timeinfo = localtime(&rawtime);
 		//	lastTime = rawtime;
@@ -149,6 +158,7 @@ int main() {
 	auto duration = duration_cast<microseconds>(end - start);
 	std::cout << "cost: "
 		<< double(duration.count()) * microseconds::period::num / microseconds::period::den << "seconds" << std::endl;
+	//puts(buffer);
 
 	std::this_thread::sleep_for(std::chrono::seconds(1));
 	//abort();
@@ -156,6 +166,9 @@ int main() {
 	//printf("%+020.*d", 10, 999999);
 
 	//puts(buffer);
+	//printf("%+020.*d", 10, 999999);result
+	printf("%d", result);
+	//std::cout << sv << std::endl;
 
 	delete[] pLargeStr;
 }

@@ -46,7 +46,8 @@ RuntimeLogger::SinkLogger::SinkLogger(const std::string& basename,
     , nextBuffer_(new Buffer)
     , buffers_() 
     //, newBuffers_() 
-    , newBufferCachePool_() {
+    , newBufferCachePool_()
+    , timeFmt_(std::string(/*"%I:%M%p.%Qns"*/"%Y-%m-%d %H:%M:%S,%Qus"/*"%Qus %c"*/)) {
 
     outputFp_ = fopen(basename.c_str(), "a");
     if (!outputFp_) {
@@ -280,30 +281,41 @@ void RuntimeLogger::SinkLogger::threadFunc() {
                         reinterpret_cast<const OneLogEntry*>(pos);
                     const StaticFmtInfo* pSMI = pOE->fmtId;
                     uint64_t ns = tscns.tsc2ns(pOE->timestamp);
-                    std::time_t timer = static_cast<time_t>(ns / 1000000000);
 
+                    //std::time_t timer = static_cast<time_t>(ns / 1000000000);
                     //std::tm* now = std::localtime(&timer);
                     //std::tm* now = last;
-                    if (timer != lastTimer) {
-                        //now = std::localtime(&timer);
-                        //last = now;
-                        lastTimer = timer;
-                        std::size_t count = std::strftime(
-                            dateCache, sizeof(dateCache), "%Y-%m-%d %H:%M:%S",
-                            std::localtime(&timer));
-                        if (0 == count) {
-                            std::strcpy(dateCache, "illegal date string length");
-                        }
-                    }
+                    //if (timer != lastTimer) {
+                    //    //now = std::localtime(&timer);
+                    //    //last = now;
+                    //    lastTimer = timer;
+                    //    std::size_t count = std::strftime(
+                    //        dateCache, sizeof(dateCache), "%Y-%m-%d %H:%M:%S",
+                    //        std::localtime(&timer));
+                    //    if (0 == count) {
+                    //        std::strcpy(dateCache, "illegal date string length");
+                    //    }
+                    //}
 
-                    uint64_t t = (ns - midnight_ns) / 1000;
-                    uint32_t us = t % 1000000;
-                    //t /= 1000000;
-                    //uint32_t s = t % 60;
-                    //t /= 60;
-                    //uint32_t m = t % 60;
-                    //t /= 60;
-                    //uint32_t h = t % 24;
+                    //std::chrono::nanoseconds ts{ ns };
+
+                    //std::time_t timer = static_cast<time_t>(ns / 1000000000);
+                    ////std::tm* now = std::localtime(&timer);
+                    ////std::tm* now = last;
+                    //if (timer != lastTimer) {
+                    //    /*now = std::localtime(&timer);
+                    //    last = now;*/
+                    //    lastTimer = timer;
+                    //    std::size_t count = std::strftime(
+                    //        dateCache, sizeof(dateCache), "%Y-%m-%d %H:%M:%S",
+                    //        std::localtime(&timer));
+                    //    if (0 == count) {
+                    //        std::strcpy(dateCache, "illegal date string length");
+                    //    }
+                    //}
+                    //uint64_t t = (ns - midnight_ns) / 1000;
+                    //uint32_t us = t % 1000000;
+
 
                     const char* logLevel =
                         logLevelNames[static_cast<size_t>(pSMI->severity_)];
@@ -315,9 +327,11 @@ void RuntimeLogger::SinkLogger::threadFunc() {
                         /*"%04d-%02d-%02d %02d:%02d:%02d,%06d %s %s %s->%s:%d] ",
                         now->tm_year + 1900, now->tm_mon + 1, now->tm_mday,
                         now->tm_hour, now->tm_min, now->tm_sec,*/
-                        "%s,%06d %s %s %s->%s:%d] ",
-                        dateCache,
-                        us, logLevel, pTCP->name_, pSMI->filename_,
+                        //"%s,%06d %s %s %s->%s:%d] ",
+                        "%s %s %s %s->%s:%d] ",
+                        //dateCache, us, 
+                        timeFmt_.format_timestamp(ns).data(),
+                        logLevel, pTCP->name_, pSMI->filename_,
                         pSMI->funcname_, pSMI->lineNum_);
 
                     if (internal::LogEntryStatus::NORMAL
