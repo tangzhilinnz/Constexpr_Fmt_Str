@@ -126,7 +126,7 @@ int main() {
 	//t2.join();
 
 	//time_t lastTime;
-	for (int i = 0; i < 100000; i++) {
+	for (int i = 0; i < 100000000; i++) {
 		//TZ_LOG(LogLevel::INFORMATION, "test %hhl #-+0zjtM %.*p %s %*.*ls %s %ls\n", 'a', 100, pstr, 12, 10, L"asd", "asdf", pwstr);
 		//TZ_LOG(LogLevel::INFORMATION, "test %d", i);
 		//Sleep(1);

@@ -283,25 +283,8 @@ void RuntimeLogger::SinkLogger::threadFunc() {
                     uint64_t ns = tscns.tsc2ns(pOE->timestamp);
 
                     //std::time_t timer = static_cast<time_t>(ns / 1000000000);
-                    //std::tm* now = std::localtime(&timer);
-                    //std::tm* now = last;
-                    //if (timer != lastTimer) {
-                    //    //now = std::localtime(&timer);
-                    //    //last = now;
-                    //    lastTimer = timer;
-                    //    std::size_t count = std::strftime(
-                    //        dateCache, sizeof(dateCache), "%Y-%m-%d %H:%M:%S",
-                    //        std::localtime(&timer));
-                    //    if (0 == count) {
-                    //        std::strcpy(dateCache, "illegal date string length");
-                    //    }
-                    //}
-
-                    //std::chrono::nanoseconds ts{ ns };
-
-                    //std::time_t timer = static_cast<time_t>(ns / 1000000000);
-                    ////std::tm* now = std::localtime(&timer);
-                    ////std::tm* now = last;
+                    //////std::tm* now = std::localtime(&timer);
+                    //////std::tm* now = last;
                     //if (timer != lastTimer) {
                     //    /*now = std::localtime(&timer);
                     //    last = now;*/
@@ -355,7 +338,7 @@ void RuntimeLogger::SinkLogger::threadFunc() {
                     size_t size = 
                         fmtBuf.getWrittenNum() < (FORMAT_BUFFER_SIZE - 1) 
                         ? fmtBuf.getWrittenNum() : (FORMAT_BUFFER_SIZE - 1);
-                    fwrite(fmtBuf.bufBegin(), 1, size, outputFp_);
+                    //fwrite(fmtBuf.bufBegin(), 1, size, outputFp_);
 
                     pos += pOE->entrySize;
                     remaining -= static_cast<int>(pOE->entrySize);
