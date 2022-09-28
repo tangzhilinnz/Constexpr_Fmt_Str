@@ -192,6 +192,7 @@ void aligned_free(void* ptr) noexcept;
  */
 time_t timegm(struct tm* tm);
 
+
 /**
  * Check if the terminal supports colours
  * @return true if the terminate supports colours
